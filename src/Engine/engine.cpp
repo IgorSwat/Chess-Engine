@@ -55,7 +55,7 @@ void Engine::setupPosition(const std::string& FEN)
 /// Move generation feauters
 Move2 Engine::getRandomMove() const
 {
-    const vector< vector<Move2> >& moves = generator->getLegalMoves();
+    const MoveList* moves = generator->getLegalMoves();
     int sideID = config->getSideOnMove() == COLOR::WHITE ? 0 : 16;
     vector<Move2> movesPerSide;
     for (int i = sideID; i < sideID + 16; i++)
@@ -68,7 +68,7 @@ Move2 Engine::getRandomMove() const
 
 bool Engine::hasLegalMoves() const
 {
-    const vector< vector<Move2> >& moves = generator->getLegalMoves();
+    const MoveList* moves = generator->getLegalMoves();
     int sideID = config->getSideOnMove() == COLOR::WHITE ? 0 : 16;
     for (int i = sideID; i < sideID + 16; i++)
     {

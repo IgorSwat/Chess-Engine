@@ -14,6 +14,8 @@ private:
     // Data tables
     int piecesReachingSquare[8][8][5][2];
     int mobilityCount[5][2];
+    // Helper functions
+    template <typename Container> void updateByRemovalConstruct(Container moves);
 public:
     PieceMobility(MoveGenerator* gen, SquareControl* con) : PositionElement("PieceMobility"), generator(gen), control(con) {}
     // Static update
@@ -21,13 +23,32 @@ public:
     void evaluate() override;
     void reset() override {evaluate();}
     // Dynamic update
-    void updateByInsertion(const Move2& move) override;
-    void updateByRemoval(const vector<Move2>& moves) override;
+    void updateByInsertion(const Move2& move);
+    void updateByRemoval(const vector<Move2>& moves) { updateByRemovalConstruct(moves); }
+    void updateByRemoval(const MoveList& moves) { updateByRemovalConstruct(moves); }
     void updateByAppearance(const sf::Vector2i& pos, int side) override;
     void updateByDisappearance(const sf::Vector2i& pos, int side) override;
     int getMobility(COLOR side, PieceType type) {return mobilityCount[mapPieceType(type)][(int)side];}
     // Testing
     void show() const;
 };
+
+
+
+template <typename Container>
+void PieceMobility::updateByRemovalConstruct(Container moves)
+{
+    for (const Move2& move : moves)
+    {
+        if (move.specialFlag.isCommon() && move.pieceType != PieceType::PAWN)
+        {
+            int colorFlag = move.pieceID < 16 ? 0 : 1;
+            int type = mapPieceType(move.pieceType);
+            piecesReachingSquare[move.targetPos.y][move.targetPos.x][type][colorFlag] -= 1;
+            if (!control->isControlledByPawn(move.targetPos, (colorFlag + 1) % 2))
+                mobilityCount[type][colorFlag] -= 1;
+        }
+    }
+}
 
 #endif // PIECEMOBILITY_H_INCLUDED

@@ -52,8 +52,6 @@ private:
     static void initCheckSavers();
     static Vector2i toDirectionalVector(const sf::Vector2i& initPos, const sf::Vector2i& targetPos);
     static Vector2i toDirectionalVector(const sf::Vector2i& mv);
-    static const Vector2i& toDirectionalVector2(const sf::Vector2i& initPos, const sf::Vector2i& targetPos);
-    static const Vector2i& toDirectionalVector2(const sf::Vector2i& mv) {return directionalVectors[7 - mv.x][7 - mv.y];}
     void placePiece(const sf::Vector2i& pos, int pieceID, bool observableFlag = true); // Safe version
     void placePiece(const sf::Vector2i& pos, int pieceID, PieceType type, bool observableFlag = true); // Needs control of args
     void clearBoard();
@@ -126,6 +124,8 @@ public:
     static bool isRook(Piece* piece) {return piece->getType() == PieceType::ROOK;}
     static bool isQueen(Piece* piece) {return piece->getType() == PieceType::QUEEN;}
     static bool isKing(Piece* piece) {return piece->getType() == PieceType::KING;}
+    static const Vector2i& toDirectionalVector2(const sf::Vector2i& initPos, const sf::Vector2i& targetPos);
+    static const Vector2i& toDirectionalVector2(const sf::Vector2i& mv) { return directionalVectors[7 - mv.x][7 - mv.y]; }
     // Friends
     friend bool FenReader::parseToConfig(BoardConfig* config) const;
     friend void PlacementChange::applyChange(BoardConfig* config) const;

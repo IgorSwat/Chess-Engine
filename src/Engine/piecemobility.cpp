@@ -21,7 +21,7 @@ void PieceMobility::clearTables()
 void PieceMobility::evaluate()
 {
     clearTables();
-    const vector< vector<Move2> >& moveList = generator->getLegalMoves();
+    const MoveList* moveList = generator->getLegalMoves();
     for (int i = 0; i < 32; i++)
     {
         for (const Move2& move : moveList[i])
@@ -40,21 +40,6 @@ void PieceMobility::updateByInsertion(const Move2& move)
             mobilityCount[type][colorFlag] += 1;
     }
 
-}
-
-void PieceMobility::updateByRemoval(const vector<Move2>& moves)
-{
-    for (const Move2& move : moves)
-    {
-        if (move.specialFlag.isCommon() && move.pieceType != PieceType::PAWN)
-        {
-            int colorFlag = move.pieceID < 16 ? 0 : 1;
-            int type = mapPieceType(move.pieceType);
-            piecesReachingSquare[move.targetPos.y][move.targetPos.x][type][colorFlag] -= 1;
-            if (!control->isControlledByPawn(move.targetPos, (colorFlag + 1) % 2))
-                mobilityCount[type][colorFlag] -= 1;
-        }
-    }
 }
 
 void PieceMobility::updateByAppearance(const sf::Vector2i& pos, int side)

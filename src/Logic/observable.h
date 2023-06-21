@@ -2,6 +2,7 @@
 #define OBSERVABLE_H
 
 #include "move.h"
+#include "movelist.h"
 #include <vector>
 #include <algorithm>
 #include <SFML/Graphics.hpp>
@@ -32,6 +33,7 @@ class MoveListChangedObserver : virtual public ObserverBase
 public:
     virtual ~MoveListChangedObserver() {}
     virtual void updateByRemoval(const vector<Move2>& moves) = 0;
+    virtual void updateByRemoval(const MoveList& moves) = 0;
     virtual void updateByInsertion(const Move2& move) = 0;
 };
 
@@ -115,6 +117,11 @@ public:
             observer->updateByInsertion(move);
     }
     void updateObserversByRemoval(const std::vector<Move2>& movesList)
+    {
+        for (MoveListChangedObserver* observer : observers)
+            observer->updateByRemoval(movesList);
+    }
+    void updateObserversByRemoval(const MoveList& movesList)
     {
         for (MoveListChangedObserver* observer : observers)
             observer->updateByRemoval(movesList);

@@ -144,6 +144,11 @@ void BoardConfig::placePiece(const sf::Vector2i& pos, int pieceID, PieceType typ
             throw std::bad_exception();
         }
         table[posCopied.y][posCopied.x] = pieces[pieceID];
+        if (generator != nullptr)
+        {
+            generator->removeMoves(pieceID);
+            generator->configureMoveList(pieceID);
+        }
         if (observableFlag)
         {
             updatePinsDynamic(pieceID, oldPos, posCopied);

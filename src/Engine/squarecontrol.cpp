@@ -77,8 +77,8 @@ void SquareControl::clearTables()
 void SquareControl::evaluate()
 {
     clearTables();
-    const std::vector< std::vector<Move2> >& legal = generator->getLegalMoves();
-    const std::vector< std::vector<Move2> >& attacks = generator->getPseudoLegalMoves();
+    const MoveList* legal = generator->getLegalMoves();
+    const MoveList* attacks = generator->getPseudoLegalMoves();
     for (int i = 0; i < 16; i++)
     {
         for (const Move2& move : legal[i])
@@ -177,29 +177,6 @@ void SquareControl::updateByInsertion(const Move2& move)
                 updateObserversByAppearance(move.targetPos, side);
         }
         config->addAttack(move.targetPos,side);
-    }
-}
-
-void SquareControl::updateByRemoval(const vector<Move2>& moves)
-{
-    for (const Move2& move : moves)
-    {
-        if (move.specialFlag.isAttacking())
-        {
-            int side = move.pieceID < 16 ? 0 : 1;
-            int prevState = whoControls(move.targetPos);
-            control[move.targetPos.y][move.targetPos.x][side] -= pieceCodes[(int)move.pieceType];
-            int currState = whoControls(move.targetPos);
-            if (currState != prevState)
-                updateControlTables(move.targetPos, prevState, currState);
-            if (move.pieceType == PieceType::PAWN)
-            {
-                pawnControl[move.targetPos.y][move.targetPos.x][side] -= 1;
-                if (pawnControl[move.targetPos.y][move.targetPos.x][side] == 0)
-                    updateObserversByDisappearance(move.targetPos, side);
-            }
-            config->removeAttack(move.targetPos, side);
-        }
     }
 }
 
