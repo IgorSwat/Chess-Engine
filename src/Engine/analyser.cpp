@@ -301,6 +301,6 @@ void Analyser::show() const
 {
     int value = 0;
     int stage = material->stageValue();
-    //generator->showMoves(false);
+    control->show();
 }
 

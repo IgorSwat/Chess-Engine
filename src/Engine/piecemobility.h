@@ -12,10 +12,10 @@ private:
     MoveGenerator* generator;
     SquareControl* control;
     // Data tables
-    int piecesReachingSquare[8][8][5][2];
-    int mobilityCount[5][2];
+    int piecesReachingSquare[8][8][5][2]{ 0 };
+    int mobilityCount[5][2] { 0 };
     // Helper functions
-    template <typename Container> void updateByRemovalConstruct(Container moves);
+    template <typename Container> void updateByRemovalConstruct(int pieceID, Container moves);
 public:
     PieceMobility(MoveGenerator* gen, SquareControl* con) : PositionElement("PieceMobility"), generator(gen), control(con) {}
     // Static update
@@ -24,8 +24,8 @@ public:
     void reset() override {evaluate();}
     // Dynamic update
     void updateByInsertion(const Move2& move);
-    void updateByRemoval(const vector<Move2>& moves) { updateByRemovalConstruct(moves); }
-    void updateByRemoval(const MoveList& moves) { updateByRemovalConstruct(moves); }
+    void updateByRemoval(int pieceID, const vector<Move2>& moves) { updateByRemovalConstruct(pieceID, moves); }
+    void updateByRemoval(int pieceID, const MoveList& moves) { updateByRemovalConstruct(pieceID, moves); }
     void updateByAppearance(const sf::Vector2i& pos, int side) override;
     void updateByDisappearance(const sf::Vector2i& pos, int side) override;
     int getMobility(COLOR side, PieceType type) {return mobilityCount[mapPieceType(type)][(int)side];}
@@ -36,7 +36,7 @@ public:
 
 
 template <typename Container>
-void PieceMobility::updateByRemovalConstruct(Container moves)
+void PieceMobility::updateByRemovalConstruct(int pieceID, Container moves)
 {
     for (const Move2& move : moves)
     {

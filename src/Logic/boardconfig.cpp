@@ -339,7 +339,7 @@ Vector2i BoardConfig::isPinned(Piece* piece)
 void BoardConfig::updateSideOnMove()
 {
     boardProgress.registerChange(new SideOnMoveChange(sideOnMove));
-    sideOnMove = ++sideOnMove;
+    sideOnMove = opposition(sideOnMove);
 }
 
 void BoardConfig::updateMoveCounts(Piece* movedPiece, bool captureFlag)
@@ -934,9 +934,9 @@ int BoardConfig::isCastlingAvailable(Piece* king, const sf::Vector2i& mv)
             return 0;
         if (checkCollisions(kingPos, Vector2i(-1, 0), Vector2i(kingPos.x - 4, kingPos.y)) != nullptr)
             return 0;
-        if (isChecked(Vector2i(kingPos.x - 1, kingPos.y), ++king->getColor()))
+        if (isChecked(Vector2i(kingPos.x - 1, kingPos.y), opposition(king->getColor())))
             return 0;
-        if (isChecked(Vector2i(kingPos.x - 2, kingPos.y), ++king->getColor()))
+        if (isChecked(Vector2i(kingPos.x - 2, kingPos.y), opposition(king->getColor())))
             return 0;
         rookID = table[kingPos.y][kingPos.x - 4]->getID();
     }
@@ -948,9 +948,9 @@ int BoardConfig::isCastlingAvailable(Piece* king, const sf::Vector2i& mv)
             return 0;
         if (checkCollisions(kingPos, Vector2i(1, 0), Vector2i(kingPos.x + 3, kingPos.y)) != nullptr)
             return 0;
-        if (isChecked(Vector2i(kingPos.x + 1, kingPos.y), ++king->getColor()))
+        if (isChecked(Vector2i(kingPos.x + 1, kingPos.y), opposition(king->getColor())))
             return 0;
-        if (isChecked(Vector2i(kingPos.x + 2, kingPos.y), ++king->getColor()))
+        if (isChecked(Vector2i(kingPos.x + 2, kingPos.y), opposition(king->getColor())))
             return 0;
         rookID = table[kingPos.y][kingPos.x + 3]->getID();
     }
@@ -969,9 +969,9 @@ int BoardConfig::isCastlingAvailable2(Piece* king, const sf::Vector2i& mv)
             return 0;
         if (checkCollisions(kingPos, Vector2i(-1, 0), Vector2i(kingPos.x - 4, kingPos.y)) != nullptr)
             return 0;
-        if (isChecked2(Vector2i(kingPos.x - 1, kingPos.y), ++king->getColor()))
+        if (isChecked2(Vector2i(kingPos.x - 1, kingPos.y), opposition(king->getColor())))
             return 0;
-        if (isChecked2(Vector2i(kingPos.x - 2, kingPos.y), ++king->getColor()))
+        if (isChecked2(Vector2i(kingPos.x - 2, kingPos.y), opposition(king->getColor())))
             return 0;
         rookID = table[kingPos.y][kingPos.x - 4]->getID();
     }
@@ -983,9 +983,9 @@ int BoardConfig::isCastlingAvailable2(Piece* king, const sf::Vector2i& mv)
             return 0;
         if (checkCollisions(kingPos, Vector2i(1, 0), Vector2i(kingPos.x + 3, kingPos.y)) != nullptr)
             return 0;
-        if (isChecked2(Vector2i(kingPos.x + 1, kingPos.y), ++king->getColor()))
+        if (isChecked2(Vector2i(kingPos.x + 1, kingPos.y), opposition(king->getColor())))
             return 0;
-        if (isChecked2(Vector2i(kingPos.x + 2, kingPos.y), ++king->getColor()))
+        if (isChecked2(Vector2i(kingPos.x + 2, kingPos.y), opposition(king->getColor())))
             return 0;
         rookID = table[kingPos.y][kingPos.x + 3]->getID();
     }

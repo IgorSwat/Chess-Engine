@@ -2,8 +2,11 @@
 #define SQUARECONTROL_H_INCLUDED
 
 #include "positionelement.h"
-#include "misc.h"
 using std::vector;
+
+enum ThreatType { HANGING_PIECE = 0, LOWER_TYPE_ATTACK };
+
+class Connectivity;
 
 class SquareControl : public PositionElement, public ObservablePawnControl,
     public PositionChangedObserver, public MoveListChangedObserver
@@ -11,6 +14,7 @@ class SquareControl : public PositionElement, public ObservablePawnControl,
 private:
     BoardConfig* config;
     MoveGenerator* generator;
+    Connectivity* connectivity;
     // Data tables
     int control[8][8][2] {};
     int pawnControl[8][8][2] {};
@@ -18,9 +22,10 @@ private:
     int ownCampControl[2] {};
     int opponentCampControl[2] {};
     int centerControl[2] {};
+    int attackers[5]{ };
     static constexpr int pieceCodes[6] { 4984, 408, 408, 40, 4, 2 };
     // Helper functions
-    template <typename Container> void updateFromRemovalConstruct(Container moves);
+    template <typename Container> void updateFromRemovalConstruct(int pieceID, Container moves);
     void initPointers();
     void updateControlTables(const sf::Vector2i& pos, const int& prevState, const int& currState);
     int whoControls(int col, int row) const {
@@ -29,11 +34,9 @@ private:
     }
     int whoControls(const sf::Vector2i& pos) const {return whoControls(pos.x, pos.y);}
     bool isCentralSquare(const sf::Vector2i& pos) const {return (pos.x == 3 || pos.x == 4) && (pos.y == 3 || pos.y == 4);}
-    bool isSquareDefended(const sf::Vector2i& square, COLOR side) { return control[square.y][square.x][(int)side] > 1; }
-    int attackersToSquare(const sf::Vector2i& square, COLOR side, PieceType type) { return control[square.y][square.x][(int)side] / pieceCodes[type]; }
 public:
     SquareControl(MoveGenerator* gen, BoardConfig* cnf);
-    ~SquareControl() {}
+    ~SquareControl();
     // Static update
     void clearTables();
     void evaluate();
@@ -41,9 +44,11 @@ public:
     // Dynamic update
     void updateByMove(int pieceID, const sf::Vector2i& oldPos, const sf::Vector2i& newPos) override;
     void updateByInsertion(const Move2& move);
-    void updateByRemoval(const vector<Move2>& moves) { updateFromRemovalConstruct(moves); }
-    void updateByRemoval(const MoveList& moves) { updateFromRemovalConstruct(moves); }
+    void updateByRemoval(int pieceID, const vector<Move2>& moves) { updateFromRemovalConstruct(pieceID, moves); }
+    void updateByRemoval(int pieceID, const MoveList& moves) { updateFromRemovalConstruct(pieceID, moves); }
     // Extra functionalities
+    bool isSquareDefended(const sf::Vector2i& square, COLOR side) const { return control[square.y][square.x][(int)side] > 1; }
+    const int* countAttackers(const sf::Vector2i& square, COLOR side);
     bool isControlledByPawn(int col, int row, int side) {return pawnControl[row][col][side] > 0;}
     bool isControlledByPawn(const sf::Vector2i& pos, int side) {return pawnControl[pos.y][pos.x][side] > 0;}
     int ownCampControlDifference() const {return ownCampControl[0] - ownCampControl[1];}
@@ -51,30 +56,55 @@ public:
     int centerControlDifference() const {return centerControl[0] - centerControl[1];}
     // Testing
     void show() const;
+    friend class Connectivity;
+};
+
+
+
+class Connectivity
+{
+private:
+    BoardConfig* config;
+    SquareControl* control;
+    int threats[8][8][2]{ 0 };	// (square.y - square.x - threat_type)
+    int totalThreats[2][2][4]{ 0 };	// (side - threat_type - piece_type)
+    bool isHanging(const sf::Vector2i& pos) { return threats[pos.y][pos.x][HANGING_PIECE] > 0 && threats[pos.y][pos.x][LOWER_TYPE_ATTACK] == 0; }
+public:
+    Connectivity(BoardConfig* cnf, SquareControl* cnt) : config(cnf), control(cnt) {}
+    void clearTables();
+    // Dynamic update (trigerred by SquareControl)
+    void updateByMove(int pieceID, const sf::Vector2i& oldPos, const sf::Vector2i& newPos);
+    void updateByInsertion(const Move2& move, const bool& prevDefenseState);
+    void updateByRemoval(const Move2& move, const COLOR& side, const COLOR& opposite);
+    void showThreats(COLOR side) const;
+    void show() const;
+    friend class SquareControl;
 };
 
 
 
 template <typename Container>
-void SquareControl::updateFromRemovalConstruct(Container moves)
+void SquareControl::updateFromRemovalConstruct(int pieceID, Container moves)
 {
+    COLOR side = pieceID < 16 ? COLOR::WHITE : COLOR::BLACK;
+    COLOR opposite = opposition(side);
     for (const Move2& move : moves)
     {
         if (move.specialFlag.isAttacking())
         {
-            int side = move.pieceID < 16 ? 0 : 1;
             int prevState = whoControls(move.targetPos);
-            control[move.targetPos.y][move.targetPos.x][side] -= pieceCodes[(int)move.pieceType];
+            control[move.targetPos.y][move.targetPos.x][(int)side] -= pieceCodes[(int)move.pieceType];
             int currState = whoControls(move.targetPos);
             if (currState != prevState)
                 updateControlTables(move.targetPos, prevState, currState);
             if (move.pieceType == PieceType::PAWN)
             {
-                pawnControl[move.targetPos.y][move.targetPos.x][side] -= 1;
-                if (pawnControl[move.targetPos.y][move.targetPos.x][side] == 0)
-                    updateObserversByDisappearance(move.targetPos, side);
+                pawnControl[move.targetPos.y][move.targetPos.x][(int)side] -= 1;
+                if (pawnControl[move.targetPos.y][move.targetPos.x][(int)side] == 0)
+                    updateObserversByDisappearance(move.targetPos, (int)side);
             }
-            config->removeAttack(move.targetPos, side);
+            config->removeAttack(move.targetPos, (int)side);
+            connectivity->updateByRemoval(move, side, opposite);
         }
     }
 }

@@ -32,8 +32,8 @@ class MoveListChangedObserver : virtual public ObserverBase
 {
 public:
     virtual ~MoveListChangedObserver() {}
-    virtual void updateByRemoval(const vector<Move2>& moves) = 0;
-    virtual void updateByRemoval(const MoveList& moves) = 0;
+    virtual void updateByRemoval(int pieceID, const vector<Move2>& moves) = 0;
+    virtual void updateByRemoval(int pieceID, const MoveList& moves) = 0;
     virtual void updateByInsertion(const Move2& move) = 0;
 };
 
@@ -116,15 +116,15 @@ public:
         for (MoveListChangedObserver* observer : observers)
             observer->updateByInsertion(move);
     }
-    void updateObserversByRemoval(const std::vector<Move2>& movesList)
+    void updateObserversByRemoval(int pieceID, const std::vector<Move2>& movesList)
     {
         for (MoveListChangedObserver* observer : observers)
-            observer->updateByRemoval(movesList);
+            observer->updateByRemoval(pieceID, movesList);
     }
-    void updateObserversByRemoval(const MoveList& movesList)
+    void updateObserversByRemoval(int pieceID, const MoveList& movesList)
     {
         for (MoveListChangedObserver* observer : observers)
-            observer->updateByRemoval(movesList);
+            observer->updateByRemoval(pieceID, movesList);
     }
 };
 
