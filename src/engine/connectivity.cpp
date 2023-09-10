@@ -32,26 +32,26 @@ void Connectivity::update()
 	const MoveList* pseudoLegal = generator->getPseudoLegalMoves();
 	for (int i = 0; i < 32; i++)
 	{
-		for (const Move2& move : legal[i])
+		for (const Move& move : legal[i])
 			updateByInsertion(move);
-		for (const Move2& move : pseudoLegal[i])
+		for (const Move& move : pseudoLegal[i])
 			updateByInsertion(move);
 	}
 }
 
-void Connectivity::updateByInsertion(const Move2& move)
+void Connectivity::updateByInsertion(const Move& move)
 {
-	if (move.specialFlag.isAttacking())
+	if (move.hasProperty(Moves::ATTACK_FLAG))
 	{
-		Piece* piece = config->getPiece(move.targetPos);
+		const Piece* piece = config->getPiece(move.targetPos);
 		Side side = move.pieceID < 16 ? WHITE : BLACK;
 		int attackedPieceMappedValue = 0;
-		if (piece != nullptr && piece->getColor() != side && !BoardConfig::isKing(piece) &&
+		if (piece != nullptr && piece->getColor() != side && piece->getType() != KING &&
 		 mapPieceTypeByValue(move.pieceType) < (attackedPieceMappedValue = mapPieceTypeByValue(piece->getType())))
 		{
 			if (move.pieceType == PAWN)
 			{
-				if (move.promotionFlag != PAWN && move.promotionFlag != QUEEN)
+				if (move.promotionType != PAWN && move.promotionType != QUEEN)
 					return;
 				lowerTypeAttackCount[move.targetPos.y][move.targetPos.x][side][PAWN_ATTACK]++;
 				if (lowerTypeAttackCount[move.targetPos.y][move.targetPos.x][side][PAWN_ATTACK] == 1)

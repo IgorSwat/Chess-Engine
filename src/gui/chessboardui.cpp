@@ -6,6 +6,13 @@
 using sf::Vector2f;
 using BoardTextures::textures;
 
+namespace {
+    const std::string texturesNames[2][6]{
+        {"Wpawn", "Wknight", "Wbishop", "Wrook", "Wqueen", "Wking"},
+        {"Bpawn", "Bknight", "Bbishop", "Brook", "Bqueen", "Bking"}
+    };
+}
+
 void ChessboardUI::loadSquares()
 {
     vertices.setPrimitiveType(sf::Quads);
@@ -79,45 +86,16 @@ ChessboardUI::ChessboardUI(Chessboard* board, float tsize)
 
 void ChessboardUI::setTextureFor(PieceImage& piece, Side color, PieceType type)
 {
-    std::string key = "";
-    if (color == WHITE)
-        key += "W";
-    else
-        key += "B";
-    switch (type)
-    {
-    case PieceType::PAWN:
-        key += "pawn";
-        break;
-    case KNIGHT:
-        key += "knight";
-        break;
-    case BISHOP:
-        key += "bishop";
-        break;
-    case ROOK:
-        key += "rook";
-        break;
-    case QUEEN:
-        key += "queen";
-        break;
-    case PieceType::KING:
-        key += "king";
-        break;
-    default:
-        key += "undefined";
-        break;
-    }
-    piece.setTexture(textures[key]);
+    piece.setTexture(textures[texturesNames[color][type]]);
 }
 
 void ChessboardUI::updateRedCircle(BoardConfig* config)
 {
-    Piece* checkedKing = config->getKingUnderCheck();
+    const Piece* checkedKing = config->getKingUnderCheck();
     if (checkedKing != nullptr)
     {
         redCircleState = true;
-        Square pos = checkedKing->getPos();
+        const Square& pos = checkedKing->getPosition();
         redCircle.setPosition(pos.x * tileSize, pos.y * tileSize);
     }
     else
@@ -230,10 +208,10 @@ void ChessboardUI::loadFromConfig(BoardConfig* config)
 {
     for (unsigned int i = 0; i < pieces.size(); i++)
     {
-        Piece* piece = config->getPiece(i);
+        const Piece* piece = config->getPiece(i);
         if (piece->isActive())
         {
-            sf::Vector2f position(tileSize * piece->getPos().x, tileSize * piece->getPos().y);
+            sf::Vector2f position(tileSize * piece->getPosition().x, tileSize * piece->getPosition().y);
             pieces[i].setPermPosition(position);
             setTextureFor(pieces[i], piece->getColor(), piece->getType());
         }

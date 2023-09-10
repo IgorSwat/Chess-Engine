@@ -1,5 +1,4 @@
-#ifndef CHESSBOARDUI_H
-#define CHESSBOARDUI_H
+#pragma once
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
@@ -62,5 +61,3 @@ public:
     void updateSprites(sf::RenderWindow* window);
     PromotionChoice updatePromotionBar(sf::RenderWindow* window);
 };
-
-#endif // CHESSBOARDUI_H

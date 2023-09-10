@@ -40,8 +40,8 @@ public:
     void update() override;
     int evaluate(int& eval, const int& gameStage) const;
     // Dynamic update
-    void updateByInsertion(const Move2& move);
-    void updateByRemoval(int pieceID, const vector<Move2>& moves, bool legal) override { updateByRemovalConstruct(pieceID, moves, legal); }
+    void updateByInsertion(const Move& move);
+    void updateByRemoval(int pieceID, const vector<Move>& moves, bool legal) override { updateByRemovalConstruct(pieceID, moves, legal); }
     void updateByRemoval(int pieceID, const MoveList& moves, bool legal) override { updateByRemovalConstruct(pieceID, moves, legal); }
     void updateByAppearance(const Square& pos, Side side) override;
     void updateByDisappearance(const Square& pos, Side side) override;
@@ -59,10 +59,10 @@ void PieceMobility::updateByRemovalConstruct(int pieceID, Container moves, bool 
     if (legal && type != PAWN && type != KING)
     {
         Side side = pieceID < 16 ? WHITE : BLACK;
-        for (const Move2& move : moves)
+        for (const Move& move : moves)
         {
             piecesReachingSquare[move.targetPos.y][move.targetPos.x][type - 1][side] -= 1;
-            if (!control->isControlledByPawn(move.targetPos, opposition(side)))
+            if (!control->isControlledByPawn(move.targetPos, opposition[side]))
                 mobilityCount[type - 1][side] -= 1;
         }
     }

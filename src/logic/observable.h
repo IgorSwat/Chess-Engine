@@ -31,9 +31,9 @@ class MoveListChangedObserver : virtual public ObserverBase
 {
 public:
     virtual ~MoveListChangedObserver() = default;
-    virtual void updateByRemoval(int pieceID, const vector<Move2>& moves, bool legal) = 0;
+    virtual void updateByRemoval(int pieceID, const vector<Move>& moves, bool legal) = 0;
     virtual void updateByRemoval(int pieceID, const MoveList& moves, bool legal) = 0;
-    virtual void updateByInsertion(const Move2& move) = 0;
+    virtual void updateByInsertion(const Move& move) = 0;
 };
 
 class PieceTypeChangedObserver : virtual public ObserverBase
@@ -98,12 +98,12 @@ public:
 class ObservableMoves : public Observable<MoveListChangedObserver>
 {
 public:
-    void updateObserversByInsertion(const Move2& move)
+    void updateObserversByInsertion(const Move& move)
     {
         for (MoveListChangedObserver* observer : observers)
             observer->updateByInsertion(move);
     }
-    void updateObserversByRemoval(int pieceID, const std::vector<Move2>& movesList, bool legal = true)
+    void updateObserversByRemoval(int pieceID, const std::vector<Move>& movesList, bool legal = true)
     {
         for (MoveListChangedObserver* observer : observers)
             observer->updateByRemoval(pieceID, movesList, legal);

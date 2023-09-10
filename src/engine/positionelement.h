@@ -2,7 +2,7 @@
 #define POSITIONELEMENT_H
 
 #include "factorsdelivery.h"
-#include "movegenerator.h"
+#include "../logic/movegenerator.h"
 #include <string>
 #include <algorithm>
 #include <exception>

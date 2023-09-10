@@ -1,5 +1,4 @@
-#ifndef NAVBAR_H
-#define NAVBAR_H
+#pragma once
 
 #include "moveentry.h"
 #include "../logic/move.h"
@@ -12,7 +11,7 @@ private:
     sf::Vector2f leftCorner;
     sf::Vector2f size;
     MoveEntry* entries[3];
-    Move* moves[3];
+    Move2* moves[3];
     Button* resetButton;
     Button* backButton;
     sf::RectangleShape* separator;
@@ -29,9 +28,7 @@ public:
     Navbar(const sf::Vector2f& initialPos, const sf::Vector2f& initialSize);
     ~Navbar();
     NavbarState update(sf::RenderWindow* window);
-    void setMove(const Move& move, int moveID);
-    Move getMove(int moveID) const {return *moves[moveID];}
+    void setMove(const Move2& move, int moveID);
+    const Move2& getMove(int moveID) const {return *moves[moveID];}
     void render(sf::RenderTarget& target);
 };
-
-#endif // NAVBAR_H

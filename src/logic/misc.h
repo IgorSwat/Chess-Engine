@@ -1,5 +1,4 @@
-#ifndef MISC_H_INCLUDED
-#define MISC_H_INCLUDED
+#pragma once
 
 /// Board square representation
 class Square
@@ -38,7 +37,11 @@ static SquareColors colorsMap[8][8]{
 enum Side { WHITE = 0, BLACK = 1 };
 enum PieceType { PAWN = 0, KNIGHT, BISHOP, ROOK, QUEEN, KING, INACTIVE };
 
-inline Side opposition(Side color) { return color == WHITE ? BLACK : WHITE; }
+static Side opposition[2] { BLACK, WHITE };
+
+
+// Castling
+enum CastleType {SHORT_CASTLE = 0, LONG_CASTLE};
 
 
 
@@ -60,6 +63,3 @@ public:
 int interpolation(const int& begVal, const int& endVal, const float& w, float (*func)(float));
 int interpolation(const Factor& vals, const float& w, float (*func)(float));
 float mobilityProgressFunction(float x);
-
-
-#endif // MISC_H_INCLUDED

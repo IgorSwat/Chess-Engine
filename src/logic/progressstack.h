@@ -1,32 +1,29 @@
-#ifndef PROGRESSSTACK_H
-#define PROGRESSSTACK_H
+#pragma once
 
 #include <stack>
 #include <vector>
 #include "configchange.h"
-using std::stack;
-using std::vector;
+
+using ChangesVec = std::vector<ConfigChange*>;
 
 class ProgressStack
 {
 private:
-    stack< vector<ConfigChange*>* > boardProgress;
-    vector<ConfigChange*> currentLoader;
+    std::stack<ChangesVec*> boardProgress;
+    ChangesVec currentLoader;
 public:
     ProgressStack() {};
     bool isEmpty() const {return boardProgress.size() == 0;}
     void registerChange(ConfigChange* change) {currentLoader.push_back(change);}
     void pushChanges()
     {
-        boardProgress.push(new vector<ConfigChange*>(currentLoader));
+        boardProgress.push(new ChangesVec(currentLoader));
         currentLoader.clear();
     }
-    vector<ConfigChange*>* getLatestChanges()
+    ChangesVec* getLatestChanges()
     {
-        vector<ConfigChange*>* changes = boardProgress.top();
+        ChangesVec* changes = boardProgress.top();
         boardProgress.pop();
         return changes;
     }
 };
-
-#endif // PROGRESSSTACK_H

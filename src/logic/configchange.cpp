@@ -1,57 +1,50 @@
 #include "boardconfig.h"
 
-CheckerChange::CheckerChange(Piece** wCheckers, Piece** bCheckers, std::vector<Square>** savers)
+CheckerChange::CheckerChange(Piece* oldCheckers[2][2], vector<Square>* savers[2])
 {
-    this->whiteCheckers = new Piece* [2];
-    this->blackCheckers = new Piece* [2];
-    this->checkSavers = new std::vector<Square>* [2];
-    this->whiteCheckers[0] = wCheckers[0];
-    this->whiteCheckers[1] = wCheckers[1];
-    this->blackCheckers[0] = bCheckers[0];
-    this->blackCheckers[1] = bCheckers[1];
-    this->checkSavers[0] = savers[0];
-    this->checkSavers[1] = savers[1];
+    for (int i = 0; i < 2; i++)
+    {
+        checkSavers[i] = savers[i];
+        for (int j = 0; j < 2; j++)
+            checkers[i][j] = oldCheckers[i][j];
+    }
 }
 
 void PlacementChange::applyChange(BoardConfig* config) const
 {
-    config->placePiece(this->position, this->pieceID);
+    PieceType type = config->getPiece(pieceID)->getType();
+    config->placePiece(pieceID, type, position);
 }
 
 void CastlingChange::applyChange(BoardConfig* config) const
 {
-    config->Wshort = this->Wshort;
-    config->Wlong = this->Wlong;
-    config->Bshort = this->Bshort;
-    config->Blong = this->Blong;
+    config->setCastlingRight(WHITE, SHORT_CASTLE, castlingRights[0]);
+    config->setCastlingRight(WHITE, LONG_CASTLE, castlingRights[1]);
+    config->setCastlingRight(BLACK, SHORT_CASTLE, castlingRights[2]);
+    config->setCastlingRight(BLACK, LONG_CASTLE, castlingRights[3]);
 }
 
 void EnPassantChange::applyChange(BoardConfig* config) const
 {
-    config->enPassantLine = this->enPassantRow;
+    config->setEnPassantLine(enPassantRow);
     config->enPassanter1 = this->enPassanter1;
     config->enPassanter2 = this->enPassanter2;
 }
 
-void SideOnMoveChange::applyChange(BoardConfig* config) const
-{
-    config->sideOnMove = this->sideOnMove;
-}
-
 void CheckerChange::applyChange(BoardConfig* config) const
 {
-    config->whiteCkecker[0] = this->whiteCheckers[0];
-    config->whiteCkecker[1] = this->whiteCheckers[1];
-    config->blackCkecker[0] = this->blackCheckers[0];
-    config->blackCkecker[1] = this->blackCheckers[1];
-    config->safeMoves[0] = this->checkSavers[0];
-    config->safeMoves[1] = this->checkSavers[1];
+    for (int i = 0; i < 2; i++)
+    {
+        config->safeMoves[i] = checkSavers[i];
+        for (int j = 0; j < 2; j++)
+            config->checkers[i][j] = checkers[i][j];
+    }
 }
 
 void PromotionChange::applyChange(BoardConfig* config) const
 {
-    Square pos = config->getPiece(pieceID)->getPos();
-    config->placePiece(pos, pieceID, PieceType::PAWN, false);
+    Square pos = config->getPiece(pieceID)->getPosition();
+    config->placePiece(pieceID, PieceType::PAWN, pos, false);
 }
 
 void MoveCountChange::applyChange(BoardConfig* config) const

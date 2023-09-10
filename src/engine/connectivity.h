@@ -36,8 +36,8 @@ public:
 	}
 	void update() override;
 	int evaluate(int& eval, const int& gameStage) const override;
-	void updateByInsertion(const Move2& move) override;
-	void updateByRemoval(int pieceID, const vector<Move2>& moves, bool legal) override { updateByRemovalConstruct(pieceID, moves); }
+	void updateByInsertion(const Move& move) override;
+	void updateByRemoval(int pieceID, const vector<Move>& moves, bool legal) override { updateByRemovalConstruct(pieceID, moves); }
 	void updateByRemoval(int pieceID, const MoveList& moves, bool legal) override { updateByRemovalConstruct(pieceID, moves); }
 	// External functionality
 	int getThreatsCount(Side side) { return totalAttackCount[side]; }
@@ -54,13 +54,13 @@ void Connectivity::updateByRemovalConstruct(int pieceID, Container moves)
 {
 	Side side = pieceID < 16 ? WHITE : BLACK;
 	int attackingPieceMappedType = mapPieceTypeByValue(config->getPiece(pieceID)->getType());
-	for (const Move2& move : moves)
+	for (const Move& move : moves)
 	{
-		if (move.specialFlag.isAttacking() && attackingPieceMappedType < lastRegisteredType[move.targetPos.y][move.targetPos.x])
+		if (move.hasProperty(Moves::ATTACK_FLAG) && attackingPieceMappedType < lastRegisteredType[move.targetPos.y][move.targetPos.x])
 		{
 			if (move.pieceType == PAWN && lowerTypeAttackCount[move.targetPos.y][move.targetPos.x][side][PAWN_ATTACK] > 0)
 			{
-				if (move.promotionFlag != PAWN && move.promotionFlag != QUEEN)
+				if (move.promotionType != PAWN && move.promotionType != QUEEN)
 					continue;
 				lowerTypeAttackCount[move.targetPos.y][move.targetPos.x][side][PAWN_ATTACK]--;
 				if (lowerTypeAttackCount[move.targetPos.y][move.targetPos.x][side][PAWN_ATTACK] == 0)

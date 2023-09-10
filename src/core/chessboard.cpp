@@ -3,72 +3,42 @@
 #include "chessboard.h"
 
 
-bool Chessboard::handlePawnMoves(Piece* pawn, const Square& mv, const Square& targetPos)
+void Chessboard::handlePawnMoves(const Piece* pawn, const Move& move)
 {
-    Piece* onTargetSquare = config.getPiece(targetPos);
-    bool result = false;
-    bool promotionFlag = targetPos.y == 0 || targetPos.y == 7 ? true : false;
-    if (mv.x == 0 && onTargetSquare == nullptr)
+    if (move.hasProperty(Moves::ENPASSANT_FLAG))
     {
-        if (!promotionFlag)
-            config.movePiece(pawn->getID(), targetPos);
-        result = true;
-    }
-    else if (mv.x == 0)
-        return false;
-    if (onTargetSquare != nullptr && onTargetSquare->getColor() != pawn->getColor())
-    {
-        if (!promotionFlag)
-            config.movePiece(pawn->getID(), targetPos);
-        graphics->disableSprite(onTargetSquare->getID());
-        result = true;
-    }
-    else if (config.isEnPassantPossible(pawn) && mv == config.getEnPassantVector(pawn))
-    {
-        int capturedPawnID = config.enPassant(pawn);
+        int capturedPawnID = config.getPiece(move.targetPos.x, BoardManipulation::enPassantRows[pawn->getColor()])->getID();
+        config.makeMove(move);
         graphics->disableSprite(capturedPawnID);
-        result = true;
     }
-    if (targetPos.y == 0 || targetPos.y == 7)
+    else if (move.targetPos.y == 0 || move.targetPos.y == 7) // promotion
     {
         graphics->setPromotionFlag(pawn->getID());
-        promotionPosition = targetPos;
+        promotionPosition = move.targetPos;
     }
-    return result;
+    else
+        handleNormalMoves(pawn, move);
 }
 
-bool Chessboard::handleKingMoves(Piece* king, const Square& mv, const Square& targetPos)
+void Chessboard::handleKingMoves(const Piece* king, const Move& move)
 {
-    int rookID;
-    if (mv.x == 2 || mv.x == -2)
+    if (move.hasProperty(Moves::CASTLE_FLAG))
     {
-        if ((rookID = config.isCastlingAvailable(king, mv)) == 0)
-            return false;
-        Square kingPos = king->getPos();
-        config.castle(king, mv);
-        graphics->moveSprite(rookID, Square(kingPos.x + mv.x / 2, kingPos.y));
-        return true;
+        CastleType castleType = move.targetPos.x > king->getPosition().x ? SHORT_CASTLE : LONG_CASTLE;
+        int rookID = config.isCastlingAvailable(king->getColor(), castleType);
+        config.makeMove(move);
+        graphics->moveSprite(rookID, BoardManipulation::rookPositionsAfterCastling[king->getColor()][castleType]);
     }
-    if (config.isChecked(targetPos, opposition(king->getColor())) != nullptr)
-        return false;
-    return handleOtherMoves(king, mv, targetPos);
+    else
+        handleNormalMoves(king, move);
 }
 
-bool Chessboard::handleOtherMoves(Piece* movingPiece, const Square& mv, const Square& targetPos)
+void Chessboard::handleNormalMoves(const Piece* movingPiece, const Move& move)
 {
-    Piece* onTargetSquare = config.getPiece(targetPos);
-    if (onTargetSquare == nullptr)
-    {
-        config.movePiece(movingPiece->getID(), targetPos);
-        return true;
-    }
-    else if (movingPiece->getColor() != onTargetSquare->getColor())
-    {
-        config.movePiece(movingPiece->getID(), targetPos);
+    const Piece* onTargetSquare = config.getPiece(move.targetPos);
+    config.makeMove(move);
+    if (onTargetSquare != nullptr)
         graphics->disableSprite(onTargetSquare->getID());
-        return true;
-    }
-    return false;
 }
 
 bool Chessboard::handlePromotion()
@@ -92,7 +62,9 @@ bool Chessboard::handlePromotion()
     case PromotionChoice::NONE:
         return false;
     }
-    config.movePiece(graphics->getPromotionFlag(), promotionPosition, promoteTo);
+    int pieceID = graphics->getPromotionFlag();
+    Move move{ pieceID, PAWN, promotionPosition, 0b1000, promoteTo };
+    config.makeMove(move);
     graphics->loadFromConfig(&config);
     graphics->setPromotionFlag(-1);
     testDynamics();
@@ -105,7 +77,7 @@ void Chessboard::updateNavbar()
     {
         for (int i = 0; i < 3; i++)
         {
-            Move2 move = engine->getRandomMove();
+            Move move = engine->getRandomMove();
             Move moveExtended(move.pieceType, config.getSideOnMove(), move.pieceID, move.targetPos, config.getMoveCount(),
                               move.promotionFlag, move.specialFlag, 0.f);
             navbar->setMove(moveExtended, i);
@@ -119,19 +91,20 @@ Chessboard::Chessboard(sf::RenderWindow* win, float tileSize) : config()
     graphics = new ChessboardUI(this, tileSize);
     navbar = new Navbar(sf::Vector2f(800.f, 0.f),  sf::Vector2f(200.f, 800.f));
     graphics->loadFromConfig(&config);
-    navbar->setMove(Move(PieceType::PAWN, WHITE, 5, Square(4, 4), 1,
+    /*navbar->setMove(Move(PieceType::PAWN, WHITE, 5, Square(4, 4), 1,
                          PieceType::PAWN, MoveType::COMMON, 0.4f), 0);
     navbar->setMove(Move(PieceType::PAWN, WHITE, 4, Square(3, 4), 1,
                          PieceType::PAWN, MoveType::COMMON, 0.3f), 1);
     navbar->setMove(Move(KNIGHT, WHITE, 10, Square(5, 5), 1,
-                         PieceType::PAWN, MoveType::COMMON, 0.3f), 2);
-    std::string FEN = "5qk1/1pp1prp1/p7/8/8/P1PP4/1PR3PP/1Q4K1 w - - 0 1";
-    config.setFromFEN(FEN);
+                         PieceType::PAWN, MoveType::COMMON, 0.3f), 2);*/
+    //std::string FEN = "7r/3P1k2/4pBp1/1ppb1pP1/5R2/r1P3KP/p7/3R4 b - - 0 43";
+    //config.setFromFEN(FEN);
     graphics->loadFromConfig(&config);
     FactorsMap factors = FactorsDelivery::getFactors();
     engine = new Engine(&config, factors);
     config.connectEngine(engine);
-    engine->showPositionStats();
+    //engine->showPositionStats();
+    config.showCustomStats();
 }
 
 Chessboard::~Chessboard()
@@ -142,32 +115,26 @@ Chessboard::~Chessboard()
 
 bool Chessboard::registerMovement(const Square& initSquare, const Square& targetSquare)
 {
-    if (targetSquare == initSquare)
+    std::optional<Move> moveOpt = Moves::createMove(&config, initSquare, targetSquare);
+    if (!moveOpt.has_value())
         return false;
-    Piece* movingPiece = config.getPiece(initSquare);
-    if (movingPiece == nullptr)
-        throw std::bad_exception();
-    Square movementVector = movingPiece->getMovementVector(targetSquare);
-    if (movementVector.x >= 8 || config.checkCollisions(initSquare, movementVector, targetSquare) != nullptr)
+    const Move& move = moveOpt.value();
+    if (!config.isMoveLegal(move))
         return false;
-    if (!config.isCoveringChecks(movingPiece, targetSquare))
-        return false;
-    bool result = false;
-    if (BoardConfig::isKing(movingPiece))
-        result = handleKingMoves(movingPiece, movementVector, targetSquare);
-    else
+    const Piece* movingPiece = config.getPiece(move.pieceID);
+    switch (move.pieceType)
     {
-        Square pinMark = config.isPinned(movingPiece);
-        if (pinMark.x < 8 && pinMark != movementVector && pinMark != -movementVector)
-            return false;
-        if (BoardConfig::isPawn(movingPiece))
-            result = handlePawnMoves(movingPiece, movementVector, targetSquare);
-        else
-            result = handleOtherMoves(movingPiece, movementVector, targetSquare);
+    case PAWN:
+        handlePawnMoves(movingPiece, move);
+        break;
+    case KING:
+        handleKingMoves(movingPiece, move);
+        break;
+    default:
+        handleNormalMoves(movingPiece, move);
+        break;
     }
-    if (result)
-        updateNavbar();
-    return result;
+    return true;
 }
 
 void Chessboard::updateBoard()
@@ -202,8 +169,8 @@ void Chessboard::updateBoard()
     case ButtonType::ENTRYMARKED:
         if (!graphics->getArrowState())
         {
-            Move moveInfo = navbar->getMove(action.entryID);
-            graphics->setArrow(moveInfo.pieceID, moveInfo.targetPos);
+            Move2 moveInfo = navbar->getMove(action.entryID);
+            graphics->setArrow(moveInfo.move.pieceID, moveInfo.move.targetPos);
         }
         break;
     default:
@@ -223,9 +190,8 @@ void Chessboard::render(sf::RenderTarget& target)
 
 void Chessboard::testDynamics() const
 {
-    system("cls");
-    engine->showPositionStats();
-    //int eval = engine->evaluate();
-    //std::cout << std::endl << "Global evaluation: "<<eval<<std::endl;
+    //system("cls");
+    //engine->showPositionStats();
+    config.showCustomStats();
 }
 

@@ -37,8 +37,8 @@ void MaterialBalance::update()
     clearTables();
     for (int i = 1; i < 16; i++)
     {
-        Piece* piece = config->getPiece(i);
-        const Square& pos = piece->getPos();
+        const Piece* piece = config->getPiece(i);
+        const Square& pos = piece->getPosition();
         if (piece->isActive())
         {
             piecesInfo[i] = piece->getType();
@@ -54,8 +54,8 @@ void MaterialBalance::update()
     }
     for (int i = 17; i < 32; i++)
     {
-        Piece* piece = config->getPiece(i);
-        const Square& pos = piece->getPos();
+        const Piece* piece = config->getPiece(i);
+        const Square& pos = piece->getPosition();
         if (piece->isActive())
         {
             piecesInfo[i] = piece->getType();
@@ -74,10 +74,10 @@ void MaterialBalance::updateByMove(int pieceID, const Square& oldPos, const Squa
 {
     if (pieceID != 0 && pieceID != 16)
     {
-        Piece* piece = config->getPiece(pieceID);
+        const Piece* piece = config->getPiece(pieceID);
         PieceType type = piece->getType();
         Side side = piece->getColor();
-        Side opposite = opposition(side);
+        Side opposite = opposition[side];
         if (newPos.x >= 8)
         {
             pieceCount[type][side] -= 1;

@@ -32,9 +32,9 @@ void KingSafety::update()
 	const MoveList* pseudoLegal = generator->getPseudoLegalMoves();
 	for (int i = 0; i < 32; i++)
 	{
-		for (const Move2& move : legal[i])
+		for (const Move& move : legal[i])
 			updateByInsertion(move);
-		for (const Move2& move : pseudoLegal[i])
+		for (const Move& move : pseudoLegal[i])
 			updateByInsertion(move);
 	}
 	calculatePawnsShield(WHITE);
@@ -43,7 +43,7 @@ void KingSafety::update()
 
 void KingSafety::updateByMove(int pieceID, const Square& oldPos, const Square& newPos)
 {
-	Piece* piece = config->getPiece(pieceID);
+	const Piece* piece = config->getPiece(pieceID);
 	Side side = piece->getColor();
 	switch (piece->getType())
 	{
@@ -60,10 +60,10 @@ void KingSafety::updateByMove(int pieceID, const Square& oldPos, const Square& n
 	}
 }
 
-void KingSafety::updateByInsertion(const Move2& move)
+void KingSafety::updateByInsertion(const Move& move)
 {
 	Side side = move.pieceID < 16 ? WHITE : BLACK;
-	if (isInKingRange(move.targetPos, config->getKing(opposition(side))->getPos()))
+	if (isInKingRange(move.targetPos, config->getKing(opposition[side])->getPosition()))
 	{
 		attacksNearKingEval[side] -= attacksOnSquareValue[std::min(maxAttackPointsForSquare, attacksTable[move.targetPos.y][move.targetPos.x][side])];
 		attacksTable[move.targetPos.y][move.targetPos.x][side] += pieceAttacksValues[move.pieceType];
@@ -71,9 +71,9 @@ void KingSafety::updateByInsertion(const Move2& move)
 	}
 }
 
-void KingSafety::updateByRemoval(int pieceID, const vector<Move2>& moves, bool legal)
+void KingSafety::updateByRemoval(int pieceID, const vector<Move>& moves, bool legal)
 {
-	updateByRemovalConstruct<vector<Move2>>(pieceID, moves, legal);
+	updateByRemovalConstruct<vector<Move>>(pieceID, moves, legal);
 }
 
 void KingSafety::updateByRemoval(int pieceID, const MoveList& moves, bool legal)
@@ -91,7 +91,7 @@ void KingSafety::show() const
 // Helper functions
 bool KingSafety::isShieldingKing(Side side, const Square& pawnPos) const
 {
-	const Square& kingPos = config->getKing(side)->getPos();
+	const Square& kingPos = config->getKing(side)->getPosition();
 	return pawnPos.x >= kingPos.x - 1 && pawnPos.x <= kingPos.x + 1 && isInFrontOfKing[side](pawnPos.y, kingPos.y);
 }
 
@@ -107,7 +107,7 @@ void KingSafety::countShieldingPawns(Side side, int& counter, const std::vector<
 void KingSafety::calculatePawnsShield(Side side)
 {
 	int counter = 0;
-	const Square& kingPos = config->getKing(side)->getPos();
+	const Square& kingPos = config->getKing(side)->getPosition();
 	countShieldingPawns(side, counter, structure->getPawnRowsAtColumn(side, kingPos.x), kingPos.y);
 	if (kingPos.x != 0)
 		countShieldingPawns(side, counter, structure->getPawnRowsAtColumn(side, kingPos.x - 1), kingPos.y);
@@ -119,7 +119,7 @@ void KingSafety::calculatePawnsShield(Side side)
 int KingSafety::calculateSemiopenFilesNearKing(Side side, Side opposite) const
 {
 	int openFilesCount = 0;
-	const Square& kingPos = config->getKing(side)->getPos();
+	const Square& kingPos = config->getKing(side)->getPosition();
 	openFilesCount += static_cast<int>(kingPos.x != 0 && structure->isFileSemiOpen(opposite, kingPos.x - 1));
 	openFilesCount += static_cast<int>(structure->isFileSemiOpen(opposite, kingPos.x));
 	openFilesCount += static_cast<int>(kingPos.x != 7 && structure->isFileSemiOpen(opposite, kingPos.x + 1));
@@ -134,7 +134,7 @@ bool KingSafety::isInKingRange(const Square& square, const Square& kingPos) cons
 void KingSafety::calculateAttacksNearKing(Side side, Side opposite)
 {
 	attacksNearKingEval[side] = 0;
-	const Square& kingPos = config->getKing(side)->getPos();
+	const Square& kingPos = config->getKing(side)->getPosition();
 	for (int i = std::max(0, kingPos.y - 1); i <= std::min(7, kingPos.y + 1); i++)
 	{
 		for (int j = std::max(0, kingPos.x - 1); j <= std::min(7, kingPos.x + 1); j++)

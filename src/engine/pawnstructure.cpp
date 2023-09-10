@@ -141,7 +141,7 @@ void PawnStructure::removePawn(const Side& side, const int& row, const int& col)
         bottomPawns[col][side] = isColumnEmpty ? bounds[side] : (*boundaryFunctions[side](columnData));
     if (row == upperPawns[col][side])
     {
-        Side opposite = opposition(side);
+        Side opposite = opposition[side];
         upperPawns[col][side] = isColumnEmpty ? bounds[(int)opposite] : (*boundaryFunctions[(int)opposite](columnData));
     }
 }
@@ -152,10 +152,10 @@ void PawnStructure::reset()
     resetSubelements();
     for (int i = 0; i < 32; i++)
     {
-        Piece* piece = config->getPiece(i);
-        if (piece->isActive() && BoardConfig::isPawn(piece))
+        const Piece* piece = config->getPiece(i);
+        if (piece->isActive() && piece->getType() == PAWN)
         {
-            const Square& pos = piece->getPos();
+            const Square& pos = piece->getPosition();
             Side color = piece->getColor();
             addPawn(color, pos.y, pos.x);
             updateWatchersByInsertion(columnWatchers, color, pos.y, pos.x);
@@ -169,7 +169,7 @@ void PawnStructure::updateByMove(int pieceID, const Square& oldPos, const Square
 {
     Side side = pieceID < 16 ? WHITE : BLACK;
     bool columnChange = oldPos.x != newPos.x;
-    bool isStillAPawn = BoardConfig::isPawn(config->getPiece(pieceID));
+    bool isStillAPawn = config->getPiece(pieceID)->getType() == PAWN;
     bool wasRegistered = pawnsMap[oldPos.y][oldPos.x][side];
     if (oldPos.x < 8 && wasRegistered)
     {
@@ -398,7 +398,7 @@ void BackwardPawns::updateOwnPawnsOnAdjecentFileWhenAddingPawn(Side side, Side o
 
 void BackwardPawns::updateByInsertion(Side side, int row, int col)
 {
-    Side opposite = opposition(side);
+    Side opposite = opposition[side];
     if (row >= backwardLowerBounds[side] && row <= backwardUpperBounds[side])
     {
         int oppositeRow = row + rowDiff[side];
@@ -469,7 +469,7 @@ void BackwardPawns::updateOwnPawnsOnAdjecentFileWhenRemovingPawn(Side side, Side
 
 void BackwardPawns::updateByRemoval(Side side, int row, int col)
 {
-    Side opposite = opposition(side);
+    Side opposite = opposition[side];
     if (row >= backwardLowerBounds[side] && row <= backwardUpperBounds[side])
     {
         int oppositeRow = row + rowDiff[side];
@@ -570,8 +570,8 @@ void PassedPawns::updatePairPoints(Side side, int row, int col, int factor, Para
 
 int PassedPawns::getPointsAfterPenalties(Side side, int row, int col)
 {
-    Piece* piece = config->getPiece(row + frontSpawns[side], col);
-    if (piece != nullptr && piece->getColor() != side && !BoardConfig::isPawn(piece))
+    const Piece* piece = config->getPiece(row + frontSpawns[side], col);
+    if (piece != nullptr && piece->getColor() != side && piece->getType() != PAWN)
         return positioning->passedPawnDistanceMultiplier[passedDistance[side](row)] / positioning->blockadeConnectedPassersMultipliers[piece->getType()];
     else
         return positioning->passedPawnDistanceMultiplier[passedDistance[side](row)];
@@ -586,9 +586,9 @@ void PassedPawns::addPassedPawn(Side side, int row, int col)
         selfPoints *= positioning->protectedPasserMultiplier;
     // -------------------
     // Blockade ----------
-    Piece* piece = config->getPiece(row + frontSpawns[side], col);
+    const Piece* piece = config->getPiece(row + frontSpawns[side], col);
     bool blockadeFlag = false;
-    if (piece != nullptr && piece->getColor() != side && !BoardConfig::isPawn(piece))
+    if (piece != nullptr && piece->getColor() != side && piece->getType() != PAWN)
     {
         blockadeFlag = true;
         selfPoints /= positioning->blockadeSinglePassersMultipliers[piece->getType()];
@@ -657,7 +657,7 @@ void PassedPawns::updateCountersWhenAddingPawn(Side side, Side opposite, int tar
 // Inserting a pawn update
 void PassedPawns::updateByInsertion(Side side, int row, int col)
 {
-    Side opposite = opposition(side);
+    Side opposite = opposition[side];
     int conditionForCurrentCol = 0;
     updateCountersWhenAddingPawn(side, opposite, col, row, col);
     if (col > 0)
@@ -700,7 +700,7 @@ void PassedPawns::updateCountersWhenRemovingPawn(Side side, Side opposite, int t
 // Removing a pawn update
 void PassedPawns::updateByRemoval(Side side, int row, int col)
 {
-    Side opposite = opposition(side);
+    Side opposite = opposition[side];
     int conditionForCurrentCol = 0;
     int upperRow = positioning->upperPawns[col][side];
     updateCountersWhenRemovingPawn(side, opposite, col, row, col);
@@ -736,7 +736,7 @@ void PassedPawns::updateByPiecePositionChanged(Side side, PieceType type, int ro
 {
     if (row >= blockerLowerBounds[side] && row <= blockerUpperBounds[side])
     {
-        Side opposite = opposition(side);
+        Side opposite = opposition[side];
         if (passedPawnRows[col][(int)opposite] == row + frontSpawns[side])
         {
             updateSelfPoints(opposite, passedPawnRows[col][(int)opposite], col, positioning->blockadeSinglePassersMultipliers[type], mode);

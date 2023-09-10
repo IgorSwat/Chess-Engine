@@ -1,160 +1,155 @@
-#ifndef BOARDCONFIG_H
-#define BOARDCONFIG_H
+#pragma once
 
 #include "progressstack.h"
-#include "fenreader.h"
+#include "fenparser.h"
 #include "observable.h"
+#include "../engine/zobrist.h"
+#include "misc.h"
 #include <vector>
-
-using squaresVecRef = const std::vector<Square>&;
+#include <bitset>
+#include <functional>
 
 class MoveGenerator;
+using SquaresVec = std::vector<Square>;
 
-class BoardConfig : public ObservablePosition
+namespace BoardManipulation 
 {
-private:
-    // Pieces and logic
-    King* whiteKing;
-    King* blackKing;
-    Piece* pieces[32];
-    Piece* table[8][8];
-    std::vector<Square> piecePositions[2][5] {};    // side - piece type
-    Side sideOnMove;
-    unsigned int halfMoves = 0;
-    unsigned int moveNumber = 1;
-    int enPassantLine = -2;
-    int enPassanter1 = -1;
-    int enPassanter2 = -1;
-    bool Wshort;
-    bool Wlong;
-    bool Bshort;
-    bool Blong;
-    MoveGenerator* generator = nullptr;
-    // Attack tables
-    short attacksTable[8][8][2];
-    // Pin tables
-    Square pinVectors[32];
-    vector<int> pinnedPieces[2];
-    // Checks tables
-    Piece* whiteCkecker[2];
-    Piece* blackCkecker[2];
-    vector<Square>* safeMoves[2];
-    // Backwards update
-    ProgressStack boardProgress;
-    // Precomputed static elements
-    static Square directionalVectors[15][15];
-    static vector<Square> checkSavers[8][8][8][8];
-    static vector<Square> emptySaver;
-    static bool directionalComputed;
-    static bool saversComputed;
-    static constexpr int blackID = 16;
-    static constexpr int kingID[2] { 0, 16 };
-    // FEN parsing
-    FenReader FENreader;
-    // Connected engines
-    vector<EngineObserver*> connectedEngines;
-    // Helper functions
-    static void initDirectionalVectors();
-    static void initCheckSavers();
-    static Square toDirectionalVector(const Square& initPos, const Square& targetPos);
-    static Square toDirectionalVector(const Square& mv);
-    void placePiece(const Square& pos, int pieceID, bool observableFlag = true); // Safe version
-    void placePiece(const Square& pos, int pieceID, PieceType type, bool observableFlag = true); // Needs control of args
-    void clearBoard();
-    Piece* nextInDirection(const Square& start, const Square& mv, Piece* except);
-    Piece* nextInDirection(const Square& start, const Square& mv, const Square& end, Piece* except);
-    bool follows(const Square& pos, const Square& mv, const Square& target);
-    // Pinning handlers
-    void searchForPins(Piece* king, const Square& dir);
-    void updatePinsFromKing(Piece* king, const Square& square);
-    void updatePinsFromSquare(const Square& square);
-    void resetPins();
-    // Dynamic board parameters update
-    void updateSideOnMove();
-    void updateMoveCounts(Piece* movedPiece, bool captureFlag);
-    void updateEnPassant(Piece* piece, bool captureFlag, const Square& oldPos, const Square& newPos);
-    void updateCastling(Piece* movedPiece, const Square& oldPos);
-    void updateChecks(Piece* movedPiece, const Square& oldPos);
-    void updatePinsDynamic(int pieceID, const Square& oldPos, const Square& newPos);
-    void updatePiecePlacement(Side side, PieceType type, const Square& oldPos, const Square& newPos);
-    void updatePinsStatic();
-    void updateChecksForSide(Side side);
-    void updateChecksStatic();
-public:
-    // Constructors and destructors
-    BoardConfig();
-    BoardConfig(const BoardConfig& config);
-    BoardConfig& operator=(const BoardConfig& config);
-    ~BoardConfig();
-    // Methods for reloading global state
-    void setToDefault();
-    bool setFromFEN(const std::string& FEN);
-    void connectEngine(EngineObserver* engine);
-    void disconnectEngine(EngineObserver* engine);
-    void updateEngines();
-    // Moving and removing pieces
-    void movePiece(int pieceID, const Square& targetPos, PieceType promoteTo = PieceType::PAWN);
-    void removePiece(int pieceID);
-    int enPassant(Piece* pawn); // Returns ID of captured pawn
-    void castle(Piece* king, const Square& mv);
-    Piece* promote(int pawnID, PieceType newType);  // returns the promoted piece
-    bool undoLastMove();
-    // Getters
-    Side getSideOnMove() const {return sideOnMove;}
-    Piece* getKing(Side side) { return pieces[kingID[side]]; }
-    Piece* getPiece(int row, int col) { return table[row][col]; }
-    Piece* getPiece(const Square& pos) {return table[pos.y][pos.x];}
-    Piece* getPiece(int pieceID) {return pieces[pieceID];}
-    Piece* getKingUnderCheck() const;
-    int getMoveCount() const {return moveNumber;}
-    squaresVecRef getPiecePlacement(Side side, PieceType type) const { return piecePositions[side][type]; }
-    // External data handlers
-    void addAttack(const Square& position, int side) {attacksTable[position.y][position.x][side] += 1;}
-    void removeAttack(const Square& position, int side) {attacksTable[position.y][position.x][side] -= 1;}
-    void clearAttacksTable();
-    // Colision check
-    Piece* checkCollisions(const Square& initPos, const Square& movement, const Square& targetPos) { return nextInDirection(initPos, movement, targetPos, nullptr); }
-    // Checks control
-    Square isPinned(Piece* piece);
-    const Square& isPinned2(Piece* piece) {return pinVectors[piece->getID()];}
-    Piece* isChecked(const Square& square, Side color); // Checks if the square is checked by any piece from side of color
-    // Simpler, more efficient version - available only with MoveGenerator & SquareControl connected
-    bool isChecked2(const Square& square, Side color) const {return attacksTable[square.y][square.x][(int)color] > 0;}
-    bool isCoveringChecks(Piece* movingPiece, const Square& targetPos);
-    vector<Square>* getSquaresCoveringChecks(Side side) {return safeMoves[side];}
-    bool isKingChecked(Side side);
-    // En passant
-    int getEnPassantLine() const {return enPassantLine;}
-    bool isEnPassantPossible(Piece* pawn);
-    Square getEnPassantVector(Piece* pawn);
-    // Castling
-    int isCastlingAvailable(Piece* king, const Square& mv);   // returns the id of castling rook if castling is available
-    int isCastlingAvailable2(Piece* king, const Square& mv);
-    void connectMoveGenerator(MoveGenerator* gen) { generator = gen; }
-    void showAllPieces() const;
-    // Static functions
-    static bool isPawn(Piece* piece) {return piece->getType() == PieceType::PAWN;}
-    static bool isKnight(Piece* piece) {return piece->getType() == KNIGHT;}
-    static bool isBishop(Piece* piece) {return piece->getType() == BISHOP;}
-    static bool isRook(Piece* piece) {return piece->getType() == ROOK;}
-    static bool isQueen(Piece* piece) {return piece->getType() == QUEEN;}
-    static bool isKing(Piece* piece) {return piece->getType() == PieceType::KING;}
-    static const Square& toDirectionalVector2(const Square& initPos, const Square& targetPos);
-    static const Square& toDirectionalVector2(const Square& mv) { return directionalVectors[7 - mv.x][7 - mv.y]; }
-    // Friends
-    friend bool FenReader::parseToConfig(BoardConfig* config) const;
-    friend void PlacementChange::applyChange(BoardConfig* config) const;
-    friend void CastlingChange::applyChange(BoardConfig* config) const;
-    friend void EnPassantChange::applyChange(BoardConfig* config) const;
-    friend void SideOnMoveChange::applyChange(BoardConfig* config) const;
-    friend void CheckerChange::applyChange(BoardConfig* config) const;
-    friend void PromotionChange::applyChange(BoardConfig* config) const;
-    friend void MoveCountChange::applyChange(BoardConfig* config) const;
-};
+	extern const Square nullSquare;
+	extern const Square nullSquareX9;
+	extern const Direction& nullDirection;
+	extern SquaresVec* nullCheckSaver;
+	extern const Square kingPositionsAfterCastling[2][2];
+	extern const Square rookPositionsAfterCastling[2][2];
+	constexpr int enPassantRows[2]{ 3, 4 };
 
-inline bool isCorrectSquare(const Square& square)
-{
-    return square.x >= 0 && square.x < 8 && square.y >= 0 && square.y < 8;
+	bool isCorrectSquare(const Square& square);
+	const Direction& toDirectionalVector(const Direction& unnormalizedVector);
+	const Direction& toDirectionalVector(const Square& initPos, const Square& targetPos);
 }
 
-#endif // BOARDCONFIG_H
+class BoardConfig : public MoveListChangedObserver
+{
+public:
+	BoardConfig();
+	BoardConfig(const BoardConfig& other);
+	BoardConfig& operator=(const BoardConfig& other);
+	virtual ~BoardConfig();
+
+	bool setFromFEN(const std::string& FEN);
+	void setToDefault();
+
+	Side getSideOnMove() const { return sideOnMove; }
+	const Piece* getPiece(int pieceID) const { return &pieces[pieceID]; }
+	const Piece* getPiece(const Square& pos) const { return board[pos.y][pos.x]; }
+	const Piece* getPiece(int x, int y) const { return board[y][x]; }
+	const Piece* getKing(Side side) const { return &pieces[16 * int(side)]; }
+	const SquaresVec& getPiecePlacement(Side side, PieceType type) const { return piecePositions[side][type]; }
+	bool hasCastlingRight(Side side, CastleType castleType) const;
+	const Direction& getPinDirection(const Piece* piece) const { return pinDirections[piece->getID()]; }
+	const Direction& getPinDirection(int pieceID) const { return pinDirections[pieceID]; }
+	bool isCoveringChecks(const Piece* piece, const Square& targetPos) const;
+	const SquaresVec* getSquaresCoveringChecks(Side side) const { return safeMoves[side]; }
+	bool isSquareChecked(const Square& square, Side checkingSide) const { return attacksTable[square.y][square.x][checkingSide] > 0; }
+	bool isSquareChecked(int x, int y, Side checkingSide) const { return attacksTable[y][x][checkingSide]; }
+	bool isInCheck(Side side) const { return checkers[opposition[side]][0] != nullptr; }
+	const Piece* getKingUnderCheck() const;
+	int isCastlingAvailable(Side side, CastleType castleType);	// Returns the ID of rook angaged in castling or -1 when castling is not available
+	bool isEnPassantAvailable(const Piece* pawn) const;
+	int getEnPassantLine() const { return enPassantLine; }
+	int getMoveNumber() const { return moveNumber; }
+	
+	void handleNormalMove(const Move& move);
+	void handleCastling(const Move& move);
+	void handleEnPassant(const Move& move);
+	void makeMove(const Move& move);
+	bool undoLastMove();
+	bool isMoveLegal(const Move& move);
+
+	void addAttack(const Square& square, Side side) { attacksTable[square.y][square.x][side]++; }
+	void removeAttack(const Square& square, Side side) { attacksTable[square.y][square.x][side]--; }
+	void updateByInsertion(const Move& move) override;
+	void updateByRemoval(int pieceID, const vector<Move>& moves, bool legal) override;
+	void updateByRemoval(int pieceID, const MoveList& moves, bool legal) override;
+
+	void addObserver(PositionChangedObserver* observer);
+	void removeObserver(PositionChangedObserver* observer);
+	void updateObserversByMove(int pieceID, const Square& oldPos, const Square& newPos);
+	MoveGenerator* getConnectedMoveGenerator() { return moveGenerator; }
+	void clearAttacksTable();
+
+	void connectEngine(EngineObserver* engine);
+	void disconnectEngine(EngineObserver* engine);
+	void updateEngines();
+
+	void showCustomStats() const;
+
+	using SearchCondition = bool (*)(const Square&);
+	using AttackingCondition = bool (*)(const Piece*);
+
+	friend void PlacementChange::applyChange(BoardConfig* config) const;
+	friend void CastlingChange::applyChange(BoardConfig* config) const;
+	friend void EnPassantChange::applyChange(BoardConfig* config) const;
+	friend void CheckerChange::applyChange(BoardConfig* config) const;
+	friend void PromotionChange::applyChange(BoardConfig* config) const;
+	friend void MoveCountChange::applyChange(BoardConfig* config) const;
+	friend bool FenParsing::parseFenToConfig(const std::string& FEN, BoardConfig* config);
+private:
+	void clearProgressStack();
+	void clearBoardMap();
+	void clearBoard();
+	void copyCommonData(const BoardConfig& config);
+	void updatePiecePlacement(Side side, PieceType type, const Square& oldPos, const Square& newPos);
+	void removePiece(Piece* piece, const Square& nullSquare = BoardManipulation::nullSquare);
+	void placePiece(int pieceID, PieceType targetType, const Square& newPos, bool updateObserversFlag = true);
+	void updateSideOnMove();
+	void updateMoveCount(const Piece* movedPiece, bool captureFlag);
+	void setCastlingRight(Side side, CastleType castleType, bool updatedRight);
+	void updateCastlingRights(const Piece* movedPiece, const Square& oldPos);
+	void registerEnPassantChange(int enPassanter);
+	void setEnPassantLine(int line);
+	void updateEnPassant(const Piece* movedPiece, const Square& oldPos, const Square& newPos);
+	Piece* nextInDirection(const Square& start, const Direction& moveDir, SearchCondition stopCondition);
+	void clearPins();
+	void removePin(Side side, const Piece* foundPiece, int foundPieceID);
+	void searchForPins(Side side, const Square& kingPos, const Square& dir);
+	void updatePinsFromKing(Side side, const Square& square);
+	void updatePinsFromKing(Side side);
+	void updatePinsFromSquare(const Square& square);
+	void updatePinsStatically();
+	void updatePinsDynamically(const Piece* piece, const Square& oldPos, const Square& newPos);
+	void clearChecks();
+	void updateChecksInDirection(const Piece* king, const Direction& dir, AttackingCondition attackingCondition, int& checkCount);
+	void updateChecksInDirection(const Piece* king, const Direction& dir, int& checkCount);
+	void updateChecksInDirections(const Piece* king, const DirectionsVec& dirs,  AttackingCondition attackingCondition, int& checkCount);
+	void updateChecksForKnight(Piece* knight, Side checkedSide, const Square& kingPos, int& checkCount);
+	void updateChecksForPawn(const Square& square, const Square& kingPos, Side kingColor, int& checkCount);
+	void updateChecksForSide(Side side);
+	void updateChecksStatically();
+	void updateChecksDynamically(Piece* piece, const Square& oldPos, const Square& newPos);
+
+	std::vector<Piece> pieces;
+	SquaresVec piecePositions[2][5] {};
+	Piece* board[8][8] { nullptr };
+
+	Side sideOnMove = WHITE;
+	std::bitset<4> castlingRights;
+	int enPassantLine = -2;
+	int enPassanter1 = -1;
+	int enPassanter2 = -1;
+	unsigned int halfMoves = 0;
+	unsigned int moveNumber = 1;
+
+	Direction pinDirections[32] { Direction(8,8) };
+	std::vector<int> pinnedPieces[2] {};
+
+	short attacksTable[8][8][2] { 0 };
+	Piece* checkers[2][2] { nullptr };
+	SquaresVec* safeMoves[2] { nullptr };	// nullptr - all moves are safe, nullSavers - only legal king moves are safe, other - list of safe moves
+
+	ProgressStack boardProgress;
+	ZobristHash zobristHash;
+
+	std::vector<PositionChangedObserver*> positionObservers;
+	std::vector<EngineObserver*> connectedEngines;
+	MoveGenerator* moveGenerator;
+};

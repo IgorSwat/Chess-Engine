@@ -10,7 +10,7 @@ Navbar::Navbar(const sf::Vector2f& initialPos, const sf::Vector2f& initialSize)
     {
         sf::Vector2f entryPos(leftCorner.x + size.x / 2.f - entrySize / 2.f, (i + 1) * objectSpacing + i * entrySize);
         entries[i] = new MoveEntry(entryPos, entrySize, textures["Wpawn"]);
-        moves[i] = new Move();
+        moves[i] = new Move2();
     }
     resetButton = new Button(navButtonsSize, textures["refresh"]);
     resetButton->setPosition(leftCorner.x + size.x / 2.f - (navButtonsCount + 1) * navButtonsSize / 2.f,
@@ -62,18 +62,16 @@ Navbar::NavbarState Navbar::update(sf::RenderWindow* window)
     return navState;
 }
 
-void Navbar::setMove(const Move& move, int moveID)
+void Navbar::setMove(const Move2& move, int moveID)
 {
     delete moves[moveID];
-    moves[moveID] = new Move(move);
+    moves[moveID] = new Move2(move);
+    Side side = move.move.pieceID < 16 ? WHITE : BLACK;
     std::string textureName = "";
-    if (moves[moveID]->color == WHITE)
-        textureName += "W";
-    else
-        textureName += "B";
-    switch (moves[moveID]->piece)
+    textureName += side == WHITE ? "W" : "B";
+    switch (moves[moveID]->move.pieceType)
     {
-    case PieceType::PAWN:
+    case PAWN:
         textureName += "pawn";
         break;
     case KNIGHT:
@@ -88,11 +86,11 @@ void Navbar::setMove(const Move& move, int moveID)
     case QUEEN:
         textureName += "queen";
         break;
-    case PieceType::KING:
+    case KING:
         textureName += "king";
         break;
     }
-    entries[moveID]->setData(textures[textureName], moves[moveID]->writeNotation(), moves[moveID]->writeEvaluation());
+    entries[moveID]->setData(textures[textureName], moves[moveID]->getMoveNotation(), Moves::writeEvaluation(moves[moveID]->eval));
 }
 
 void Navbar::render(sf::RenderTarget& target)

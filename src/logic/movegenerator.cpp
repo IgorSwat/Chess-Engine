@@ -6,6 +6,15 @@ using std::find;
 using std::cout;
 using std::endl;
 
+
+MoveGenerator::MoveGenerator(BoardConfig* conf)
+    : config(conf)
+{
+    initializeMoveLists();
+}
+
+
+
 /// Helper functions
 void MoveGenerator::initializeMoveLists()
 {
@@ -34,16 +43,16 @@ void MoveGenerator::configureMoveList(int pieceID)
         }
         break;
     case KNIGHT:
-        setListKeys(pieceID, 8, Knight::directions());
+        setListKeys(pieceID, 8, PieceHandlers::getMoveDirections(KNIGHT));
         break;
     case BISHOP:
-        setListKeys(pieceID, 4, Bishop::directions());
+        setListKeys(pieceID, 4, PieceHandlers::getMoveDirections(BISHOP));
         break;
     case ROOK:
-        setListKeys(pieceID, 4, Rook::directions());
+        setListKeys(pieceID, 4, PieceHandlers::getMoveDirections(ROOK));
         break;
     case QUEEN:
-        setListKeys(pieceID, 8, Queen::directions());
+        setListKeys(pieceID, 8, PieceHandlers::getMoveDirections(QUEEN));
         break;
     case KING:
         legalMoves[pieceID].reset(1);
@@ -52,7 +61,7 @@ void MoveGenerator::configureMoveList(int pieceID)
     }
 }
 
-void MoveGenerator::setListKeys(int pieceID, int directionCount, const dirVector& directions)
+void MoveGenerator::setListKeys(int pieceID, int directionCount, const DirectionsVec& directions)
 {
     legalMoves[pieceID].reset(directionCount);
     attacksOnly[pieceID].reset(directionCount);
@@ -63,17 +72,17 @@ void MoveGenerator::setListKeys(int pieceID, int directionCount, const dirVector
     }
 }
 
-inline void MoveGenerator::addLegalMove(const Square& dir, int pieceID, PieceType type, const Square& targetPos, const MoveMask& mask)
+inline void MoveGenerator::addLegalMove(const Square& dir, int pieceID, PieceType type, const Square& targetPos, int flags)
 {
-    Move2 move(pieceID, type, targetPos, mask);
+    Move move(pieceID, type, targetPos, flags);
     legalMoves[pieceID].add(dir, move);
     updateObserversByInsertion(move);
     squareDependable[targetPos.y][targetPos.x].push_back(pieceID);
 }
 
-inline void MoveGenerator::addPseudoLegalMove(const Square& dir, int pieceID, PieceType type, const Square& targetPos, const MoveMask& mask)
+inline void MoveGenerator::addPseudoLegalMove(const Square& dir, int pieceID, PieceType type, const Square& targetPos, int flags)
 {
-    Move2 move(pieceID, type, targetPos, mask);
+    Move move(pieceID, type, targetPos, flags);
     attacksOnly[pieceID].add(dir, move);
     updateObserversByInsertion(move);
     squareDependable[targetPos.y][targetPos.x].push_back(pieceID);
@@ -81,18 +90,18 @@ inline void MoveGenerator::addPseudoLegalMove(const Square& dir, int pieceID, Pi
 
 void MoveGenerator::removeMoves(int pieceID, const Square& dir)
 {
-    const vector<Move2>& legal = legalMoves[pieceID].getMoves(dir);
-    const vector<Move2>& attacks = attacksOnly[pieceID].getMoves(dir);
+    const vector<Move>& legal = legalMoves[pieceID].getMoves(dir);
+    const vector<Move>& attacks = attacksOnly[pieceID].getMoves(dir);
     updateObserversByRemoval(pieceID, legal, true);
     updateObserversByRemoval(pieceID, attacks, false);
-    for (const Move2& move : legal)
+    for (const Move& move : legal)
     {
         vector<int>& square = squareDependable[move.targetPos.y][move.targetPos.x];
         vector<int>::iterator it = find(square.begin(), square.end(), pieceID);
         if (it != square.end())
             square.erase(it);
     }
-    for (const Move2& move : attacks)
+    for (const Move& move : attacks)
     {
         vector<int>& square = squareDependable[move.targetPos.y][move.targetPos.x];
         vector<int>::iterator it = find(square.begin(), square.end(), pieceID);
@@ -107,14 +116,14 @@ void MoveGenerator::removeMoves(int pieceID)
 {
     updateObserversByRemoval(pieceID, legalMoves[pieceID], true);
     updateObserversByRemoval(pieceID, attacksOnly[pieceID], false);
-    for (const Move2& move : legalMoves[pieceID])
+    for (const Move& move : legalMoves[pieceID])
     {
         vector<int>& square = squareDependable[move.targetPos.y][move.targetPos.x];
         vector<int>::iterator it = find(square.begin(), square.end(), pieceID);
         if (it != square.end())
             square.erase(it);
     }
-    for (const Move2& move : attacksOnly[pieceID])
+    for (const Move& move : attacksOnly[pieceID])
     {
         vector<int>& square = squareDependable[move.targetPos.y][move.targetPos.x];
         vector<int>::iterator it = find(square.begin(), square.end(), pieceID);
@@ -128,11 +137,11 @@ void MoveGenerator::removeMoves(int pieceID)
 
 
 /// Specyfic piece type generators
-void MoveGenerator::generatePawnMoves(Piece* pawn, vector<Square>* checkSavers)
+void MoveGenerator::generatePawnMoves(const Piece* pawn, const vector<Square>* checkSavers)
 {
     int pawnID = pawn->getID();
-    const Square& currPos = pawn->getPos();
-    const Square& pinVector = config->isPinned2(pawn);
+    const Square& currPos = pawn->getPosition();
+    const Square& pinVector = config->getPinDirection(pawnID);
     bool pinFlag = pinVector.x < 8 ? true : false;
     if (pawn->getColor() == WHITE)
     {
@@ -141,13 +150,13 @@ void MoveGenerator::generatePawnMoves(Piece* pawn, vector<Square>* checkSavers)
         generatePawnMoves(Square(0, -1), pawn, checkSavers);
         if (currPos.x < 7)
             generatePawnMoves(Square(1, -1), pawn, checkSavers);
-        if (config->isEnPassantPossible(pawn))
+        if (config->isEnPassantAvailable(pawn))
         {
             Square movementVector(config->getEnPassantLine() - currPos.x, -1);
             Square targetPos = currPos + movementVector;
             if ((!pinFlag || pinVector == movementVector || pinVector == -movementVector) &&
                 (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
-                addLegalMove(movementVector, pawnID, PAWN, targetPos, MoveType::COMMON | MoveType::ENPASSANT);
+                addLegalMove(movementVector, pawnID, PAWN, targetPos, 0b1001);
         }
     }
     else
@@ -157,192 +166,194 @@ void MoveGenerator::generatePawnMoves(Piece* pawn, vector<Square>* checkSavers)
         generatePawnMoves(Square(0, 1), pawn, checkSavers);
         if (currPos.x < 7)
             generatePawnMoves(Square(1, 1), pawn, checkSavers);
-        if (config->isEnPassantPossible(pawn))
+        if (config->isEnPassantAvailable(pawn))
         {
             Square movementVector(config->getEnPassantLine() - currPos.x, 1);
             Square targetPos = currPos + movementVector;
             if ((!pinFlag || pinVector == movementVector || pinVector == -movementVector) &&
                 (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
-                addLegalMove(movementVector, pawnID, PAWN, targetPos, MoveType::COMMON | MoveType::ENPASSANT);
+                addLegalMove(movementVector, pawnID, PAWN, targetPos, 0b1001);
         }
     }
+
 }
 
-void MoveGenerator::generatePawnMoves(const Square& dir, Piece* pawn, vector<Square>* checkSavers)
+void MoveGenerator::generatePawnMoves(const Square& dir, const Piece* pawn, const vector<Square>* checkSavers)
 {
     int pawnID = pawn->getID();
-    const Square& pinVector = config->isPinned2(pawn);
+    const Square& pinVector = config->getPinDirection(pawnID);
     bool pinFlag = pinVector.x < 8 ? true : false;
     if (dir.x == 0)
     {
         bool pinCheck = !pinFlag || pinVector == dir || pinVector == -dir;
-        Square targetPos = pawn->getPos() + dir;
+        Square targetPos = pawn->getPosition() + dir;
         if (config->getPiece(targetPos) == nullptr && pinCheck &&
             (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
         {
             if (targetPos.y == 0)
             {
-                Move2 move1(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON, QUEEN);
+                Move move1(pawnID, PieceType::PAWN, targetPos, 0b1000, QUEEN);
                 legalMoves[pawnID].add(dir, move1);
                 updateObserversByInsertion(move1);
-                Move2 move2(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON, KNIGHT);
+                Move move2(pawnID, PieceType::PAWN, targetPos, 0b1000, KNIGHT);
                 legalMoves[pawnID].add(dir, move2);
                 updateObserversByInsertion(move2);
-                Move2 move3(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON, ROOK);
+                Move move3(pawnID, PieceType::PAWN, targetPos, 0b1000, ROOK);
                 legalMoves[pawnID].add(dir, move3);
                 updateObserversByInsertion(move3);
-                Move2 move4(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON, BISHOP);
+                Move move4(pawnID, PieceType::PAWN, targetPos, 0b1000, BISHOP);
                 legalMoves[pawnID].add(dir, move4);
                 updateObserversByInsertion(move4);
                 squareDependable[targetPos.y][targetPos.x].push_back(pawnID);
             }
             else
-                addLegalMove(dir, pawnID, PAWN, targetPos, MoveType::COMMON);
+                addLegalMove(dir, pawnID, PAWN, targetPos, 0b1000);
         }
         else
-            addPseudoLegalMove(dir, pawnID, PAWN, targetPos, MoveType::NONE);
-        if (pawn->getPos().y == 6 && pawn->getColor() == WHITE)
+            addPseudoLegalMove(dir, pawnID, PAWN, targetPos, 0b0000);
+        if (pawn->getPosition().y == 6 && pawn->getColor() == WHITE)
         {
-            targetPos = pawn->getPos() + Square(0, -2);
-            if (config->getPiece(Square(pawn->getPos().x, pawn->getPos().y - 1)) == nullptr &&
+            targetPos = pawn->getPosition() + Square(0, -2);
+            if (config->getPiece(Square(pawn->getPosition().x, pawn->getPosition().y - 1)) == nullptr &&
                 config->getPiece(targetPos) == nullptr && pinCheck &&
                 (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
-                addLegalMove(dir, pawnID, PAWN, targetPos, MoveType::COMMON);
+                addLegalMove(dir, pawnID, PAWN, targetPos, 0b1000);
             else
-                addPseudoLegalMove(dir, pawnID, PAWN, targetPos, MoveType::NONE);
+                addPseudoLegalMove(dir, pawnID, PAWN, targetPos, 0b0000);
         }
-        else if (pawn->getPos().y == 1 && pawn->getColor() == BLACK)
+        else if (pawn->getPosition().y == 1 && pawn->getColor() == BLACK)
         {
-            targetPos = pawn->getPos() + Square(0, 2);
-            if (config->getPiece(Square(pawn->getPos().x, pawn->getPos().y + 1)) == nullptr &&
+            targetPos = pawn->getPosition() + Square(0, 2);
+            if (config->getPiece(Square(pawn->getPosition().x, pawn->getPosition().y + 1)) == nullptr &&
                 config->getPiece(targetPos) == nullptr && pinCheck &&
                 (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
-                addLegalMove(dir, pawnID, PAWN, targetPos, MoveType::COMMON);
+                addLegalMove(dir, pawnID, PAWN, targetPos, 0b1000);
             else
-                addPseudoLegalMove(dir, pawnID, PAWN, targetPos, MoveType::NONE);
+                addPseudoLegalMove(dir, pawnID, PAWN, targetPos, 0b0000);
         }
     }
     else if (!pinFlag || pinVector == dir || pinVector == -dir)
     {
-        Square targetPos = pawn->getPos() + dir;
+        Square targetPos = pawn->getPosition() + dir;
         if (config->getPiece(targetPos) != nullptr && config->getPiece(targetPos)->getColor() != pawn->getColor() &&
             (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
         {
             if (targetPos.y == 0 || targetPos.y == 7)
             {
-                Move2 move1(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON | MoveType::ATTACK, QUEEN);
+                Move move1(pawnID, PieceType::PAWN, targetPos, 0b1100, QUEEN);
                 legalMoves[pawnID].add(dir, move1);
                 updateObserversByInsertion(move1);
-                Move2 move2(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON | MoveType::ATTACK, KNIGHT);
+                Move move2(pawnID, PieceType::PAWN, targetPos, 0b1100, KNIGHT);
                 legalMoves[pawnID].add(dir, move2);
                 updateObserversByInsertion(move2);
-                Move2 move3(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON | MoveType::ATTACK, ROOK);
+                Move move3(pawnID, PieceType::PAWN, targetPos, 0b1100, ROOK);
                 legalMoves[pawnID].add(dir, move3);
                 updateObserversByInsertion(move3);
-                Move2 move4(pawnID, PieceType::PAWN, targetPos, MoveType::COMMON | MoveType::ATTACK, BISHOP);
+                Move move4(pawnID, PieceType::PAWN, targetPos, 0b1100, BISHOP);
                 legalMoves[pawnID].add(dir, move4);
                 updateObserversByInsertion(move4);
                 squareDependable[targetPos.y][targetPos.x].push_back(pawnID);
             }
             else
-                addLegalMove(dir, pawnID, PAWN, targetPos, MoveType::COMMON | MoveType::ATTACK);
+                addLegalMove(dir, pawnID, PAWN, targetPos, 0b1100);
         }
         else
-            addPseudoLegalMove(dir, pawnID, PAWN, targetPos, MoveType::ATTACK);
+            addPseudoLegalMove(dir, pawnID, PAWN, targetPos, 0b0100);
     }
 }
 
-void MoveGenerator::generateKnightMoves(Piece* knight, vector<Square>* checkSavers)
+void MoveGenerator::generateKnightMoves(const Piece* knight, const vector<Square>* checkSavers)
 {
-    const Square& pinVector = config->isPinned2(knight);
+    const Square& pinVector = config->getPinDirection(knight->getID());
     if (pinVector.x < 8)
         return;
     int knightID = knight->getID();
-    const Square& currPos = knight->getPos();
-    const dirVector& directions = knight->getDirections();
+    const Square& currPos = knight->getPosition();
+    const DirectionsVec& directions = knight->getMoveDirections();
     for (const Square& dir : directions)
     {
         Square targetPos = currPos + dir;
-        Piece* piece = config->getPiece(targetPos);
+        const Piece* piece = config->getPiece(targetPos);
         if (targetPos.x >= 0 && targetPos.y >= 0 && targetPos.y < 8 && targetPos.x < 8)
         {
             if ((checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()) &&
                 (piece == nullptr || piece->getColor() != knight->getColor()))
-                addLegalMove(dir, knightID, KNIGHT, targetPos, MoveType::COMMON | MoveType::ATTACK);
+                addLegalMove(dir, knightID, KNIGHT, targetPos, 0b1100);
             else
-                addPseudoLegalMove(dir, knightID, KNIGHT, targetPos, MoveType::ATTACK);
+                addPseudoLegalMove(dir, knightID, KNIGHT, targetPos, 0b0100);
         }
     }
 }
 
-void MoveGenerator::generateKnightMoves(const Square& dir, Piece* knight, vector<Square>* checkSavers)
+void MoveGenerator::generateKnightMoves(const Square& dir, const Piece* knight, const vector<Square>* checkSavers)
 {
-    Square targetPos = knight->getPos() + dir;
-    Piece* piece = config->getPiece(targetPos);
+    Square targetPos = knight->getPosition() + dir;
+    const Piece* piece = config->getPiece(targetPos);
     if ((checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()) &&
         (piece == nullptr || piece->getColor() != knight->getColor()))
-        addLegalMove(dir, knight->getID(), KNIGHT, targetPos, MoveType::COMMON | MoveType::ATTACK);
+        addLegalMove(dir, knight->getID(), KNIGHT, targetPos, 0b1100);
     else
-        addPseudoLegalMove(dir, knight->getID(), KNIGHT, targetPos, MoveType::ATTACK);
+        addPseudoLegalMove(dir, knight->getID(), KNIGHT, targetPos, 0b0100);
 }
 
-void MoveGenerator::generateKingMoves(Piece* king, vector<Square>* checkSavers)
+void MoveGenerator::generateKingMoves(const Piece* king, const vector<Square>* checkSavers)
 {
     Side side = king->getColor();
     int kingID = king->getID();
-    const Square& currPos = king->getPos();
-    const dirVector& directions = king->getDirections();
+    const Square& currPos = king->getPosition();
+    const DirectionsVec& directions = king->getMoveDirections();
     for (const Square& dir : directions)
     {
         Square targetPos = currPos + dir;
         if (targetPos.x >= 0 && targetPos.x < 8 && targetPos.y >= 0 && targetPos.y < 8)
         {
-            Piece* piece = config->getPiece(targetPos);
-            if (!config->isChecked2(targetPos, opposition(side)) && (piece == nullptr || piece->getColor() != king->getColor()))
+            const Piece* piece = config->getPiece(targetPos);
+            if (!config->isSquareChecked(targetPos, opposition[side]) && (piece == nullptr || piece->getColor() != king->getColor()))
             {
-                Move2 move(kingID, PieceType::KING, targetPos, MoveType::COMMON | MoveType::ATTACK);
+                Move move(kingID, PieceType::KING, targetPos, 0b1100);
                 legalMoves[kingID].add(dir, move);
                 updateObserversByInsertion(move);
             }
             else
             {
-                Move2 move(kingID, PieceType::KING, targetPos, MoveType::ATTACK);
+                Move move(kingID, PieceType::KING, targetPos, 0b0100);
                 attacksOnly[kingID].add(dir, move);
                 updateObserversByInsertion(move);
             }
         }
     }
-    if (currPos.x > 1 && config->isCastlingAvailable2(king, Square(-2, 0)) > 0)
+
+    if (currPos.x > 1 && config->isCastlingAvailable(side, SHORT_CASTLE) > 0)
     {
-        Move2 move(kingID, PieceType::KING, Square(currPos.x - 2, currPos.y), MoveType::COMMON | MoveType::CASTLE);
+        Move move(kingID, PieceType::KING, Square(currPos.x + 2, currPos.y), 0b1010);
         legalMoves[kingID].add(Square(-1, 0), move);
         updateObserversByInsertion(move);
     }
-    if (currPos.x < 6 && config->isCastlingAvailable2(king, Square(2, 0)) > 0)
+    if (currPos.x < 6 && config->isCastlingAvailable(side, LONG_CASTLE) > 0)
     {
-        Move2 move(kingID, PieceType::KING, Square(currPos.x + 2, currPos.y), MoveType::COMMON | MoveType::CASTLE);
+        Move move(kingID, PieceType::KING, Square(currPos.x - 2, currPos.y), 0b1010);
         legalMoves[kingID].add(Square(1, 0), move);
         updateObserversByInsertion(move);
     }
 }
 
 inline void MoveGenerator::registerMove(const Square& dir, int pieceID, PieceType type, const Square& targetPos,
-    vector<Square>* checkSavers, bool batteryFlag)
+    const vector<Square>* checkSavers, bool batteryFlag)
 {
     if (!batteryFlag && (checkSavers == nullptr || std::find(checkSavers->begin(), checkSavers->end(), targetPos) != checkSavers->end()))
-        addLegalMove(dir, pieceID, type, targetPos, MoveType::COMMON | MoveType::ATTACK);
+        addLegalMove(dir, pieceID, type, targetPos, 0b1100);
     else
-        addPseudoLegalMove(dir, pieceID, type, targetPos, MoveType::ATTACK);
+        addPseudoLegalMove(dir, pieceID, type, targetPos, 0b0100);
 }
 
-void MoveGenerator::generateOthersMoves(Piece* other, vector<Square>* checkSavers)
+void MoveGenerator::generateOthersMoves(const Piece* other, const vector<Square>* checkSavers)
 {
-    const Square& pinVector = config->isPinned2(other);
+    const Square& pinVector = config->getPinDirection(other->getID());
     Side side = other->getColor();
     int pieceID = other->getID();
-    const Square& currPos = other->getPos();
-    const dirVector& directions = other->getDirections();
-    int oppositeSideID = (int)opposition(side) * 16;
+    const Square& currPos = other->getPosition();
+    const DirectionsVec& directions = other->getMoveDirections();
+    int oppositeSideID = (int)opposition[side] * 16;
     for (const Square& dir : directions)
     {
         bool isRookDir = dir.x == 0 || dir.y == 0;
@@ -351,8 +362,8 @@ void MoveGenerator::generateOthersMoves(Piece* other, vector<Square>* checkSaver
             continue;
         Square targetPos = currPos + dir;
         bool batteryFlag = false;
-        Piece* foundPiece;
-        while (isCorrectSquare(targetPos))
+        const Piece* foundPiece;
+        while (BoardManipulation::isCorrectSquare(targetPos))
         {
             foundPiece = config->getPiece(targetPos);
             if (foundPiece != nullptr)
@@ -367,7 +378,7 @@ void MoveGenerator::generateOthersMoves(Piece* other, vector<Square>* checkSaver
                 }
                 else
                 {
-                    addPseudoLegalMove(dir, pieceID, type, targetPos, MoveType::ATTACK);
+                    addPseudoLegalMove(dir, pieceID, type, targetPos, 0b0100);
                     if ((isRookDir && foundPiece->hasRookAbilities()) || (!isRookDir && foundPiece->hasBishopAbilities()))
                     {
                         batteryFlag = true;
@@ -386,17 +397,17 @@ void MoveGenerator::generateOthersMoves(Piece* other, vector<Square>* checkSaver
     }
 }
 
-void MoveGenerator::generateOthersMoves(const Square& dir, Piece* other, vector<Square>* checkSavers)
+void MoveGenerator::generateOthersMoves(const Square& dir, const Piece* other, const vector<Square>* checkSavers)
 {
     Side side = other->getColor();
-    int oppositeSideID = (int)opposition(side) * 16;
+    int oppositeSideID = (int)opposition[side] * 16;
     int pieceID = other->getID();
     bool isRookDir = dir.x == 0 || dir.y == 0;
     PieceType type = other->getType();
-    Square targetPos = other->getPos() + dir;
+    Square targetPos = other->getPosition() + dir;
     bool batteryFlag = false;
-    Piece* foundPiece;
-    while (isCorrectSquare(targetPos))
+    const Piece* foundPiece;
+    while (BoardManipulation::isCorrectSquare(targetPos))
     {
         foundPiece = config->getPiece(targetPos);
         if (foundPiece != nullptr)
@@ -411,7 +422,7 @@ void MoveGenerator::generateOthersMoves(const Square& dir, Piece* other, vector<
             }
             else
             {
-                addPseudoLegalMove(dir, pieceID, type, targetPos, MoveType::ATTACK);
+                addPseudoLegalMove(dir, pieceID, type, targetPos, 0b0100);
                 if ((isRookDir && foundPiece->hasRookAbilities()) || (!isRookDir && foundPiece->hasBishopAbilities()))
                 {
                     batteryFlag = true;
@@ -432,7 +443,7 @@ void MoveGenerator::generateOthersMoves(const Square& dir, Piece* other, vector<
 
 
 /// Generic move generators
-void MoveGenerator::generatePieceMoves(Piece* piece, vector<Square>* checkSavers)
+void MoveGenerator::generatePieceMoves(const Piece* piece, const vector<Square>* checkSavers)
 {
     removeMoves(piece->getID());
     switch (piece->getType())
@@ -453,7 +464,7 @@ void MoveGenerator::generatePieceMoves(Piece* piece, vector<Square>* checkSavers
     updatedPieces.insert(piece->getID());
 }
 
-void MoveGenerator::generatePieceMoves(const Square& dir, Piece* piece, vector<Square>* checkSavers)
+void MoveGenerator::generatePieceMoves(const Square& dir, const Piece* piece, const vector<Square>* checkSavers)
 {
     removeMoves(piece->getID(), dir);
     switch (piece->getType())
@@ -474,39 +485,46 @@ void MoveGenerator::generatePieceMoves(const Square& dir, Piece* piece, vector<S
 }
 
 void MoveGenerator::dynamicUpdateFromSquare(const Square& square, std::unordered_set<int>& foundPieces,
-                                            vector<Square>** checkCovers)
+                                            const SquaresVec* const* checkCovers)
 {
     vector<int>* copied = new vector<int>(squareDependable[square.y][square.x]);
     for (const int& id : (*copied))
     {
         if (updatedPieces.find(id) == updatedPieces.end())
         {
-            Piece* piece = config->getPiece(id);
-            if (BoardConfig::isKnight(piece))
-                generatePieceMoves(square - piece->getPos(), piece, checkCovers[(int)piece->getColor()]);
+            const Piece* piece = config->getPiece(id);
+            if (piece->getType() == KNIGHT)
+                generatePieceMoves(square - piece->getPosition(), piece, checkCovers[piece->getColor()]);
             else
-                generatePieceMoves(BoardConfig::toDirectionalVector2(piece->getPos(), square), piece, checkCovers[(int)piece->getColor()]);
+                generatePieceMoves(BoardManipulation::toDirectionalVector(piece->getPosition(), square), piece, checkCovers[piece->getColor()]);
         }
     }
     delete copied;
 }
 
-void MoveGenerator::generateAllMoves(Side side)
+void MoveGenerator::generateNonKingMoves(Side side)
 {
     int piecesID = (int)(side) * 16;
-    vector<Square>* checkSavers = config->getSquaresCoveringChecks(side);
-    for (int i = piecesID; i < piecesID + 16; i++)
+    const SquaresVec* checkSavers = config->getSquaresCoveringChecks(side);
+    for (int i = piecesID + 1; i < piecesID + 16; i++)
     {
-        Piece* piece = config->getPiece(i);
+        const Piece* piece = config->getPiece(i);
         if (piece->isActive())
             generatePieceMoves(piece, checkSavers);
         else
-        {
-            legalMoves[i].clear();
-            attacksOnly[i].clear();
-        }
+            removeMoves(i);
     }
     updatedPieces.clear();
+}
+
+void MoveGenerator::generateAllMoves()
+{
+    config->clearAttacksTable();
+    generateNonKingMoves(WHITE);
+    generateNonKingMoves(BLACK);
+    generatePieceMoves(config->getKing(WHITE), config->getSquaresCoveringChecks(WHITE));
+    generatePieceMoves(config->getKing(BLACK), config->getSquaresCoveringChecks(BLACK));
+    generatePieceMoves(config->getKing(WHITE), config->getSquaresCoveringChecks(WHITE));
 }
 
 void MoveGenerator::updateByMove(int pieceID, const Square& oldPos, const Square& newPos)
@@ -516,15 +534,15 @@ void MoveGenerator::updateByMove(int pieceID, const Square& oldPos, const Square
         removeMoves(pieceID);
         return;
     }
-    Piece* piece = config->getPiece(pieceID);
+    const Piece* piece = config->getPiece(pieceID);
     Side color = piece->getColor();
-    Side oppositionColor = opposition(color);
+    Side oppositionColor = opposition[color];
     int sideID = (int)color;
     int oppositionSideID = (sideID + 1) % 2;
     updatedPieces.insert(pieceID);
     bool checkFlags[2] = {false, false};
-    vector<Square>* checkCovers[2] = {nullptr, nullptr};
-    if (config->isKingChecked(color))
+    const SquaresVec* checkCovers[2] = {nullptr, nullptr};
+    if (config->isInCheck(color))
     {
         checkCovers[sideID] = config->getSquaresCoveringChecks(color);
         if (!checkStates[sideID])
@@ -540,7 +558,7 @@ void MoveGenerator::updateByMove(int pieceID, const Square& oldPos, const Square
             checkStates[sideID] = false;
             checkFlags[sideID] = true;
         }
-        if (config->isKingChecked(oppositionColor))
+        if (config->isInCheck(oppositionColor))
         {
             checkCovers[oppositionSideID] = config->getSquaresCoveringChecks(oppositionColor);
             if (!checkStates[oppositionSideID])
@@ -572,7 +590,7 @@ void MoveGenerator::updateByMove(int pieceID, const Square& oldPos, const Square
             int id = oppositionSideID * 16;
             for (int i = id + 1; i < id + 16; i++)
             {
-                Piece* foundPiece = config->getPiece(i);
+                const Piece* foundPiece = config->getPiece(i);
                 if (foundPiece->isActive() && updatedPieces.find(i) == updatedPieces.end())
                     generatePieceMoves(foundPiece, checkCovers[oppositionSideID]);
             }
@@ -582,17 +600,16 @@ void MoveGenerator::updateByMove(int pieceID, const Square& oldPos, const Square
             int id = sideID * 16;
             for (int i = id; i < id + 16; i++)
             {
-                Piece* foundPiece = config->getPiece(i);
+                const Piece* foundPiece = config->getPiece(i);
                 if (foundPiece->isActive() && updatedPieces.find(i) == updatedPieces.end())
                     generatePieceMoves(foundPiece, checkCovers[sideID]);
             }
         }
     }
-    generatePieceMoves(config->getPiece(sideID * 16), nullptr);
-    generatePieceMoves(config->getPiece(oppositionSideID * 16), nullptr);
+    generatePieceMoves(config->getKing(color), nullptr);
+    generatePieceMoves(config->getKing(oppositionColor), nullptr);
     updatedPieces.clear();
 }
-
 
 
 
@@ -601,22 +618,20 @@ void MoveGenerator::showMoves(bool attacks)
 {
     for (int i = 0; i < 32; i++)
     {
-        for (const Move2& move : legalMoves[i])
+        for (const Move& move : legalMoves[i])
         {
-             Piece* piece = config->getPiece(move.pieceID);
-             cout<<move.pieceID<<", type: "<<(int)move.pieceType<<", oldPos: ("<<piece->getPos().x<<","<<piece->getPos().y<<"), newPos: (";
-             cout<<move.targetPos.x<<","<<move.targetPos.y<<"), flags: ";
-             move.specialFlag.show();
+             const Piece* piece = config->getPiece(move.pieceID);
+             cout<<move.pieceID<<", type: "<<(int)move.pieceType<<", oldPos: ("<<piece->getPosition().x<<","<<piece->getPosition().y<<"), newPos: (";
+             cout << move.targetPos.x << "," << move.targetPos.y << "), flags: " << move.flags << std::endl;
              cout<<endl;
         }
         if (attacks)
         {
-            for (const Move2& move : attacksOnly[i])
+            for (const Move& move : attacksOnly[i])
             {
-                Piece* piece = config->getPiece(move.pieceID);
-                cout << move.pieceID << ", type: " << (int)move.pieceType << ", oldPos: (" << piece->getPos().x << "," << piece->getPos().y << "), newPos: (";
-                cout << move.targetPos.x << "," << move.targetPos.y << "), flags: ";
-                move.specialFlag.show();
+                const Piece* piece = config->getPiece(move.pieceID);
+                cout << move.pieceID << ", type: " << (int)move.pieceType << ", oldPos: (" << piece->getPosition().x << "," << piece->getPosition().y << "), newPos: (";
+                cout << move.targetPos.x << "," << move.targetPos.y << "), flags: " << move.flags << std::endl;
                 cout << endl;
             }
         }

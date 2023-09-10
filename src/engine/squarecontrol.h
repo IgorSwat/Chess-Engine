@@ -1,5 +1,4 @@
-#ifndef SQUARECONTROL_H_INCLUDED
-#define SQUARECONTROL_H_INCLUDED
+#pragma once
 
 #include "positionelement.h"
 using std::vector;
@@ -49,8 +48,8 @@ public:
     int evaluate(int& eval, const int& gameStage) const override;
     // Dynamic update
     void updateByMove(int pieceID, const Square& oldPos, const Square& newPos) override;
-    void updateByInsertion(const Move2& move);
-    void updateByRemoval(int pieceID, const vector<Move2>& moves, bool legal) override { updateFromRemovalConstruct(pieceID, moves); }
+    void updateByInsertion(const Move& move);
+    void updateByRemoval(int pieceID, const vector<Move>& moves, bool legal) override { updateFromRemovalConstruct(pieceID, moves); }
     void updateByRemoval(int pieceID, const MoveList& moves, bool legal) override { updateFromRemovalConstruct(pieceID, moves); }
     // Extra functionalities
     int countPawnAttacks(Side side, int row, int col) { return static_cast<int>(control[row][col][side] / pieceCodes[0]); }
@@ -70,10 +69,10 @@ template <typename Container>
 void SquareControl::updateFromRemovalConstruct(int pieceID, Container moves)
 {
     Side side = pieceID < 16 ? WHITE : BLACK;
-    Side opposite = opposition(side);
-    for (const Move2& move : moves)
+    Side opposite = opposition[side];
+    for (const Move& move : moves)
     {
-        if (move.specialFlag.isAttacking() && (move.promotionFlag == PAWN || move.promotionFlag == QUEEN))
+        if (move.hasProperty(Moves::ATTACK_FLAG) && (move.promotionType == PAWN || move.promotionType == QUEEN))
         {
             int prevState = whoControls(move.targetPos);
             control[move.targetPos.y][move.targetPos.x][side] -= pieceCodes[(int)move.pieceType];
@@ -82,10 +81,6 @@ void SquareControl::updateFromRemovalConstruct(int pieceID, Container moves)
                 updateControlTables(move.targetPos, prevState, currState);
             if (move.pieceType == PieceType::PAWN && countPawnAttacks(move.targetPos, side) == 0)
                 updateObserversByDisappearance(move.targetPos, side);
-            config->removeAttack(move.targetPos, side);
         }
     }
 }
-
-
-#endif // SQUARECONTROL_H_INCLUDED

@@ -70,7 +70,6 @@ const int* SquareControl::countAttackers(const Square& square, Side side, PieceT
 // Static update
 void SquareControl::clearTables()
 {
-    config->clearAttacksTable();
     for (int i = 0; i < 8; i++)
     {
         for (int j = 0; j < 8; j++)
@@ -88,18 +87,18 @@ void SquareControl::update()
     const MoveList* attacks = generator->getPseudoLegalMoves();
     for (int i = 0; i < 32; i++)
     {
-        for (const Move2& move : legal[i])
+        for (const Move& move : legal[i])
             updateByInsertion(move);
-        for (const Move2& move : attacks[i])
+        for (const Move& move : attacks[i])
             updateByInsertion(move);
-        Piece* piece = config->getPiece(i);
+        const Piece* piece = config->getPiece(i);
         if (piece->isActive())
         {
-            int prevState = whoControls(piece->getPos());
-            control[piece->getPos().y][piece->getPos().x][(int)piece->getColor()] += 1;
-            int currState = whoControls(piece->getPos());
+            int prevState = whoControls(piece->getPosition());
+            control[piece->getPosition().y][piece->getPosition().x][(int)piece->getColor()] += 1;
+            int currState = whoControls(piece->getPosition());
             if (prevState != currState)
-                updateControlTables(piece->getPos(), prevState, currState);
+                updateControlTables(piece->getPosition(), prevState, currState);
         }
     }
 }
@@ -127,9 +126,9 @@ void SquareControl::updateByMove(int pieceID, const Square& oldPos, const Square
     }
 }
 
-void SquareControl::updateByInsertion(const Move2& move)
+void SquareControl::updateByInsertion(const Move& move)
 {
-    if (move.specialFlag.isAttacking() && (move.promotionFlag == PAWN || move.promotionFlag == QUEEN))
+    if (move.hasProperty(Moves::ATTACK_FLAG) && (move.promotionType == PAWN || move.promotionType == QUEEN))
     {
         Side side = move.pieceID < 16 ? WHITE : BLACK;
         int prevState = whoControls(move.targetPos);
@@ -140,7 +139,6 @@ void SquareControl::updateByInsertion(const Move2& move)
             updateControlTables(move.targetPos, prevState, currState);
         if (move.pieceType == PieceType::PAWN && countPawnAttacks(move.targetPos, (Side)side) == 1)
             updateObserversByAppearance(move.targetPos, side);
-        config->addAttack(move.targetPos,side);
     }
 }
 

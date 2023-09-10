@@ -163,7 +163,7 @@ template<> void PiecePlacement::evaluatePiecesPlacement<BISHOP>(int& eval, const
 template<> void PiecePlacement::evaluatePiecesPlacement<ROOK>(int& eval, const int& gameStage) const
 {
     int startValue = eval;
-    const Square& whiteKingPos = config->getKing(WHITE)->getPos();
+    const Square& whiteKingPos = config->getKing(WHITE)->getPosition();
     for (const Square& square : config->getPiecePlacement(WHITE, ROOK))
     {
         if (structure->isFileOpen(square.x))
@@ -174,7 +174,7 @@ template<> void PiecePlacement::evaluatePiecesPlacement<ROOK>(int& eval, const i
             distanceToCenterTable[square.y][square.x] > distanceToCenterTable[whiteKingPos.y][whiteKingPos.x])
             eval += rookUndevelopedPenalty[gameStage];
     }
-    const Square& blackKingPos = config->getKing(BLACK)->getPos();
+    const Square& blackKingPos = config->getKing(BLACK)->getPosition();
     for (const Square& square : config->getPiecePlacement(BLACK, ROOK))
     {
         if (structure->isFileOpen(square.x))
@@ -191,9 +191,9 @@ template<> void PiecePlacement::evaluatePiecesPlacement<ROOK>(int& eval, const i
 template<> void PiecePlacement::evaluatePiecesPlacement<KING>(int& eval, const int& gameStage) const
 {
     int startValue = eval;
-    const Square& whiteKingPos = config->getKing(WHITE)->getPos();
+    const Square& whiteKingPos = config->getKing(WHITE)->getPosition();
     eval += kingDistanceToCenterValue[gameStage][distanceToCenterTable[whiteKingPos.y][whiteKingPos.x]];
-    const Square& blackKingPos = config->getKing(BLACK)->getPos();
+    const Square& blackKingPos = config->getKing(BLACK)->getPosition();
     eval -= kingDistanceToCenterValue[gameStage][distanceToCenterTable[blackKingPos.y][blackKingPos.x]];
     std::cout << "Kings placement evaluation: " << eval - startValue << std::endl;
 }

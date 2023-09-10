@@ -26,7 +26,7 @@ public:
     // Evaluation
     int evaluate() const;
     // Others
-    Move2 getRandomMove() const;
+    Move getRandomMove() const;
     bool isMate() const {return !hasLegalMoves() && virtualBoard->isKingChecked(virtualBoard->getSideOnMove());}
     bool isStealmate() const {return !hasLegalMoves() && !virtualBoard->isKingChecked(virtualBoard->getSideOnMove());}
     void showPositionStats() const;

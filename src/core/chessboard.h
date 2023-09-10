@@ -1,5 +1,4 @@
-#ifndef CHESSBOARD_H
-#define CHESSBOARD_H
+#pragma once
 
 #include "../gui/chessboardui.h"
 #include "../gui/navbar.h"
@@ -18,9 +17,9 @@ private:
     Navbar* navbar;
     Engine* engine;
     // Private functions
-    bool handleOtherMoves(Piece* movingPiece, const Square& mVector, const Square& targetPos);
-    bool handlePawnMoves(Piece* pawn, const Square& movementVector, const Square& targetPos);
-    bool handleKingMoves(Piece* king, const Square& movementVector, const Square& targetPos);
+    void handleNormalMoves(const Piece* movingPiece, const Move& move);
+    void handlePawnMoves(const Piece* movingPiece, const Move& move);
+    void handleKingMoves(const Piece* movingPiece, const Move& move);
     bool handlePromotion();
     void updateNavbar();
 public:
@@ -32,5 +31,3 @@ public:
     void render(sf::RenderTarget& target);
     void updateBoard();
 };
-
-#endif // CHESSBOARD_H

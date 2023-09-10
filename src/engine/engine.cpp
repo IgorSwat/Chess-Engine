@@ -75,14 +75,14 @@ int Engine::evaluate() const
 
 
 /// Move generation feauters
-Move2 Engine::getRandomMove() const
+Move Engine::getRandomMove() const
 {
     const MoveList* moves = generator->getLegalMoves();
     int sideID = virtualBoard->getSideOnMove() == WHITE ? 0 : 16;
-    vector<Move2> movesPerSide;
+    vector<Move> movesPerSide;
     for (int i = sideID; i < sideID + 16; i++)
     {
-        for (const Move2& move : moves[i])
+        for (const Move& move : moves[i])
             movesPerSide.push_back(move);
     }
     return movesPerSide[rand() % movesPerSide.size()];

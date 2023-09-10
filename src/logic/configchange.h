@@ -1,7 +1,7 @@
-#ifndef CONFIGCHANGE_H
-#define CONFIGCHANGE_H
+#pragma once
 
 #include "piece.h"
+#include <bitset>
 using std::vector;
 
 class BoardConfig;
@@ -26,12 +26,9 @@ public:
 class CastlingChange : public ConfigChange
 {
 private:
-    const bool Wshort;
-    const bool Wlong;
-    const bool Bshort;
-    const bool Blong;
+    const std::bitset<4> castlingRights;
 public:
-    CastlingChange(bool Ws, bool Wl, bool Bs, bool Bl) : Wshort(Ws), Wlong(Wl), Bshort(Bs), Blong(Bl) {}
+    CastlingChange(const std::bitset<4>& castling) : castlingRights(castling) {}
     void applyChange(BoardConfig* config) const override;
 };
 
@@ -46,24 +43,14 @@ public:
     void applyChange(BoardConfig* config) const override;
 };
 
-class SideOnMoveChange : public ConfigChange
-{
-private:
-    Side sideOnMove;
-public:
-    SideOnMoveChange(Side side) : sideOnMove(side) {}
-    void applyChange(BoardConfig* config) const override;
-};
-
 class CheckerChange : public ConfigChange
 {
 private:
-    Piece** whiteCheckers;
-    Piece** blackCheckers;
-    vector<Square>** checkSavers;
+    Piece* checkers[2][2];
+    vector<Square>* checkSavers[2];
 public:
-    CheckerChange(Piece** wCheckers, Piece** bCheckers, vector<Square>** savers);
-    ~CheckerChange() {delete[] whiteCheckers; delete[] blackCheckers; delete[] checkSavers;}
+    CheckerChange(Piece* oldCheckers[2][2], vector<Square>* savers[2]);
+    ~CheckerChange() {}
     void applyChange(BoardConfig* config) const override;
 };
 
@@ -85,5 +72,3 @@ public:
     MoveCountChange(int hm, int mn) : halfMoves(hm), moveNumber(mn) {}
     void applyChange(BoardConfig* config) const override;
 };
-
-#endif // CONFIGCHANGE_H

@@ -12,8 +12,8 @@ public:
 
 	void update() override;
 	void updateByMove(int pieceID, const Square& oldPos, const Square& newPos) override;
-	void updateByInsertion(const Move2& move) override;
-	void updateByRemoval(int pieceID, const vector<Move2>& moves, bool legal) override;
+	void updateByInsertion(const Move& move) override;
+	void updateByRemoval(int pieceID, const vector<Move>& moves, bool legal) override;
 	void updateByRemoval(int pieceID, const MoveList& moves, bool legal) override;
 
 	int evaluate(int& eval, const int& gameStage) const override;
@@ -55,9 +55,9 @@ template <typename Container>
 void KingSafety::updateByRemovalConstruct(int pieceID, const Container& moves, bool legal)
 {
 	Side side = pieceID < 16 ? WHITE : BLACK;
-	for (const Move2& move : moves)
+	for (const Move& move : moves)
 	{
-		if (isInKingRange(move.targetPos, config->getKing(opposition(side))->getPos()))
+		if (isInKingRange(move.targetPos, config->getKing(opposition[side])->getPosition()))
 		{
 			attacksNearKingEval[side] -= attacksOnSquareValue[std::min(maxAttackPointsForSquare, attacksTable[move.targetPos.y][move.targetPos.x][side])];
 			attacksTable[move.targetPos.y][move.targetPos.x][side] -= pieceAttacksValues[move.pieceType];

@@ -36,18 +36,18 @@ void PieceMobility::update()
     const MoveList* moveList = generator->getLegalMoves();
     for (int i = 0; i < 32; i++)
     {
-        for (const Move2& move : moveList[i])
+        for (const Move& move : moveList[i])
             updateByInsertion(move);
     }
 }
 
-void PieceMobility::updateByInsertion(const Move2& move)
+void PieceMobility::updateByInsertion(const Move& move)
 {
-    if (move.specialFlag.isCommon() && move.pieceType != PAWN && move.pieceType != KING)
+    if (move.hasProperty(Moves::COMMON_FLAG) && move.pieceType != PAWN && move.pieceType != KING)
     {
         Side side = move.pieceID < 16 ? WHITE : BLACK;
         piecesReachingSquare[move.targetPos.y][move.targetPos.x][move.pieceType - 1][side] += 1;
-        if (!control->isControlledByPawn(move.targetPos, opposition(side)))
+        if (!control->isControlledByPawn(move.targetPos, opposition[side]))
             mobilityCount[move.pieceType - 1][side] += 1;
     }
 
@@ -55,14 +55,14 @@ void PieceMobility::updateByInsertion(const Move2& move)
 
 void PieceMobility::updateByAppearance(const Square& pos, Side side)
 {
-    Side opposite = opposition(side);
+    Side opposite = opposition[side];
     for (int i = 0; i < 4; i++)
         mobilityCount[i][opposite] -= piecesReachingSquare[pos.y][pos.x][i][opposite];
 }
 
 void PieceMobility::updateByDisappearance(const Square& pos, Side side)
 {
-    Side opposite = opposition(side);
+    Side opposite = opposition[side];
     for (int i = 0; i < 4; i++)
         mobilityCount[i][opposite] += piecesReachingSquare[pos.y][pos.x][i][opposite];
 }
