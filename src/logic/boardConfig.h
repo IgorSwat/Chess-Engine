@@ -14,7 +14,7 @@ public:
 	void makeMove(const Move& move);
 	void normalMove(const Move& move);
 	void promotion(const Move& move);
-	void castle(const Move& move, CastlingRights castleType);
+	void castle(const Move& move);
 	void enpassant(const Move& move);
 
 	friend std::ostream& operator<<(std::ostream& os, const BoardConfig& board);

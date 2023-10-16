@@ -9,22 +9,45 @@ namespace {
 	const std::string STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 	constexpr CastlingRights castlingRightsLoss[SQUARE_RANGE]{
-		KINGSIDE_CASTLE, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, NO_CASTLING, ALL_RIGHTS, ALL_RIGHTS, QUEENSIDE_CASTLE,
+		NO_WHITE_OOO, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, BLACK_BOTH, ALL_RIGHTS, ALL_RIGHTS, NO_WHITE_OO,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
-		KINGSIDE_CASTLE, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, NO_CASTLING, ALL_RIGHTS, ALL_RIGHTS, QUEENSIDE_CASTLE,
+		NO_BLACK_OOO, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, WHITE_BOTH, ALL_RIGHTS, ALL_RIGHTS, NO_BLACK_OO,
+	};
+
+	// Requires providing a kingTo square
+	constexpr Square rookCastlingFromSquares[SQUARE_RANGE]{
+		SQ_A1, SQ_A1, SQ_A1, SQ_A1, INVALID_SQUARE, SQ_H1, SQ_H1, SQ_H1,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		SQ_A8, SQ_A8, SQ_A8, SQ_A8, INVALID_SQUARE, SQ_H8, SQ_H8, SQ_H8,
+	};
+
+	constexpr Square rookCastlingToSquares[SQUARE_RANGE]{
+		SQ_D1, SQ_D1, SQ_D1, SQ_D1, INVALID_SQUARE, SQ_F1, SQ_F1, SQ_F1,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
+		SQ_D8, SQ_D8, SQ_D8, SQ_D8, INVALID_SQUARE, SQ_F8, SQ_F8, SQ_F8,
 	};
 
 	using MoveMaker = void(*)(BoardConfig*, const Move&);
 	const MoveMaker moveHandlers[MOVEMASK_SIZE]{
 		[](BoardConfig* board, const Move& move) {board->normalMove(move); },
 		[](BoardConfig* board, const Move& move) {board->normalMove(move); },
-		[](BoardConfig* board, const Move& move) {board->castle(move, KINGSIDE_CASTLE); },
-		[](BoardConfig* board, const Move& move) {board->castle(move, QUEENSIDE_CASTLE); },
+		[](BoardConfig* board, const Move& move) {board->castle(move); },
+		[](BoardConfig* board, const Move& move) {board->castle(move); },
 		[](BoardConfig* board, const Move& move) {board->normalMove(move); },
 		[](BoardConfig* board, const Move& move) {board->enpassant(move); },
 		[](BoardConfig* board, const Move& move) { },
@@ -108,21 +131,64 @@ void BoardConfig::normalMove(const Move& move)
 	castlingRights &= castlingRightsLoss[from];
 	enpassantFile = move.isDoublePawnPush() ? FILES[fileOf(to)] : 0;
 	halfmoveCount++;
+
+	// ---------- CHECKS & PINS ----------
 }
 
 void BoardConfig::promotion(const Move& move)
 {
+	Square from = move.from();
+	Square to = move.to();
+	Color side = to > from ? WHITE : BLACK;
+	PieceType promotionType = move.promotionType();
 
+	if (move.isCapture())
+		removePiece(to);
+	removePiece(from);
+	placePiece(getPiece(side, promotionType), to);
+
+	sideOnMove = otherSide(sideOnMove);
+	enpassantFile = 0;
+	halfmoveClock = 0;
+	halfmoveCount++;
+
+	// ---------- CHECKS & PINS ----------
 }
 
-void BoardConfig::castle(const Move& move, CastlingRights castleType)
+void BoardConfig::castle(const Move& move)
 {
+	Square kingFrom = move.from();
+	Square kingTo = move.to();
+	Square rookFrom = rookCastlingFromSquares[kingTo];
+	Square rookTo = rookCastlingToSquares[kingTo];
 
+	movePiece(kingFrom, kingTo);
+	movePiece(rookFrom, rookTo);
+
+	sideOnMove = otherSide(sideOnMove);
+	castlingRights &= castlingRightsLoss[kingFrom];
+	enpassantFile = 0;
+	halfmoveClock++;
+	halfmoveCount++;
+
+	// ---------- CHECKS & PINS ----------
 }
 
 void BoardConfig::enpassant(const Move& move)
 {
+	Square from = move.from();
+	Square to = move.to();
+	Square captureSquare = to > from ? Square(to - 8) : Square(to + 8);
 
+	removePiece(captureSquare);
+	movePiece(from, to);
+
+	sideOnMove = otherSide(sideOnMove);
+	enpassantFile = 0;
+	halfmoveClock = 0;
+	halfmoveCount++;
+
+	// ---------- CHECKS & PINS ----------
 }
 
 void BoardConfig::clear()

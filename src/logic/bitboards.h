@@ -28,6 +28,16 @@ constexpr Bitboard ROWS[8]{
 	ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8
 };
 
+constexpr Bitboard NOT_FILE_A = ~FILE_A;
+constexpr Bitboard NOT_FILE_H = ~FILE_H;
+constexpr Bitboard NOT_FILE_AB = ~(FILE_A & FILE_B);
+constexpr Bitboard NOT_FILE_GH = ~(FILE_G & FILE_H);
+constexpr Bitboard NOT_ROW_1 = ~ROW_1;
+constexpr Bitboard NOT_ROW_8 = ~ROW_8;
+constexpr Bitboard NOT_ROW_12 = ~(ROW_1 & ROW_2);
+constexpr Bitboard NOT_ROW_78 = ~(ROW_7 & ROW_8);
+
+
 constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
 constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
@@ -44,7 +54,7 @@ namespace Bitboards {
 
 	std::string bitboardToString(Bitboard bb);
 
-	constexpr inline int popcount(Bitboard x)
+	inline int popcount(Bitboard x)
 	{
 		x = x - ((x >> 1) & POPCOUNT_K1);
 		x = (x & POPCOUNT_K2) + ((x >> 2) & POPCOUNT_K2);
@@ -74,11 +84,53 @@ namespace Bitboards {
 		return _byteswap_uint64(x);
 	}
 
-	constexpr inline Bitboard mirrorHorizontal(Bitboard x)
+	inline Bitboard mirrorHorizontal(Bitboard x)
 	{
 		x = ((x >> 1) & MIRROR_HORIZONTAL_K1) | ((x & MIRROR_HORIZONTAL_K1) << 1);
 		x = ((x >> 2) & MIRROR_HORIZONTAL_K2) | ((x & MIRROR_HORIZONTAL_K2) << 2);
 		x = ((x >> 4) & MIRROR_HORIZONTAL_K4) | ((x & MIRROR_HORIZONTAL_K4) << 4);
 		return x;
+	}
+
+
+	// Chess-specyfic operations and bitboards
+	extern Bitboard PAWN_ATTACKS[COLOR_RANGE][SQUARE_RANGE];
+	extern Bitboard PIECE_ATTACKS[PIECE_TYPE_RANGE][SQUARE_RANGE];
+
+
+	inline Bitboard shift(Bitboard bb, Direction dir)
+	{
+		return dir == NORTH ? bb << 8 : dir == SOUTH ? bb >> 8 :
+			dir == EAST ? (bb & NOT_FILE_H) << 1 : dir == WEST ? (bb & NOT_FILE_A) >> 1 :
+			dir == NORTH_EAST ? (bb & NOT_FILE_H) << 9 : dir == NORTH_WEST ? (bb & NOT_FILE_A) << 7 :
+			dir == SOUTH_EAST ? (bb & NOT_FILE_H) >> 7 : dir == SOUTH_WEST ? (bb & NOT_FILE_A) >> 9 : 0;
+	}
+
+	template <Color side>
+	inline Bitboard pawnAttacks(Bitboard pawnsBB)
+	{
+		Bitboard l = (pawnsBB & NOT_FILE_A) >> 1;
+		Bitboard r = (pawnsBB & NOT_FILE_H) << 1;
+		Bitboard h = l | r;
+		return side == WHITE ? h >> 8 : h << 8;
+	}
+
+	inline Bitboard knightAttacks(Bitboard knightsBB)
+	{
+		Bitboard l1 = (knightsBB & NOT_FILE_A) >> 1;
+		Bitboard l2 = (knightsBB & NOT_FILE_AB) >> 2;
+		Bitboard r1 = (knightsBB & NOT_FILE_H) << 1;
+		Bitboard r2 = (knightsBB & NOT_FILE_GH) << 2;
+		Bitboard h1 = l1 | r1;
+		Bitboard h2 = l2 | r2;
+		return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8);
+	}
+
+	inline Bitboard kingAttacks(Bitboard kingBB)
+	{
+		Bitboard attacks = ((kingBB & NOT_FILE_H) << 1) | ((kingBB & NOT_FILE_A) >> 1);
+		kingBB |= attacks;
+		attacks |= (kingBB << 8) | (kingBB >> 8);
+		return attacks;
 	}
 }

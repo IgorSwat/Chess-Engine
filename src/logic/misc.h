@@ -17,7 +17,7 @@ enum Color : int {
 	COLOR_RANGE = 2
 };
 
-constexpr Color otherSide(Color side)
+constexpr inline Color otherSide(Color side)
 {
 	return Color((~side) & 0x1);
 }
@@ -116,6 +116,19 @@ constexpr inline int rankOf(Square s)
 	return s >> 3;
 }
 
+enum Direction : int {
+	NORTH = 0x1,
+	SOUTH = 0x2,
+	EAST = 0x4,
+	WEST = 0x8,
+
+	NORTH_EAST = NORTH | EAST,
+	SOUTH_EAST = SOUTH | EAST,
+	NORTH_WEST = NORTH | WEST,
+	SOUTH_WEST = SOUTH | WEST
+};
+
+
 
 // ----------------------------------------
 // Castling
@@ -133,6 +146,10 @@ enum CastlingRights : unsigned int {
 	QUEENSIDE_CASTLE = WHITE_OOO | BLACK_OOO,
 	WHITE_BOTH = WHITE_OO | WHITE_OOO,
 	BLACK_BOTH = BLACK_OO | BLACK_OOO,
+	NO_WHITE_OO = WHITE_OOO | BLACK_BOTH,
+	NO_WHITE_OOO = WHITE_OO | BLACK_BOTH,
+	NO_BLACK_OO = WHITE_BOTH | BLACK_OOO,
+	NO_BLACK_OOO = WHITE_BOTH | BLACK_OO,
 	ALL_RIGHTS = WHITE_BOTH | BLACK_BOTH,
 
 	CASTLING_RIGHTS_RANGE = 16

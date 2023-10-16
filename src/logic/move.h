@@ -38,6 +38,7 @@ public:
 	Square to() const;
 	Movemask butterflyIndex() const;
 	Movemask flags() const;
+	PieceType promotionType() const;
 
 	void setFromSquare(Square from);
 	void setToSquare(Square to);
@@ -82,6 +83,11 @@ inline Movemask Move::butterflyIndex() const
 inline Movemask Move::flags() const
 {
 	return m_move >> 12;
+}
+
+inline PieceType Move::promotionType() const
+{
+	return PieceType((flags() & 0x3) + 2);
 }
 
 inline void Move::setFromSquare(Square from)
