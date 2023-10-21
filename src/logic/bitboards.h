@@ -43,6 +43,7 @@ constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
 
 
+// Some general bitwise operations
 namespace Bitboards {
 	constexpr Bitboard POPCOUNT_K1 = 0x5555555555555555;
 	constexpr Bitboard POPCOUNT_K2 = 0x3333333333333333;
@@ -56,11 +57,7 @@ namespace Bitboards {
 
 	inline int popcount(Bitboard x)
 	{
-		x = x - ((x >> 1) & POPCOUNT_K1);
-		x = (x & POPCOUNT_K2) + ((x >> 2) & POPCOUNT_K2);
-		x = (x + (x >> 4)) & POPCOUNT_K4;
-		x = (x * POPCOUNT_KF) >> 56;
-		return static_cast<int>(x);
+		return int(__popcnt64(x));
 	}
 
 	inline Square lsb(Bitboard mask)
@@ -92,12 +89,6 @@ namespace Bitboards {
 		return x;
 	}
 
-
-	// Chess-specyfic operations and bitboards
-	extern Bitboard PAWN_ATTACKS[COLOR_RANGE][SQUARE_RANGE];
-	extern Bitboard PIECE_ATTACKS[PIECE_TYPE_RANGE][SQUARE_RANGE];
-
-
 	inline Bitboard shift(Bitboard bb, Direction dir)
 	{
 		return dir == NORTH ? bb << 8 : dir == SOUTH ? bb >> 8 :
@@ -105,32 +96,15 @@ namespace Bitboards {
 			dir == NORTH_EAST ? (bb & NOT_FILE_H) << 9 : dir == NORTH_WEST ? (bb & NOT_FILE_A) << 7 :
 			dir == SOUTH_EAST ? (bb & NOT_FILE_H) >> 7 : dir == SOUTH_WEST ? (bb & NOT_FILE_A) >> 9 : 0;
 	}
+}
 
-	template <Color side>
-	inline Bitboard pawnAttacks(Bitboard pawnsBB)
-	{
-		Bitboard l = (pawnsBB & NOT_FILE_A) >> 1;
-		Bitboard r = (pawnsBB & NOT_FILE_H) << 1;
-		Bitboard h = l | r;
-		return side == WHITE ? h >> 8 : h << 8;
-	}
 
-	inline Bitboard knightAttacks(Bitboard knightsBB)
-	{
-		Bitboard l1 = (knightsBB & NOT_FILE_A) >> 1;
-		Bitboard l2 = (knightsBB & NOT_FILE_AB) >> 2;
-		Bitboard r1 = (knightsBB & NOT_FILE_H) << 1;
-		Bitboard r2 = (knightsBB & NOT_FILE_GH) << 2;
-		Bitboard h1 = l1 | r1;
-		Bitboard h2 = l2 | r2;
-		return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8);
-	}
+constexpr inline Bitboard fileBBOf(Square s)
+{
+	return FILES[fileOf(s)];
+}
 
-	inline Bitboard kingAttacks(Bitboard kingBB)
-	{
-		Bitboard attacks = ((kingBB & NOT_FILE_H) << 1) | ((kingBB & NOT_FILE_A) >> 1);
-		kingBB |= attacks;
-		attacks |= (kingBB << 8) | (kingBB >> 8);
-		return attacks;
-	}
+constexpr inline Bitboard rankBBOf(Square s)
+{
+	return ROWS[rankOf(s)];
 }
