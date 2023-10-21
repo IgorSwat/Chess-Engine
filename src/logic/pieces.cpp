@@ -100,6 +100,7 @@ namespace Pieces {
 	{
 		Bitboard* occupancies = new Bitboard[MAX_ATTACK_TABLE_SIZE]{};
 		Bitboard* attacks = new Bitboard[MAX_ATTACK_TABLE_SIZE]{};
+		uint64_t* magicsHelper = new uint64_t[MAX_ATTACK_TABLE_SIZE]{};
 		int size = 0;
 		for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
 			Bitboard squareBB = squareToBB(sq);
@@ -125,17 +126,19 @@ namespace Pieces {
 				for (magic = 0; Bitboards::popcount((magic * mask) >> 56) < 6; magic = gen.sparseRandom()) 
 					continue;
 				m.magic = magic;
-				std::fill(m.attacks, m.attacks + size, 0);
-				bool fail = false;
-				for (i = 0; !fail && i < size; i++) {
+				for (i = 0; i < size; i++) {
 					int id = m.index(occupancies[i]);
-					if (m.attacks[id] == 0ULL) m.attacks[id] = attacks[i];
-					else if (m.attacks[id] != attacks[i]) fail = true;
+					if (magicsHelper[id] != magic) {
+						m.attacks[id] = attacks[i];
+						magicsHelper[id] = magic;
+					}
+					else if (m.attacks[id] != attacks[i]) break;
 				}
 			}
 		}
 		delete[] occupancies;
 		delete[] attacks;
+		delete[] magicsHelper;
 	}
 
 	void initAttackTables()

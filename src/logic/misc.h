@@ -106,9 +106,9 @@ inline Square operator++(Square& sq)
 	return sq;
 }
 
-constexpr inline Bitboard squareToBB(Square s)
+inline Square operator+(Square sq, int n)
 {
-	return 1ULL << s;
+	return Square(int(sq) + n);
 }
 
 constexpr inline int fileOf(Square s)
@@ -133,6 +133,14 @@ inline Direction operator++(Direction& dir)
 {
 	dir = Direction(int(dir) + 1);
 	return dir;
+}
+
+inline Direction vectorToDir(int x, int y)
+{
+	return x == 0 ? (y > 0 ? NORTH : SOUTH) :
+		y == 0 ? (x > 0 ? EAST : WEST) :
+		x > 0 ? (y > 0 ? NORTH_EAST : SOUTH_EAST) :
+		y > 0 ? NORTH_WEST : SOUTH_WEST;
 }
 
 

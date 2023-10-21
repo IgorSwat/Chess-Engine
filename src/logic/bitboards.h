@@ -42,8 +42,10 @@ constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
 constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
 
+extern Bitboard PATHS[SQUARE_RANGE][SQUARE_RANGE];	// Paths between each pair of squares mapped to bitboards
 
-// Some general bitwise operations
+
+// Some general bitwise operations	
 namespace Bitboards {
 	constexpr Bitboard POPCOUNT_K1 = 0x5555555555555555;
 	constexpr Bitboard POPCOUNT_K2 = 0x3333333333333333;
@@ -98,6 +100,13 @@ namespace Bitboards {
 	}
 }
 
+
+void initBoardElements();
+
+constexpr inline Bitboard squareToBB(Square s)
+{
+	return 1ULL << s;
+}
 
 constexpr inline Bitboard fileBBOf(Square s)
 {

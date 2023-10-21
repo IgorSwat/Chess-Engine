@@ -7,6 +7,26 @@ namespace Pieces {
 	extern Bitboard PAWN_ATTACKS[COLOR_RANGE][SQUARE_RANGE];
 	extern Bitboard PIECE_ATTACKS[PIECE_TYPE_RANGE][SQUARE_RANGE];	// Contains legal attacks for king / knight & pseudo attacks for sliding pieces
 
+	struct Magic
+	{
+		Bitboard* attacks;
+		Bitboard mask;
+		uint64_t magic;
+		int shift;
+
+		int index(Bitboard bb) const
+		{
+			return int(((bb & mask) * magic) >> shift);
+		}
+	};
+
+	using AttacksCalculator = Bitboard(*)(Bitboard, Square);
+
+	extern Magic ROOK_MAGICS[SQUARE_RANGE];
+	extern Magic BISHOP_MAGICS[SQUARE_RANGE];
+
+	void initAttackTables();
+
 	template <Color side>
 	inline Bitboard pawnAttacks(Bitboard pawnsBB)
 	{
@@ -34,37 +54,6 @@ namespace Pieces {
 		attacks |= (kingBB << 8) | (kingBB >> 8);
 		return attacks;
 	}
-
-
-	Bitboard diagonalAttacks(Bitboard occ, Square sq);
-	Bitboard antidiagonalAttacks(Bitboard occ, Square sq);
-	Bitboard rowAttacks(Bitboard occ, Square sq);
-	Bitboard fileAttacks(Bitboard occ, Square sq);
-	Bitboard rookAttacksCalc(Bitboard occ, Square sq);
-	Bitboard bishopAttacksCalc(Bitboard occ, Square sq);
-	Bitboard queenAttacksCalc(Bitboard occ, Square sq);
-
-
-	struct Magic
-	{
-		Bitboard* attacks;
-		Bitboard mask;
-		uint64_t magic;
-		int shift;
-
-		int index(Bitboard bb) const
-		{
-			return int(((bb & mask) * magic) >> shift);
-		}
-	};
-
-	using AttacksCalculator = Bitboard(*)(Bitboard, Square);
-
-	extern Magic ROOK_MAGICS[SQUARE_RANGE];
-	extern Magic BISHOP_MAGICS[SQUARE_RANGE];
-
-	void initAttackTables();
-
 
 	inline Bitboard bishopAttacks(Bitboard occ, Square sq)
 	{
