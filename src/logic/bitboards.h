@@ -4,6 +4,7 @@
 #include <string>
 #include <cassert>
 
+
 constexpr Bitboard FILE_A = 0x0101010101010101;
 constexpr Bitboard FILE_B = FILE_A << 1;
 constexpr Bitboard FILE_C = FILE_A << 2;
@@ -57,6 +58,11 @@ namespace Bitboards {
 
 	std::string bitboardToString(Bitboard bb);
 
+	inline bool singlePopulated(Bitboard bb)
+	{
+		return bb & (bb - 1);
+	}
+
 	inline int popcount(Bitboard x)
 	{
 		return int(__popcnt64(x));
@@ -76,6 +82,13 @@ namespace Bitboards {
 		unsigned long bitID;
 		_BitScanReverse64(&bitID, mask);
 		return Square(bitID);
+	}
+
+	inline Square popLsb(Bitboard& mask)
+	{
+		Square sq = lsb(mask);
+		mask &= (mask - 1);
+		return sq;
 	}
 
 	inline Bitboard mirrorVertical(Bitboard x)
@@ -103,11 +116,6 @@ namespace Bitboards {
 
 void initBoardElements();
 
-constexpr inline Bitboard squareToBB(Square s)
-{
-	return 1ULL << s;
-}
-
 constexpr inline Bitboard fileBBOf(Square s)
 {
 	return FILES[fileOf(s)];
@@ -116,4 +124,9 @@ constexpr inline Bitboard fileBBOf(Square s)
 constexpr inline Bitboard rankBBOf(Square s)
 {
 	return ROWS[rankOf(s)];
+}
+
+constexpr inline Bitboard pathBetween(Square sq1, Square sq2)
+{
+	return PATHS[sq1][sq2];
 }

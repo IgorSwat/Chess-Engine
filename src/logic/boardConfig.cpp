@@ -88,11 +88,7 @@ void BoardConfig::loadFromFEN(const std::string& fen)
 		else {
 			Square square = Square((7 - i) * 8 + j);
 			Piece piece = pieceFromChar(c);
-			Color side = std::isupper(c) ? WHITE : BLACK;
-			Bitboard bb = 1ULL << square;
-			pieces[piece] |= bb;
-			piecesByColor[side] |= bb;
-			board[square] = piece;
+			placePiece(piece, square);
 			j++;
 		}
 	}
@@ -127,12 +123,15 @@ void BoardConfig::normalMove(const Move& move)
 		halfmoveClock = typeOf(board[from]) == PAWN ? 0 : halfmoveClock + 1;
 	movePiece(from, to);
 
-	sideOnMove = otherSide(sideOnMove);
+	sideOnMove = ~sideOnMove;
 	castlingRights &= castlingRightsLoss[from];
 	enpassantFile = move.isDoublePawnPush() ? FILES[fileOf(to)] : 0;
 	halfmoveCount++;
 
 	// ---------- CHECKS & PINS ----------
+	updateChecks(sideOnMove);
+	updatePins(WHITE);
+	updatePins(BLACK);
 }
 
 void BoardConfig::promotion(const Move& move)
@@ -147,12 +146,15 @@ void BoardConfig::promotion(const Move& move)
 	removePiece(from);
 	placePiece(getPiece(side, promotionType), to);
 
-	sideOnMove = otherSide(sideOnMove);
+	sideOnMove = ~sideOnMove;
 	enpassantFile = 0;
 	halfmoveClock = 0;
 	halfmoveCount++;
 
 	// ---------- CHECKS & PINS ----------
+	updateChecks(sideOnMove);
+	updatePins(WHITE);
+	updatePins(BLACK);
 }
 
 void BoardConfig::castle(const Move& move)
@@ -165,13 +167,16 @@ void BoardConfig::castle(const Move& move)
 	movePiece(kingFrom, kingTo);
 	movePiece(rookFrom, rookTo);
 
-	sideOnMove = otherSide(sideOnMove);
+	sideOnMove = ~sideOnMove;
 	castlingRights &= castlingRightsLoss[kingFrom];
 	enpassantFile = 0;
 	halfmoveClock++;
 	halfmoveCount++;
 
 	// ---------- CHECKS & PINS ----------
+	updateChecks(sideOnMove);
+	updatePins(WHITE);	//
+	updatePins(BLACK);	// TO DO: Is it possible to make it quicker when only rook can cause new pins to enemy?
 }
 
 void BoardConfig::enpassant(const Move& move)
@@ -183,24 +188,31 @@ void BoardConfig::enpassant(const Move& move)
 	removePiece(captureSquare);
 	movePiece(from, to);
 
-	sideOnMove = otherSide(sideOnMove);
+	sideOnMove = ~sideOnMove;
 	enpassantFile = 0;
 	halfmoveClock = 0;
 	halfmoveCount++;
 
 	// ---------- CHECKS & PINS ----------
+	updateChecks(sideOnMove);
+	updatePins(WHITE);
+	updatePins(BLACK);
 }
 
 void BoardConfig::clear()
 {
-	for (int i = 0; i < PIECE_RANGE; i++)
-		pieces[i] = 0;
+	for (int i = 0; i < PIECE_TYPE_RANGE; i++)
+		piecesByType[i] = 0;
 	for (int i = 0; i < COLOR_RANGE; i++)
 		piecesByColor[i] = 0;
 	for (int i = 0; i < SQUARE_RANGE; i++)
 		board[i] = NO_PIECE;
+
 	castlingRights = NO_CASTLING;
 	enpassantFile = 0;
+
+	checkers = 0;
+
 	halfmoveCount = 0;
 	halfmoveClock = 0;
 }

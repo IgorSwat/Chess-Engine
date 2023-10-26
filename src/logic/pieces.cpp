@@ -28,7 +28,7 @@ namespace Pieces {
 	}
 
 	template <Direction dir>
-	Bitboard positiveRayAttacks(Bitboard occ, Square sq)
+	Bitboard positiveRayAttacks(Square sq, Bitboard occ)
 	{
 		Bitboard attacks = RAY_ATTACKS[sq][dir];
 		Bitboard blockers = attacks & occ;
@@ -38,7 +38,7 @@ namespace Pieces {
 	}
 
 	template <Direction dir>
-	Bitboard negativeRayAttacks(Bitboard occ, Square sq)
+	Bitboard negativeRayAttacks(Square sq, Bitboard occ)
 	{
 		Bitboard attacks = RAY_ATTACKS[sq][dir];
 		Bitboard blockers = attacks & occ;
@@ -47,24 +47,24 @@ namespace Pieces {
 		return attacks ^ RAY_ATTACKS[blockerSquare][dir];
 	}
 
-	Bitboard diagonalAttacks(Bitboard occ, Square sq)
+	Bitboard diagonalAttacks(Square sq, Bitboard occ)
 	{
-		return positiveRayAttacks<NORTH_EAST>(occ, sq) | negativeRayAttacks<SOUTH_WEST>(occ, sq);
+		return positiveRayAttacks<NORTH_EAST>(sq, occ) | negativeRayAttacks<SOUTH_WEST>(sq, occ);
 	}
 
-	Bitboard antidiagonalAttacks(Bitboard occ, Square sq)
+	Bitboard antidiagonalAttacks(Square sq, Bitboard occ)
 	{
-		return positiveRayAttacks<NORTH_WEST>(occ, sq) | negativeRayAttacks<SOUTH_EAST>(occ, sq);
+		return positiveRayAttacks<NORTH_WEST>(sq, occ) | negativeRayAttacks<SOUTH_EAST>(sq, occ);
 	}
 
-	Bitboard rowAttacks(Bitboard occ, Square sq)
+	Bitboard rowAttacks(Square sq, Bitboard occ)
 	{
-		return positiveRayAttacks<EAST>(occ, sq) | negativeRayAttacks<WEST>(occ, sq);
+		return positiveRayAttacks<EAST>(sq, occ) | negativeRayAttacks<WEST>(sq, occ);
 	}
 
-	Bitboard fileAttacks(Bitboard occ, Square sq)
+	Bitboard fileAttacks(Square sq, Bitboard occ)
 	{
-		return positiveRayAttacks<NORTH>(occ, sq) | negativeRayAttacks<SOUTH>(occ, sq);
+		return positiveRayAttacks<NORTH>(sq, occ) | negativeRayAttacks<SOUTH>(sq, occ);
 	}
 
 
@@ -72,19 +72,19 @@ namespace Pieces {
 	// Sliding piece attacks by calculation - Classical Method
 	// -------------------------------------------------------
 
-	Bitboard rookAttacksCalc(Bitboard occ, Square sq)
+	Bitboard rookAttacksCalc(Square sq, Bitboard occ)
 	{
-		return rowAttacks(occ, sq) | fileAttacks(occ, sq);
+		return rowAttacks(sq, occ) | fileAttacks(sq, occ);
 	}
 
-	Bitboard bishopAttacksCalc(Bitboard occ, Square sq)
+	Bitboard bishopAttacksCalc(Square sq, Bitboard occ)
 	{
-		return diagonalAttacks(occ, sq) | antidiagonalAttacks(occ, sq);
+		return diagonalAttacks(sq, occ) | antidiagonalAttacks(sq, occ);
 	}
 
-	Bitboard queenAttacksCalc(Bitboard occ, Square sq)
+	Bitboard queenAttacksCalc(Square sq, Bitboard occ)
 	{
-		return rookAttacksCalc(occ, sq) | bishopAttacksCalc(occ, sq);
+		return rookAttacksCalc(sq, occ) | bishopAttacksCalc(sq, occ);
 	}
 
 
@@ -105,7 +105,7 @@ namespace Pieces {
 		for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
 			Bitboard squareBB = squareToBB(sq);
 			Bitboard edges = ((ROW_1 | ROW_8) & ~rankBBOf(sq)) | ((FILE_A | FILE_H) & ~fileBBOf(sq));
-			Bitboard mask = attacksCalc(0, sq) & ~edges;
+			Bitboard mask = attacksCalc(sq, 0) & ~edges;
 			Magic& m = magics[sq];
 			m.mask = mask;
 			m.shift = 64 - Bitboards::popcount(m.mask);
@@ -115,7 +115,7 @@ namespace Pieces {
 			Bitboard bb = 0;
 			do {
 				occupancies[size] = bb;
-				attacks[size] = attacksCalc(bb, sq);
+				attacks[size] = attacksCalc(sq, bb);
 				bb = (bb - mask) & mask;
 				size++;
 			} while (bb != 0);
@@ -152,9 +152,9 @@ namespace Pieces {
 			PAWN_ATTACKS[BLACK][sq] = pawnAttacks<BLACK>(squareBB);
 			PIECE_ATTACKS[KNIGHT][sq] = knightAttacks(squareBB);
 			PIECE_ATTACKS[KING][sq] = kingAttacks(squareBB);
-			PIECE_ATTACKS[BISHOP][sq] = bishopAttacksCalc(0, sq);
-			PIECE_ATTACKS[ROOK][sq] = rookAttacksCalc(0, sq);
-			PIECE_ATTACKS[QUEEN][sq] = queenAttacksCalc(0, sq);
+			PIECE_ATTACKS[BISHOP][sq] = bishopAttacksCalc(sq, 0);
+			PIECE_ATTACKS[ROOK][sq] = rookAttacksCalc(sq, 0);
+			PIECE_ATTACKS[QUEEN][sq] = queenAttacksCalc(sq, 0);
 		}
 	}
 }

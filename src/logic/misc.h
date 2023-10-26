@@ -17,15 +17,16 @@ enum Color : int {
 	COLOR_RANGE = 2
 };
 
-constexpr inline Color otherSide(Color side)
+inline Color operator~(Color side)
 {
-	return Color((~side) & 0x1);
+	return Color(side ^ BLACK);
 }
 
 enum PieceType : int {
 	INVALID_PIECE_TYPE = 0,
 
 	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
+	ALL_PIECES,
 
 	PIECE_TYPE_RANGE = 8
 };
@@ -119,6 +120,11 @@ constexpr inline int fileOf(Square s)
 constexpr inline int rankOf(Square s)
 {
 	return s >> 3;
+}
+
+constexpr inline Bitboard squareToBB(Square s)
+{
+	return 1ULL << s;
 }
 
 enum Direction : int {

@@ -20,7 +20,7 @@ namespace Pieces {
 		}
 	};
 
-	using AttacksCalculator = Bitboard(*)(Bitboard, Square);
+	using AttacksCalculator = Bitboard(*)(Square, Bitboard);
 
 	extern Magic ROOK_MAGICS[SQUARE_RANGE];
 	extern Magic BISHOP_MAGICS[SQUARE_RANGE];
@@ -55,29 +55,58 @@ namespace Pieces {
 		return attacks;
 	}
 
-	inline Bitboard bishopAttacks(Bitboard occ, Square sq)
+	inline Bitboard pawnAttacks(Color side, Square sq)
+	{
+		return PAWN_ATTACKS[side][sq];
+	}
+
+	inline Bitboard knightAttacks(Square sq)
+	{
+		return PIECE_ATTACKS[KNIGHT][sq];
+	}
+
+	inline Bitboard kingAttacks(Square sq)
+	{
+		return PIECE_ATTACKS[KING][sq];
+	}
+
+	inline Bitboard bishopAttacks(Square sq, Bitboard occ)
 	{
 		Magic& m = BISHOP_MAGICS[sq];
 		return m.attacks[m.index(occ)];
 	}
 
-	inline Bitboard rookAttacks(Bitboard occ, Square sq)
+	inline Bitboard rookAttacks(Square sq, Bitboard occ)
 	{
 		Magic& m = ROOK_MAGICS[sq];
 		return m.attacks[m.index(occ)];
 	}
 
-	inline Bitboard queenAttacks(Bitboard occ, Square sq)
+	inline Bitboard queenAttacks(Square sq, Bitboard occ)
 	{
-		return bishopAttacks(occ, sq) | rookAttacks(occ, sq);
+		return bishopAttacks(sq, occ) | rookAttacks(sq, occ);
 	}
 
-	inline Bitboard pieceAttacks(PieceType piece, Bitboard occ, Square sq)
+	inline Bitboard pieceAttacks(PieceType piece, Square sq, Bitboard occ)
 	{
-		return piece == KNIGHT ? PIECE_ATTACKS[KNIGHT][sq] :
-			piece == BISHOP ? bishopAttacks(occ, sq) :
-			piece == ROOK ? rookAttacks(occ, sq) :
-			piece == QUEEN ? queenAttacks(occ, sq) :
-			piece == KING ? PIECE_ATTACKS[KING][sq] : 0;
+		return piece == KNIGHT ? knightAttacks(sq) :
+			piece == BISHOP ? bishopAttacks(sq, occ) :
+			piece == ROOK ? rookAttacks(sq, occ) :
+			piece == QUEEN ? queenAttacks(sq, occ) :
+			piece == KING ? kingAttacks(sq) : 0;
+	}
+
+	inline Bitboard xRayRookAttacks(Square sq, Bitboard occ, Bitboard blockers)	// By default blockers = own pieces
+	{
+		Bitboard attacks = rookAttacks(sq, occ);
+		blockers &= attacks;
+		return attacks ^ rookAttacks(sq, occ ^ blockers);
+	}
+
+	inline Bitboard xRayBishopAttacks(Square sq, Bitboard occ, Bitboard blockers)
+	{
+		Bitboard attacks = bishopAttacks(sq, occ);
+		blockers &= attacks;
+		return attacks ^ bishopAttacks(sq, occ ^ blockers);
 	}
 }
