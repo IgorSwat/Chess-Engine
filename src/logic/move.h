@@ -15,7 +15,7 @@ constexpr Movemask PROMOTION_FLAG = 0x8;
 constexpr Movemask EXTENDED_PROMOTION_FLAG = 0x8000;
 
 constexpr Movemask QUIET_MOVE = 0x0;
-constexpr Movemask DOULBLE_PAWN_PUSH_FLAG = 0x1;
+constexpr Movemask DOUBLE_PAWN_PUSH_FLAG = 0x1;
 constexpr Movemask ENPASSANT_FLAG = 0x5;
 constexpr Movemask KINGSIDE_CASTLE_FLAG = 0x2;
 constexpr Movemask QUEENSIDE_CASTLE_FLAG = 0x3;
@@ -44,7 +44,10 @@ public:
 	void setToSquare(Square to);
 
 	bool isCapture() const;
+	bool isPromotion() const;
 	bool isDoublePawnPush() const;
+	bool isEnpassant() const;
+	bool isCastle() const;
 
 	friend bool operator==(const Move& m1, const Move& m2);
 	friend bool operator!=(const Move& m1, const Move& m2);
@@ -53,6 +56,8 @@ public:
 private:
 	Movemask m_move = 0;
 };
+
+const Move NULL_MOVE = Move(SQ_A1, SQ_A1, 0);
 
 
 
@@ -104,12 +109,28 @@ inline void Move::setToSquare(Square to)
 
 inline bool Move::isCapture() const
 {
-	return (m_move & EXTENDED_CAPTURE_FLAG) != 0;
+	return m_move & EXTENDED_CAPTURE_FLAG;
+}
+
+inline bool Move::isPromotion() const
+{
+	return m_move & EXTENDED_PROMOTION_FLAG;
 }
 
 inline bool Move::isDoublePawnPush() const
 {
-	return flags() == DOULBLE_PAWN_PUSH_FLAG;
+	return flags() == DOUBLE_PAWN_PUSH_FLAG;
+}
+
+inline bool Move::isEnpassant() const
+{
+	return flags() == ENPASSANT_FLAG;
+}
+
+inline bool Move::isCastle() const
+{
+	Movemask mask = flags();
+	return mask == KINGSIDE_CASTLE || mask == QUEENSIDE_CASTLE;
 }
 
 inline bool operator==(const Move & m1, const Move & m2)

@@ -9,7 +9,9 @@ namespace Testing {
 	void testXRayAttacks();
 
 	// BoardConfig tests
+	void staticLoadingTest();
 	void pinsAndChecksBoardconfigTestRuySteinitz();
+	void castlingRightsAndEnPassantTest();
 }
 
 using TestingFunction = std::function<void(void)>;

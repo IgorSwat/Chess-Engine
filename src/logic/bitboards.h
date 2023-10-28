@@ -116,6 +116,16 @@ namespace Bitboards {
 
 void initBoardElements();
 
+constexpr inline Bitboard fileBB(int file)
+{
+	return FILES[file];
+}
+
+constexpr inline Bitboard rankBB(int rank)
+{
+	return ROWS[rank];
+}
+
 constexpr inline Bitboard fileBBOf(Square s)
 {
 	return FILES[fileOf(s)];

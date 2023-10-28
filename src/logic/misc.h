@@ -112,6 +112,11 @@ inline Square operator+(Square sq, int n)
 	return Square(int(sq) + n);
 }
 
+inline Square operator-(Square sq, int n)
+{
+	return Square(int(sq) - n);
+}
+
 constexpr inline int fileOf(Square s)
 {
 	return s & 0x7;
@@ -125,6 +130,12 @@ constexpr inline int rankOf(Square s)
 constexpr inline Bitboard squareToBB(Square s)
 {
 	return 1ULL << s;
+}
+
+constexpr inline Square getSquare(int rank, int file)
+{
+	// We assume that 0 <= rank < 8 and 0 <= file < 8
+	return Square((rank << 3) | file);
 }
 
 enum Direction : int {
