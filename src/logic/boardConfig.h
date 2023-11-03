@@ -56,6 +56,7 @@ public:
 	Bitboard pieces(PieceType ptype, PieceTypes... types) const;
 	template <typename... PieceTypes>
 	Bitboard pieces(Color side, PieceTypes... types) const;
+	Square kingPosition(Color side) const;
 
 	// Square-centric operations
 	Piece onSquare(Square sq) const;
@@ -71,7 +72,12 @@ public:
 	Bitboard pinnedPieces(Color side) const;	// Returns the pinned pieces of given color.
 	Bitboard pinningPieces(Color side) const;	// Returns the pieces of opposite color pinning pieces of given color.
 
-	// Move-counting issues
+	// Move attributes checks
+	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator
+	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source
+
+	// Move-counting issues & others
+	Color movingSide() const;
 	int halfmovesPlain() const;
 	int halfmovesClocked() const;
 	int moves() const;
@@ -126,6 +132,11 @@ inline Bitboard BoardConfig::pieces(Color side, PieceTypes... types) const
 	return pieces(side) & pieces(types...);
 }
 
+inline Square BoardConfig::kingPosition(Color side) const
+{
+	return kingSquare[side];
+}
+
 inline Piece BoardConfig::onSquare(Square sq) const
 {
 	return board[sq];
@@ -161,6 +172,11 @@ inline Bitboard BoardConfig::pinningPieces(Color side) const
 	return posInfo->pinners[side];
 }
 
+inline Color BoardConfig::movingSide() const
+{
+	return sideOnMove;
+}
+
 inline int BoardConfig::halfmovesPlain() const
 {
 	return halfmoveCount;
@@ -183,6 +199,7 @@ inline void BoardConfig::pushStateList(const Move& lastMove)
 		posInfo->next->prev = posInfo;
 	}
 	posInfo = posInfo->next;
+	posInfo->lastMove = lastMove;
 }
 
 inline void BoardConfig::placePiece(Piece piece, Square square)
@@ -201,7 +218,7 @@ inline void BoardConfig::removePiece(Square square)
 {
 	Piece piece = board[square];
 	Bitboard squareBB = squareToBB(square);
-	board[square] = piece;
+	board[square] = NO_PIECE;
 	piecesByColor[colorOf(piece)] ^= squareBB;
 	piecesByType[typeOf(piece)] ^= squareBB;
 	piecesByType[ALL_PIECES] ^= squareBB;

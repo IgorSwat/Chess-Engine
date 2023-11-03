@@ -14,7 +14,7 @@ constexpr Movemask EXTENDED_CAPTURE_FLAG = 0x4000;
 constexpr Movemask PROMOTION_FLAG = 0x8;
 constexpr Movemask EXTENDED_PROMOTION_FLAG = 0x8000;
 
-constexpr Movemask QUIET_MOVE = 0x0;
+constexpr Movemask QUIET_MOVE_FLAG = 0x0;
 constexpr Movemask DOUBLE_PAWN_PUSH_FLAG = 0x1;
 constexpr Movemask ENPASSANT_FLAG = 0x5;
 constexpr Movemask KINGSIDE_CASTLE_FLAG = 0x2;
@@ -23,6 +23,19 @@ constexpr Movemask KNIGHT_PROMOTION_FLAG = 0x8;
 constexpr Movemask BISHOP_PROMOTION_FLAG = 0x9;
 constexpr Movemask ROOK_PROMOTION_FLAG = 0xa;
 constexpr Movemask QUEEN_PROMOTION_FLAG = 0xb;
+
+
+
+enum MoveType
+{
+	NORMAL_MOVE = 0, PROMOTION, CASTLE, ENPASSANT
+};
+
+constexpr MoveType MOVES_BY_FLAG[16]{
+	NORMAL_MOVE, NORMAL_MOVE, CASTLE, CASTLE, NORMAL_MOVE, ENPASSANT, NORMAL_MOVE, NORMAL_MOVE,
+	PROMOTION, PROMOTION, PROMOTION, PROMOTION, PROMOTION, PROMOTION, PROMOTION, PROMOTION
+};
+
 
 
 // WARNING! 
@@ -43,6 +56,7 @@ public:
 	void setFromSquare(Square from);
 	void setToSquare(Square to);
 
+	MoveType type() const;
 	bool isCapture() const;
 	bool isPromotion() const;
 	bool isDoublePawnPush() const;
@@ -107,6 +121,11 @@ inline void Move::setToSquare(Square to)
 	m_move |= (static_cast<Movemask>(to) << 6);
 }
 
+inline MoveType Move::type() const
+{
+	return MOVES_BY_FLAG[flags()];
+}
+
 inline bool Move::isCapture() const
 {
 	return m_move & EXTENDED_CAPTURE_FLAG;
@@ -130,7 +149,7 @@ inline bool Move::isEnpassant() const
 inline bool Move::isCastle() const
 {
 	Movemask mask = flags();
-	return mask == KINGSIDE_CASTLE || mask == QUEENSIDE_CASTLE;
+	return mask == KINGSIDE_CASTLE_FLAG || mask == QUEENSIDE_CASTLE_FLAG;
 }
 
 inline bool operator==(const Move & m1, const Move & m2)

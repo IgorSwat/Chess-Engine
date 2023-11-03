@@ -33,7 +33,7 @@ namespace Pieces {
 		Bitboard l = (pawnsBB & NOT_FILE_A) >> 1;
 		Bitboard r = (pawnsBB & NOT_FILE_H) << 1;
 		Bitboard h = l | r;
-		return side == WHITE ? h >> 8 : h << 8;
+		return side == WHITE ? h << 8 : h >> 8;
 	}
 
 	inline Bitboard knightAttacks(Bitboard knightsBB)
@@ -108,5 +108,10 @@ namespace Pieces {
 		Bitboard attacks = bishopAttacks(sq, occ);
 		blockers &= attacks;
 		return attacks ^ bishopAttacks(sq, occ ^ blockers);
+	}
+
+	constexpr inline bool inPieceDistance(PieceType type, Square sq1, Square sq2)
+	{
+		return pieceAttacks(type, sq1, 0) & sq2;
 	}
 }

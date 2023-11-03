@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include "boardConfig.h"
 #include <cctype>
 #include <sstream>
@@ -8,7 +9,7 @@
 namespace {
 	const std::string STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-	constexpr CastlingRights castlingRightsLoss[SQUARE_RANGE]{
+	constexpr CastlingRights castlingRightsLoss[SQUARE_RANGE] = {
 		NO_WHITE_OOO, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, BLACK_BOTH, ALL_RIGHTS, ALL_RIGHTS, NO_WHITE_OO,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
@@ -20,7 +21,7 @@ namespace {
 	};
 
 	// Requires providing a kingTo square
-	constexpr Square rookCastlingFromSquares[SQUARE_RANGE]{
+	constexpr Square rookCastlingFromSquares[SQUARE_RANGE] = {
 		SQ_A1, SQ_A1, SQ_A1, SQ_A1, INVALID_SQUARE, SQ_H1, SQ_H1, SQ_H1,
 		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
 		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
@@ -31,7 +32,7 @@ namespace {
 		SQ_A8, SQ_A8, SQ_A8, SQ_A8, INVALID_SQUARE, SQ_H8, SQ_H8, SQ_H8,
 	};
 
-	constexpr Square rookCastlingToSquares[SQUARE_RANGE]{
+	constexpr Square rookCastlingToSquares[SQUARE_RANGE] = {
 		SQ_D1, SQ_D1, SQ_D1, SQ_D1, INVALID_SQUARE, SQ_F1, SQ_F1, SQ_F1,
 		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
 		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
@@ -42,26 +43,10 @@ namespace {
 		SQ_D8, SQ_D8, SQ_D8, SQ_D8, INVALID_SQUARE, SQ_F8, SQ_F8, SQ_F8,
 	};
 
-	using MoveMaker = void(*)(BoardConfig*, const Move&);
-	const MoveMaker moveHandlers[MOVEMASK_SIZE]{
-		[](BoardConfig* board, const Move& move) {board->normalMove(move); },
-		[](BoardConfig* board, const Move& move) {board->normalMove(move); },
-		[](BoardConfig* board, const Move& move) {board->castle(move); },
-		[](BoardConfig* board, const Move& move) {board->castle(move); },
-		[](BoardConfig* board, const Move& move) {board->normalMove(move); },
-		[](BoardConfig* board, const Move& move) {board->enpassant(move); },
-		[](BoardConfig* board, const Move& move) { },
-		[](BoardConfig* board, const Move& move) { },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); },
-		[](BoardConfig* board, const Move& move) {board->promotion(move); }
+	constexpr Bitboard kingCastlingPaths[CASTLING_RIGHTS_RANGE] = {
+		0,0x0000000000000060, 0x000000000000000c, 0, 0x6000000000000000, 0, 0, 0,
+		0x0c00000000000000, 0, 0, 0, 0, 0, 0, 0
 	};
-
 }
 
 
@@ -156,7 +141,24 @@ void BoardConfig::loadFromConfig(const BoardConfig& other)
 
 void BoardConfig::makeMove(const Move& move)
 {
-	moveHandlers[move.flags()](this, move);
+	MoveType moveType = move.type();
+
+	switch (moveType) {
+	case NORMAL_MOVE:
+		normalMove(move);
+		break;
+	case PROMOTION:
+		promotion(move);
+		break;
+	case CASTLE:
+		castle(move);
+		break;
+	case ENPASSANT:
+		enpassant(move);
+		break;
+	}
+	system("cls");
+	std::cout << (*this) << std::endl;
 }
 
 void BoardConfig::normalMove(const Move& move)
@@ -242,11 +244,12 @@ void BoardConfig::enpassant(const Move& move)
 {
 	Square from = move.from();
 	Square to = move.to();
+	Square captureSquare = posInfo->enpassantSquare;
 
 	pushStateList(move);
 
-	posInfo->capturedPiece = board[to];
-	removePiece(posInfo->prev->enpassantSquare);
+	posInfo->capturedPiece = board[captureSquare];
+	removePiece(captureSquare);
 	movePiece(from, to);
 
 	sideOnMove = ~sideOnMove;
@@ -269,31 +272,37 @@ void BoardConfig::undoLastMove()
 	const Move& lastMove = posInfo->lastMove;
 	Square from = lastMove.from();	// Now it becomes "to" square
 	Square to = lastMove.to();	// Now it becomes "from" square
+	MoveType moveType = lastMove.type();
 
 	sideOnMove = ~sideOnMove;
 
-	if (lastMove.isPromotion()) {
+	switch (moveType) {
+	case NORMAL_MOVE:
+		movePiece(to, from);
+		if (lastMove.isCapture())
+			placePiece(posInfo->capturedPiece, to);
+		break;
+	case PROMOTION:
 		removePiece(to);
 		if (lastMove.isCapture())
 			placePiece(posInfo->capturedPiece, to);
 		placePiece(getPiece(sideOnMove, PAWN), from);
-	}
-	else if (lastMove.isEnpassant()) {
-		movePiece(to, from);
-		placePiece(posInfo->capturedPiece, posInfo->prev->enpassantSquare);
-	}
-	else if (lastMove.isCastle()) {
+		break;
+	case CASTLE:
 		movePiece(to, from);	// King
 		movePiece(rookCastlingToSquares[to], rookCastlingFromSquares[to]);	// Rook
-	}
-	else {
+		break;
+	case ENPASSANT:
 		movePiece(to, from);
-		if (lastMove.isCapture())
-			placePiece(posInfo->capturedPiece, to);
+		placePiece(posInfo->capturedPiece, posInfo->prev->enpassantSquare);
+		break;
 	}
 
 	halfmoveCount--;
 	posInfo = posInfo->prev;
+
+	system("cls");
+	std::cout << (*this) << std::endl;
 }
 
 void BoardConfig::clear()
@@ -319,11 +328,49 @@ void BoardConfig::clear()
 
 Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) const
 {
-	return (Pieces::pawnAttacks(~side, sq) & pieces(side, PAWN)) |
-		(Pieces::knightAttacks(sq) & pieces(side, KNIGHT)) |
-		(Pieces::bishopAttacks(sq, occ) & pieces(side, BISHOP, QUEEN)) |
-		(Pieces::rookAttacks(sq, occ) & pieces(side, ROOK, QUEEN)) |
-		(Pieces::kingAttacks(sq) & pieces(side, KING));
+	Bitboard result = (Pieces::pawnAttacks(~side, sq) & pieces(PAWN)) |
+		(Pieces::knightAttacks(sq) & pieces(KNIGHT)) |
+		(Pieces::bishopAttacks(sq, occ) & pieces(BISHOP, QUEEN)) |
+		(Pieces::rookAttacks(sq, occ) & pieces(ROOK, QUEEN)) |
+		(Pieces::kingAttacks(sq) & pieces(KING));
+	return result & pieces(side);
+}
+
+bool BoardConfig::legalityCheckFull(const Move& move) const
+{
+	Square from = move.from();
+	Square to = move.to();
+	Piece piece = board[from];
+	Color side = colorOf(piece);
+	if (pieces(side) & to) return false;	// Target square cannot be already occupied by friendly piece
+
+	if (move.isEnpassant()) {
+		if (!(adjacentRankSquares(enpassantSquare()) & from) || fileOf(enpassantSquare()) != fileOf(to)) return false;
+		Square kingSq = kingSquare[side];
+		Bitboard occ = pieces() ^ enpassantSquare() ^ from;
+		return !attackersToSquare(kingSq, ~side, occ);
+	}
+
+	if (move.isCastle()) {
+		int castleType = to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE;
+		castleType &= side == WHITE ? WHITE_BOTH : BLACK_BOTH;
+		if (!hasCastlingRight(CastlingRights(castleType))) return false;
+		if (kingCastlingPaths[castleType] & pieces()) return false;
+		Direction dir = (castleType & KINGSIDE_CASTLE) ? EAST : WEST;
+		Color enemy = ~side;
+		return attackersToSquare(from + dir, enemy, pieces()) == 0 &&
+			attackersToSquare(to, enemy, pieces()) == 0 && !isInCheck(side);
+	}
+
+	if (typeOf(piece) == KING)
+		return !attackersToSquare(to, ~side, pieces() ^ from);	// The "to" square cannot be in check after king move
+
+	// Handle any other moves
+	Square kingSq = kingSquare[side];
+	if (checkingPieces() && !Bitboards::isSinglePopulated(checkingPieces())) return false;			// Double check blocks any other pieces than king
+	if (checkingPieces() && !aligned(kingSq, Bitboards::lsb(checkingPieces()), to)) return false;	
+	Bitboard between = pathBetween(from, to) & (~from) & (~to);
+	return !(between & pieces()) && (!(pinnedPieces(side) & from) || aligned(kingSq, to, from));
 }
 
 void BoardConfig::updatePins(Color side)
@@ -338,7 +385,7 @@ void BoardConfig::updatePins(Color side)
 		Square sq = Bitboards::popLsb(pinnersTmp);
 		posInfo->pinned[side] |= (pathBetween(kingSq, sq) & pieces(side));
 	}
-	posInfo->pinned[side] &= ~squareToBB(kingSq);	// Only if PATHS[sq1][sq2] contains sq1 and sq2
+	posInfo->pinned[side] &= ~kingSq;	// Only if PATHS[sq1][sq2] contains sq1 and sq2
 }
 
 std::ostream& operator<<(std::ostream& os, const BoardConfig& board)

@@ -87,7 +87,11 @@ constexpr inline PieceType typeOf(Piece piece)
 // Squares & board
 // ----------------------------------------
 
-enum Square : unsigned int {
+enum File : int {
+	A_FILE = 0, B_FILE, C_FILE, D_FILE, E_FILE, F_FILE, G_FILE, H_FILE
+};
+
+enum Square : int {
 	SQ_A1 = 0, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
 	SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
 	SQ_A3, SQ_B3, SQ_C3, SQ_D3, SQ_E3, SQ_F3, SQ_G3, SQ_H3,
@@ -98,7 +102,8 @@ enum Square : unsigned int {
 	SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
 	INVALID_SQUARE = 64,
 
-	SQUARE_RANGE = 64
+	SQUARE_RANGE = 64,
+	EXTENDED_SQUARE_RANGE = 65
 };
 
 inline Square operator++(Square& sq) 
@@ -117,9 +122,9 @@ inline Square operator-(Square sq, int n)
 	return Square(int(sq) - n);
 }
 
-constexpr inline int fileOf(Square s)
+constexpr inline File fileOf(Square s)
 {
-	return s & 0x7;
+	return File(s & 0x7);
 }
 
 constexpr inline int rankOf(Square s)
@@ -136,6 +141,27 @@ constexpr inline Square getSquare(int rank, int file)
 {
 	// We assume that 0 <= rank < 8 and 0 <= file < 8
 	return Square((rank << 3) | file);
+}
+
+// Operators for bitboard-square interactions
+constexpr inline Bitboard operator~(Square sq)
+{
+	return ~squareToBB(sq);
+}
+
+constexpr inline Bitboard operator&(Bitboard bb, Square sq)
+{
+	return bb & squareToBB(sq);
+}
+
+constexpr inline Bitboard operator|(Bitboard bb, Square sq)
+{
+	return bb | squareToBB(sq);
+}
+
+constexpr inline Bitboard operator^(Bitboard bb, Square sq)
+{
+	return bb ^ squareToBB(sq);
 }
 
 enum Direction : int {
@@ -160,13 +186,22 @@ inline Direction vectorToDir(int x, int y)
 		y > 0 ? NORTH_WEST : SOUTH_WEST;
 }
 
+constexpr int DIRECTION_SHIFTS[DIRECTION_RANGE] = {
+	-1, -9, -8, -7, 1, 9, 8, 7
+};
+
+inline Square operator+(Square sq, Direction dir)
+{
+	return sq + DIRECTION_SHIFTS[dir];
+}
+
 
 
 // ----------------------------------------
 // Castling
 // ----------------------------------------
 
-enum CastlingRights : unsigned int {
+enum CastlingRights : int {
 	NO_CASTLING = 0,
 
 	WHITE_OO = 1,
@@ -194,3 +229,5 @@ inline CastlingRights castlingRightsFromChar(char c)
 		c == 'k' ? BLACK_OO :
 		c == 'q' ? BLACK_OOO : NO_CASTLING;
 }
+
+using CastleType = CastlingRights;

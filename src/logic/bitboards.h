@@ -1,49 +1,8 @@
 #pragma once
 
-#include "misc.h"
+#include "boardElements.h"
 #include <string>
 #include <cassert>
-
-
-constexpr Bitboard FILE_A = 0x0101010101010101;
-constexpr Bitboard FILE_B = FILE_A << 1;
-constexpr Bitboard FILE_C = FILE_A << 2;
-constexpr Bitboard FILE_D = FILE_A << 3;
-constexpr Bitboard FILE_E = FILE_A << 4;
-constexpr Bitboard FILE_F = FILE_A << 5;
-constexpr Bitboard FILE_G = FILE_A << 6;
-constexpr Bitboard FILE_H = FILE_A << 7;
-constexpr Bitboard FILES[8]{
-	FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H
-};
-
-constexpr Bitboard ROW_1 = 0xFF;
-constexpr Bitboard ROW_2 = ROW_1 << (8 * 1);
-constexpr Bitboard ROW_3 = ROW_1 << (8 * 2);
-constexpr Bitboard ROW_4 = ROW_1 << (8 * 3);
-constexpr Bitboard ROW_5 = ROW_1 << (8 * 4);
-constexpr Bitboard ROW_6 = ROW_1 << (8 * 5);
-constexpr Bitboard ROW_7 = ROW_1 << (8 * 6);
-constexpr Bitboard ROW_8 = ROW_1 << (8 * 7);
-constexpr Bitboard ROWS[8]{
-	ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8
-};
-
-constexpr Bitboard NOT_FILE_A = ~FILE_A;
-constexpr Bitboard NOT_FILE_H = ~FILE_H;
-constexpr Bitboard NOT_FILE_AB = ~(FILE_A & FILE_B);
-constexpr Bitboard NOT_FILE_GH = ~(FILE_G & FILE_H);
-constexpr Bitboard NOT_ROW_1 = ~ROW_1;
-constexpr Bitboard NOT_ROW_8 = ~ROW_8;
-constexpr Bitboard NOT_ROW_12 = ~(ROW_1 & ROW_2);
-constexpr Bitboard NOT_ROW_78 = ~(ROW_7 & ROW_8);
-
-
-constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
-constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
-
-
-extern Bitboard PATHS[SQUARE_RANGE][SQUARE_RANGE];	// Paths between each pair of squares mapped to bitboards
 
 
 // Some general bitwise operations	
@@ -58,9 +17,9 @@ namespace Bitboards {
 
 	std::string bitboardToString(Bitboard bb);
 
-	inline bool singlePopulated(Bitboard bb)
+	inline bool isSinglePopulated(Bitboard bb)
 	{
-		return bb & (bb - 1);
+		return !(bb & (bb - 1));
 	}
 
 	inline int popcount(Bitboard x)
@@ -111,32 +70,4 @@ namespace Bitboards {
 			dir == NORTH_EAST ? (bb & NOT_FILE_H) << 9 : dir == NORTH_WEST ? (bb & NOT_FILE_A) << 7 :
 			dir == SOUTH_EAST ? (bb & NOT_FILE_H) >> 7 : dir == SOUTH_WEST ? (bb & NOT_FILE_A) >> 9 : 0;
 	}
-}
-
-
-void initBoardElements();
-
-constexpr inline Bitboard fileBB(int file)
-{
-	return FILES[file];
-}
-
-constexpr inline Bitboard rankBB(int rank)
-{
-	return ROWS[rank];
-}
-
-constexpr inline Bitboard fileBBOf(Square s)
-{
-	return FILES[fileOf(s)];
-}
-
-constexpr inline Bitboard rankBBOf(Square s)
-{
-	return ROWS[rankOf(s)];
-}
-
-constexpr inline Bitboard pathBetween(Square sq1, Square sq2)
-{
-	return PATHS[sq1][sq2];
 }
