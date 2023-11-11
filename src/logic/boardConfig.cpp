@@ -42,11 +42,6 @@ namespace {
 		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
 		SQ_D8, SQ_D8, SQ_D8, SQ_D8, INVALID_SQUARE, SQ_F8, SQ_F8, SQ_F8,
 	};
-
-	constexpr Bitboard kingCastlingPaths[CASTLING_RIGHTS_RANGE] = {
-		0,0x0000000000000060, 0x000000000000000c, 0, 0x6000000000000000, 0, 0, 0,
-		0x0c00000000000000, 0, 0, 0, 0, 0, 0, 0
-	};
 }
 
 
@@ -157,8 +152,6 @@ void BoardConfig::makeMove(const Move& move)
 		enpassant(move);
 		break;
 	}
-	system("cls");
-	std::cout << (*this) << std::endl;
 }
 
 void BoardConfig::normalMove(const Move& move)
@@ -167,10 +160,12 @@ void BoardConfig::normalMove(const Move& move)
 	Square to = move.to();
 
 	pushStateList(move);
+	posInfo->castlingRights = posInfo->prev->castlingRights & castlingRightsLoss[from];
 
 	if (move.isCapture()) {
 		posInfo->capturedPiece = board[to];
 		posInfo->halfmoveClock = 0;
+		posInfo->castlingRights &= castlingRightsLoss[to];
 		removePiece(to);
 	}
 	else
@@ -178,7 +173,6 @@ void BoardConfig::normalMove(const Move& move)
 	movePiece(from, to);
 
 	sideOnMove = ~sideOnMove;
-	posInfo->castlingRights = posInfo->prev->castlingRights & castlingRightsLoss[from];
 	posInfo->enpassantSquare = move.isDoublePawnPush() ? to : INVALID_SQUARE;
 	halfmoveCount++;
 
@@ -196,16 +190,17 @@ void BoardConfig::promotion(const Move& move)
 	PieceType promotionType = move.promotionType();
 
 	pushStateList(move);
+	posInfo->castlingRights = posInfo->prev->castlingRights;
 
 	if (move.isCapture()) {
 		posInfo->capturedPiece = board[to];
+		posInfo->castlingRights &= castlingRightsLoss[to];
 		removePiece(to);
 	}
 	removePiece(from);
 	placePiece(getPiece(side, promotionType), to);
 
 	sideOnMove = ~sideOnMove;
-	posInfo->castlingRights = posInfo->prev->castlingRights;
 	posInfo->enpassantSquare = INVALID_SQUARE;
 	posInfo->halfmoveClock = 0;
 	halfmoveCount++;
@@ -300,9 +295,6 @@ void BoardConfig::undoLastMove()
 
 	halfmoveCount--;
 	posInfo = posInfo->prev;
-
-	system("cls");
-	std::cout << (*this) << std::endl;
 }
 
 void BoardConfig::clear()
@@ -336,6 +328,33 @@ Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) con
 	return result & pieces(side);
 }
 
+bool BoardConfig::legalityCheckLight(const Move& move) const
+{
+	Square from = move.from();
+	Square to = move.to();
+	Piece piece = board[from];
+	Color side = colorOf(piece);
+	Color enemy = ~side;
+
+	if (move.isEnpassant()) {
+		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
+		Square kingSq = kingSquare[side];
+		return !(Pieces::bishopAttacks(kingSq, occ) & pieces(enemy, BISHOP, QUEEN)) &&
+			!(Pieces::rookAttacks(kingSq, occ) & pieces(enemy, ROOK, QUEEN));
+	}
+
+	if (move.isCastle()) {
+		Direction dir = to > from ? EAST : WEST;
+		return !attackersToSquare(from + dir, enemy, pieces()) &&
+			!attackersToSquare(to, enemy, pieces());
+	}
+
+	if (typeOf(piece) == KING)
+		return !attackersToSquare(to, enemy, pieces() ^ from);
+
+	return !(pinnedPieces(side) & from) || aligned(kingSquare[side], to, from);
+}
+
 bool BoardConfig::legalityCheckFull(const Move& move) const
 {
 	Square from = move.from();
@@ -347,15 +366,15 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 	if (move.isEnpassant()) {
 		if (!(adjacentRankSquares(enpassantSquare()) & from) || fileOf(enpassantSquare()) != fileOf(to)) return false;
 		Square kingSq = kingSquare[side];
-		Bitboard occ = pieces() ^ enpassantSquare() ^ from;
-		return !attackersToSquare(kingSq, ~side, occ);
+		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
+		return !attackersToSquare(kingSq, ~side, occ) ||
+			(checkingPieces() && ((Bitboards::isSinglePopulated(checkingPieces())) && enpassantSquare() == Bitboards::lsb(checkingPieces())));
 	}
 
 	if (move.isCastle()) {
-		int castleType = to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE;
-		castleType &= side == WHITE ? WHITE_BOTH : BLACK_BOTH;
-		if (!hasCastlingRight(CastlingRights(castleType))) return false;
-		if (kingCastlingPaths[castleType] & pieces()) return false;
+		CastleType castleType = getCastleType(side, to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE);
+		if (!hasCastlingRight(castleType)) return false;
+		if (!isCastlingPathClear(castleType)) return false;
 		Direction dir = (castleType & KINGSIDE_CASTLE) ? EAST : WEST;
 		Color enemy = ~side;
 		return attackersToSquare(from + dir, enemy, pieces()) == 0 &&
@@ -368,7 +387,7 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 	// Handle any other moves
 	Square kingSq = kingSquare[side];
 	if (checkingPieces() && !Bitboards::isSinglePopulated(checkingPieces())) return false;			// Double check blocks any other pieces than king
-	if (checkingPieces() && !aligned(kingSq, Bitboards::lsb(checkingPieces()), to)) return false;	
+	if (checkingPieces() && to != Bitboards::lsb(checkingPieces()) && !aligned(kingSq, Bitboards::lsb(checkingPieces()), to)) return false;
 	Bitboard between = pathBetween(from, to) & (~from) & (~to);
 	return !(between & pieces()) && (!(pinnedPieces(side) & from) || aligned(kingSq, to, from));
 }

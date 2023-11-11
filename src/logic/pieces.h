@@ -7,6 +7,11 @@ namespace Pieces {
 	extern Bitboard PAWN_ATTACKS[COLOR_RANGE][SQUARE_RANGE];
 	extern Bitboard PIECE_ATTACKS[PIECE_TYPE_RANGE][SQUARE_RANGE];	// Contains legal attacks for king / knight & pseudo attacks for sliding pieces
 
+	constexpr Bitboard KING_CASTLING_PATHS[CASTLING_RIGHTS_RANGE] = {
+		0,0x0000000000000060, 0x000000000000000e, 0, 0x6000000000000000, 0, 0, 0,
+		0x0e00000000000000, 0, 0, 0, 0, 0, 0, 0
+	};
+
 	struct Magic
 	{
 		Bitboard* attacks;
@@ -87,13 +92,44 @@ namespace Pieces {
 		return bishopAttacks(sq, occ) | rookAttacks(sq, occ);
 	}
 
+	template <PieceType type>
+	inline Bitboard pieceAttacks(Square sq, Bitboard occ);
+
+	template <>
+	inline Bitboard pieceAttacks<KNIGHT>(Square sq, Bitboard occ)
+	{
+		return knightAttacks(sq);
+	}
+
+	template <>
+	inline Bitboard pieceAttacks<BISHOP>(Square sq, Bitboard occ)
+	{
+		return bishopAttacks(sq, occ);
+	}
+
+	template <>
+	inline Bitboard pieceAttacks<ROOK>(Square sq, Bitboard occ)
+	{
+		return rookAttacks(sq, occ);
+	}
+
+	template <>
+	inline Bitboard pieceAttacks<QUEEN>(Square sq, Bitboard occ)
+	{
+		return queenAttacks(sq, occ);
+	}
+
 	inline Bitboard pieceAttacks(PieceType piece, Square sq, Bitboard occ)
 	{
 		return piece == KNIGHT ? knightAttacks(sq) :
 			piece == BISHOP ? bishopAttacks(sq, occ) :
 			piece == ROOK ? rookAttacks(sq, occ) :
-			piece == QUEEN ? queenAttacks(sq, occ) :
-			piece == KING ? kingAttacks(sq) : 0;
+			piece == QUEEN ? queenAttacks(sq, occ) : kingAttacks(sq);
+	}
+
+	inline Bitboard pseudoAttacks(PieceType piece, Square sq)
+	{
+		return PIECE_ATTACKS[piece][sq];
 	}
 
 	inline Bitboard xRayRookAttacks(Square sq, Bitboard occ, Bitboard blockers)	// By default blockers = own pieces
@@ -113,5 +149,10 @@ namespace Pieces {
 	constexpr inline bool inPieceDistance(PieceType type, Square sq1, Square sq2)
 	{
 		return pieceAttacks(type, sq1, 0) & sq2;
+	}
+
+	constexpr inline Bitboard castlingPath(CastleType castle)
+	{
+		return KING_CASTLING_PATHS[castle];
 	}
 }

@@ -23,8 +23,7 @@ namespace Bitboards {
 		{
 			for (int j = 0; j < 8; j++)
 				stream << bb2D[i][j];
-			if (i != 7)
-				stream << std::endl;
+			stream << std::endl;
 		}
 		return stream.str();
 	}

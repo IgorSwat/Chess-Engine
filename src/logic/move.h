@@ -2,6 +2,7 @@
 
 #include "misc.h"
 #include <iostream>
+#include <iomanip>
 
 
 using Movemask = uint16_t;
@@ -44,6 +45,7 @@ constexpr MoveType MOVES_BY_FLAG[16]{
 class Move
 {
 public:
+	Move();
 	Move(Square from, Square to, Movemask flags);
 	void operator=(const Move& other);
 
@@ -75,7 +77,12 @@ const Move NULL_MOVE = Move(SQ_A1, SQ_A1, 0);
 
 
 
-inline Move::Move(Square from, Square to, Movemask flags) {
+inline Move::Move() 
+{
+}
+
+inline Move::Move(Square from, Square to, Movemask flags) 
+{
 	m_move = ((flags & 0xf) << 12) | (static_cast<Movemask>(from) | (static_cast<Movemask>(to) << 6));
 }
 
@@ -164,6 +171,9 @@ inline bool operator!=(const Move& m1, const Move& m2)
 
 inline std::ostream& operator<<(std::ostream& os, const Move& move)
 {
-	os << move.m_move;
+	os << std::dec;
+	os << "Move   |   from: " << char('A' + fileOf(move.from())) << 1 + rankOf(move.from()) << " ";
+	os << "to: " << char('A' + fileOf(move.to())) << 1 + rankOf(move.to()) << " ";
+	os << "flags: " << std::hex << move.flags();
 	return os;
 }

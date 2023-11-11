@@ -17,7 +17,7 @@ enum Color : int {
 	COLOR_RANGE = 2
 };
 
-inline Color operator~(Color side)
+constexpr inline Color operator~(Color side)
 {
 	return Color(side ^ BLACK);
 }
@@ -112,12 +112,12 @@ inline Square operator++(Square& sq)
 	return sq;
 }
 
-inline Square operator+(Square sq, int n)
+constexpr inline Square operator+(Square sq, int n)
 {
 	return Square(int(sq) + n);
 }
 
-inline Square operator-(Square sq, int n)
+constexpr inline Square operator-(Square sq, int n)
 {
 	return Square(int(sq) - n);
 }
@@ -172,13 +172,18 @@ enum Direction : int {
 	DIRECTION_RANGE = 8
 };
 
+constexpr inline Direction operator~(Direction dir)
+{
+	return Direction((int(dir) + 4) & 0x7);
+}
+
 inline Direction operator++(Direction& dir)
 {
 	dir = Direction(int(dir) + 1);
 	return dir;
 }
 
-inline Direction vectorToDir(int x, int y)
+constexpr inline Direction vectorToDir(int x, int y)
 {
 	return x == 0 ? (y > 0 ? NORTH : SOUTH) :
 		y == 0 ? (x > 0 ? EAST : WEST) :
@@ -190,9 +195,14 @@ constexpr int DIRECTION_SHIFTS[DIRECTION_RANGE] = {
 	-1, -9, -8, -7, 1, 9, 8, 7
 };
 
-inline Square operator+(Square sq, Direction dir)
+constexpr inline Square operator+(Square sq, Direction dir)
 {
 	return sq + DIRECTION_SHIFTS[dir];
+}
+
+constexpr inline Square operator-(Square sq, Direction dir)
+{
+	return sq - DIRECTION_SHIFTS[dir];
 }
 
 
@@ -231,3 +241,8 @@ inline CastlingRights castlingRightsFromChar(char c)
 }
 
 using CastleType = CastlingRights;
+
+constexpr inline CastleType getCastleType(Color side, CastlingRights castling)
+{
+	return side == WHITE ? CastleType(castling & WHITE_BOTH) : CastleType(castling & BLACK_BOTH);
+}

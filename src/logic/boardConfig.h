@@ -65,6 +65,7 @@ public:
 	// Castling & enpassant
 	Square enpassantSquare() const;
 	bool hasCastlingRight(CastlingRights right) const;
+	bool isCastlingPathClear(CastleType castle) const;
 
 	// Checks & pins
 	bool isInCheck(Color side) const;
@@ -150,6 +151,11 @@ inline Square BoardConfig::enpassantSquare() const
 inline bool BoardConfig::hasCastlingRight(CastlingRights right) const
 {
 	return (posInfo->castlingRights & right) == right;
+}
+
+inline bool BoardConfig::isCastlingPathClear(CastleType castle) const
+{
+	return !(pieces() & Pieces::castlingPath(castle));
 }
 
 inline bool BoardConfig::isInCheck(Color side) const
@@ -241,5 +247,5 @@ inline void BoardConfig::movePiece(Square from, Square to)
 
 inline void BoardConfig::updateChecks(Color checkedSide)
 {
-	posInfo->checkers = attackersToSquare(kingSquare[checkedSide], ~checkedSide, pieces());
+	posInfo->checkers = attackersToSquare(kingSquare[checkedSide], ~checkedSide, pieces());	// TO DO: It's not needed to check king attacks in order to detect checks
 }

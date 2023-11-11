@@ -3,16 +3,16 @@
 #include "misc.h"
 
 
-constexpr Bitboard FILE_ABB = 0x0101010101010101;
-constexpr Bitboard FILE_B_BB = FILE_ABB << 1;
-constexpr Bitboard FILE_C_BB = FILE_ABB << 2;
-constexpr Bitboard FILE_D_BB = FILE_ABB << 3;
-constexpr Bitboard FILE_E_BB = FILE_ABB << 4;
-constexpr Bitboard FILE_F_BB = FILE_ABB << 5;
-constexpr Bitboard FILE_G_BB = FILE_ABB << 6;
-constexpr Bitboard FILE_H_BB = FILE_ABB << 7;
+constexpr Bitboard FILE_A_BB = 0x0101010101010101;
+constexpr Bitboard FILE_B_BB = FILE_A_BB << 1;
+constexpr Bitboard FILE_C_BB = FILE_A_BB << 2;
+constexpr Bitboard FILE_D_BB = FILE_A_BB << 3;
+constexpr Bitboard FILE_E_BB = FILE_A_BB << 4;
+constexpr Bitboard FILE_F_BB = FILE_A_BB << 5;
+constexpr Bitboard FILE_G_BB = FILE_A_BB << 6;
+constexpr Bitboard FILE_H_BB = FILE_A_BB << 7;
 constexpr Bitboard FILES[8]{
-	FILE_ABB, FILE_B_BB, FILE_C_BB, FILE_D_BB, FILE_E_BB, FILE_F_BB, FILE_G_BB, FILE_H_BB
+	FILE_A_BB, FILE_B_BB, FILE_C_BB, FILE_D_BB, FILE_E_BB, FILE_F_BB, FILE_G_BB, FILE_H_BB
 };
 
 constexpr Bitboard ROW_1 = 0xFF;
@@ -27,10 +27,10 @@ constexpr Bitboard ROWS[8]{
 	ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8
 };
 
-constexpr Bitboard NOT_FILE_A = ~FILE_ABB;
+constexpr Bitboard NOT_FILE_A = ~FILE_A_BB;
 constexpr Bitboard NOT_FILE_H = ~FILE_H_BB;
-constexpr Bitboard NOT_FILE_AB = ~(FILE_ABB & FILE_B_BB);
-constexpr Bitboard NOT_FILE_GH = ~(FILE_G_BB & FILE_H_BB);
+constexpr Bitboard NOT_FILE_AB = ~(FILE_A_BB | FILE_B_BB);
+constexpr Bitboard NOT_FILE_GH = ~(FILE_G_BB | FILE_H_BB);
 constexpr Bitboard NOT_ROW_1 = ~ROW_1;
 constexpr Bitboard NOT_ROW_8 = ~ROW_8;
 constexpr Bitboard NOT_ROW_12 = ~(ROW_1 & ROW_2);
@@ -41,7 +41,8 @@ constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
 constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
 
-extern Bitboard PATHS[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
+extern Bitboard PATHS_BETWEEN[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
+extern Bitboard LINES[SQUARE_RANGE][SQUARE_RANGE];				// Lines containing two given squares (superset of PATHS_BETWEEN)
 extern Bitboard ADJACENT_RANK_SQUARES[EXTENDED_SQUARE_RANGE];	// Defines the adjacent rank squares bitboards for each square (used for enpassant checks)
 
 
@@ -70,7 +71,12 @@ constexpr inline Bitboard rankBBOf(Square s)
 
 constexpr inline Bitboard pathBetween(Square sq1, Square sq2)
 {
-	return PATHS[sq1][sq2];
+	return PATHS_BETWEEN[sq1][sq2];
+}
+
+constexpr inline Bitboard lineWith(Square sq1, Square sq2)
+{
+	return LINES[sq1][sq2];
 }
 
 constexpr inline Bitboard adjacentRankSquares(Square sq)
@@ -80,10 +86,10 @@ constexpr inline Bitboard adjacentRankSquares(Square sq)
 
 constexpr inline bool aligned(Square sq1, Square sq2)
 {
-	return PATHS[sq1][sq2];
+	return LINES[sq1][sq2];
 }
 
 constexpr inline bool aligned(Square sq1, Square sq2, Square midd)
 {
-	return PATHS[sq1][sq2] & midd;
+	return LINES[sq1][sq2] & midd;
 }
