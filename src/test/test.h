@@ -74,4 +74,12 @@ namespace Testing {
 	void perftMovegenTestMidgamePos2();
 	void perftMovegenTestMidgamePos3();
 	void perftMovegenTestEndgamePos();
+
+	// Performance tests
+	template <bool deep>
+	void perftSpeedTestStartingPos();
+	template <bool deep>
+	void perftSpeedTestMidgamePos();
+	template <bool deep>
+	void perftSpeedTestEndgamePos();
 }

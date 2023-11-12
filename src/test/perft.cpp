@@ -81,18 +81,20 @@ namespace Testing {
 		assert(results.noMoves == data.moveCounters.noMoves);
 	}
 
-	void perftPerformanceTest(const PerftData& data)
+	void perftSpeedTest(const PerftData& data)
 	{
 		BoardConfig board;
 		board.loadFromFen(data.fen);
 
 		auto startTime = std::chrono::steady_clock::now();
-		perftLight(board, data.depth);
+		uint64_t result = perftLight(board, data.depth);
 		auto endTime = std::chrono::steady_clock::now();
 
 		auto duration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
 		std::cout << "Time taken for fen " << data.fen << " and depth " << data.depth << ":\n";
 		std::cout << duration.count() << " seconds\n";
+
+		assert(result == data.moveCounters.noMoves);
 	}
 
 	void perftMovegenTestStartingPos()
@@ -197,4 +199,59 @@ namespace Testing {
 								 6, {11030083, 940350, 33325, 0, 7552} };
 		perftMovegenTest(data6);
 	}
+
+	template <bool deep>
+	void perftSpeedTestStartingPos()
+	{
+		if constexpr (!deep) {
+			const PerftData data5 = { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+								 5, {4865609	, 0, 0, 0, 0} };
+			perftSpeedTest(data5);
+		}
+		if constexpr (deep) {
+			const PerftData data6 = { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+								 6, {119060324, 0, 0, 0, 0} };
+			perftSpeedTest(data6);
+		}
+
+	}
+
+	template void perftSpeedTestStartingPos<false>();
+	template void perftSpeedTestStartingPos<true>();
+
+	template <bool deep>
+	void perftSpeedTestMidgamePos()
+	{
+		if constexpr (!deep) {
+			const PerftData data5 = { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+								 5, {15833292, 0, 0, 0, 0} };
+			perftSpeedTest(data5);
+		}
+		if constexpr (deep) {
+			const PerftData data6 = { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+								 6, {706045033, 0, 0, 0, 0} };
+			perftSpeedTest(data6);
+		}
+	}
+
+	template void perftSpeedTestMidgamePos<false>();
+	template void perftSpeedTestMidgamePos<true>();
+
+	template <bool deep>
+	void perftSpeedTestEndgamePos()
+	{
+		if constexpr (!deep) {
+			const PerftData data6 = { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
+								 6, {11030083, 0, 0, 0, 0} };
+			perftSpeedTest(data6);
+		}
+		if constexpr (deep) {
+			const PerftData data7 = { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
+								 7, {178633661, 0, 0, 0, 0} };
+			perftSpeedTest(data7);
+		}
+	}
+
+	template void perftSpeedTestEndgamePos<false>();
+	template void perftSpeedTestEndgamePos<true>();
 }
