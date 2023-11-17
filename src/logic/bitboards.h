@@ -79,4 +79,26 @@ namespace Bitboards {
 		return dir == NORTH ? bb << 8 : bb >> 8;
 	}
 
+	template <Direction dir>
+	inline Bitboard verticalFill(Bitboard bb)
+	{
+		if constexpr (dir == NORTH) {
+			bb |= (bb << 32);
+			bb |= (bb << 16);
+			bb |= (bb << 8);
+		}
+		if constexpr (dir != NORTH) {
+			bb |= (bb >> 32);
+			bb |= (bb >> 16);
+			bb |= (bb >> 8);
+		}
+		return bb;
+	}
+
+	// Collapses all files bits into the one row to obtain small index
+	inline int collapseFiles(Bitboard bb)
+	{
+		return int(verticalFill<SOUTH>(bb) & 0xff);
+	}
+
 }

@@ -40,10 +40,14 @@ constexpr Bitboard NOT_ROW_78 = ~(ROW_7 & ROW_8);
 constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
 constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
+constexpr Bitboard DARK_SQUARES_BB = 0xaa55aa55aa55aa55;
+constexpr Bitboard LIGHT_SQUARES_BB = 0x55aa55aa55aa55aa;
+
 
 extern Bitboard PATHS_BETWEEN[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
 extern Bitboard LINES[SQUARE_RANGE][SQUARE_RANGE];				// Lines containing two given squares (superset of PATHS_BETWEEN)
 extern Bitboard ADJACENT_RANK_SQUARES[EXTENDED_SQUARE_RANGE];	// Defines the adjacent rank squares bitboards for each square (used for enpassant checks)
+extern Bitboard PATHS_TO_CENTRAL_FILES[SQUARE_RANGE];
 
 
 
@@ -67,6 +71,11 @@ constexpr inline Bitboard fileBBOf(Square s)
 constexpr inline Bitboard rankBBOf(Square s)
 {
 	return ROWS[rankOf(s)];
+}
+
+constexpr inline Bitboard squaresOfColor(SquareColor color)
+{
+	return color == DARK_SQUARE ? DARK_SQUARES_BB : LIGHT_SQUARES_BB;
 }
 
 constexpr inline Bitboard pathBetween(Square sq1, Square sq2)

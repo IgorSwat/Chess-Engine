@@ -6,6 +6,7 @@
 Bitboard PATHS_BETWEEN[SQUARE_RANGE][SQUARE_RANGE] = { 0 };
 Bitboard LINES[SQUARE_RANGE][SQUARE_RANGE] = { 0 };
 Bitboard ADJACENT_RANK_SQUARES[EXTENDED_SQUARE_RANGE] = { 0 };
+Bitboard PATHS_TO_CENTRAL_FILES[SQUARE_RANGE] = { 0 };
 
 
 void initBoardElements()
@@ -46,6 +47,16 @@ void initBoardElements()
 
 		// Initialise adjacent squares
 		ADJACENT_RANK_SQUARES[sq1] = Bitboards::shift(sq1BB, WEST) | Bitboards::shift(sq1BB, EAST);
+
+		// Initialise paths to central files
+		Direction dir = fileOf(sq1) < E_FILE ? EAST : WEST;
+		Bitboard path = 0;
+		Square sq2 = sq1 + dir;
+		while (fileOf(sq2) != D_FILE && fileOf(sq2) != E_FILE) {
+			path |= sq2;
+			sq2 = sq2 + dir;
+		}
+		PATHS_TO_CENTRAL_FILES[sq1] = path;
 	}
 	ADJACENT_RANK_SQUARES[INVALID_SQUARE] = 0;
 }

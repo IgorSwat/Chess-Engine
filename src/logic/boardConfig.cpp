@@ -42,6 +42,11 @@ namespace {
 		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
 		SQ_D8, SQ_D8, SQ_D8, SQ_D8, INVALID_SQUARE, SQ_F8, SQ_F8, SQ_F8,
 	};
+
+	constexpr int GAME_STAGE_INFLUENCE[PIECE_RANGE] = {
+		0, 0, 9, 9, 14, 64, 0, 0,
+		0, 9, 9, 14, 64, 0, 0, 0
+	};
 }
 
 
@@ -98,6 +103,7 @@ void BoardConfig::loadFromFen(const std::string& fen)
 			Square square = Square((7 - i) * 8 + j);
 			Piece piece = pieceFromChar(c);
 			placePiece(piece, square);
+			gameStageValue += GAME_STAGE_INFLUENCE[piece];
 			j++;
 		}
 	}
@@ -129,6 +135,7 @@ void BoardConfig::loadFromConfig(const BoardConfig& other)
 	for (int i = 0; i < SQUARE_RANGE; i++) board[i] = other.board[i];
 	for (int i = 0; i < PIECE_TYPE_RANGE; i++) piecesByType[i] = other.piecesByType[i];
 	for (int i = 0; i < COLOR_RANGE; i++) { piecesByColor[i] = other.piecesByColor[i]; kingSquare[i] = other.kingSquare[i]; }
+	gameStageValue = other.gameStageValue;
 	halfmoveCount = other.halfmoveCount;
 
 	*posInfo = *other.posInfo;
@@ -166,6 +173,7 @@ void BoardConfig::normalMove(const Move& move)
 		posInfo->capturedPiece = board[to];
 		posInfo->halfmoveClock = 0;
 		posInfo->castlingRights &= castlingRightsLoss[to];
+		gameStageValue -= GAME_STAGE_INFLUENCE[posInfo->capturedPiece];
 		removePiece(to);
 	}
 	else
@@ -188,6 +196,7 @@ void BoardConfig::promotion(const Move& move)
 	Square to = move.to();
 	Color side = to > from ? WHITE : BLACK;
 	PieceType promotionType = move.promotionType();
+	Piece promotedPiece = getPiece(side, promotionType);
 
 	pushStateList(move);
 	posInfo->castlingRights = posInfo->prev->castlingRights;
@@ -195,12 +204,14 @@ void BoardConfig::promotion(const Move& move)
 	if (move.isCapture()) {
 		posInfo->capturedPiece = board[to];
 		posInfo->castlingRights &= castlingRightsLoss[to];
+		gameStageValue -= GAME_STAGE_INFLUENCE[posInfo->capturedPiece];
 		removePiece(to);
 	}
 	removePiece(from);
-	placePiece(getPiece(side, promotionType), to);
+	placePiece(promotedPiece, to);
 
 	sideOnMove = ~sideOnMove;
+	gameStageValue += GAME_STAGE_INFLUENCE[promotedPiece];
 	posInfo->enpassantSquare = INVALID_SQUARE;
 	posInfo->halfmoveClock = 0;
 	halfmoveCount++;
@@ -274,13 +285,18 @@ void BoardConfig::undoLastMove()
 	switch (moveType) {
 	case NORMAL_MOVE:
 		movePiece(to, from);
-		if (lastMove.isCapture())
+		if (lastMove.isCapture()) {
+			gameStageValue += GAME_STAGE_INFLUENCE[posInfo->capturedPiece];
 			placePiece(posInfo->capturedPiece, to);
+		}
 		break;
 	case PROMOTION:
+		gameStageValue -= GAME_STAGE_INFLUENCE[board[to]];
 		removePiece(to);
-		if (lastMove.isCapture())
+		if (lastMove.isCapture()) {
+			gameStageValue += GAME_STAGE_INFLUENCE[posInfo->capturedPiece];
 			placePiece(posInfo->capturedPiece, to);
+		}
 		placePiece(getPiece(sideOnMove, PAWN), from);
 		break;
 	case CASTLE:

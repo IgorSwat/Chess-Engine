@@ -205,6 +205,23 @@ constexpr inline Square operator-(Square sq, Direction dir)
 	return sq - DIRECTION_SHIFTS[dir];
 }
 
+enum SquareColor
+{
+	DARK_SQUARE = 0, LIGHT_SQUARE,
+
+	SQUARE_COLOR_RANGE = 2
+};
+
+constexpr inline SquareColor operator~(SquareColor color)
+{
+	return SquareColor(color ^ LIGHT_SQUARE);
+}
+
+constexpr inline SquareColor colorOf(Square s)
+{
+	return SquareColor(s & 0x1);
+}
+
 
 
 // ----------------------------------------
@@ -246,3 +263,16 @@ constexpr inline CastleType getCastleType(Color side, CastlingRights castling)
 {
 	return side == WHITE ? CastleType(castling & WHITE_BOTH) : CastleType(castling & BLACK_BOTH);
 }
+
+
+
+// ----------------------------------------
+// Other things
+// ----------------------------------------
+
+enum GameStage {
+	OPENING = 200, MIDGAME = 128, ENDGAME = 0,
+
+	GAME_STAGE_MAX_VALUE = 256,
+	GAME_STAGE_RANGE = 33
+};

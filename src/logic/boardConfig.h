@@ -19,8 +19,8 @@ struct PositionInfo
 	Square enpassantSquare = INVALID_SQUARE;
 
 	Bitboard checkers = 0;
-	Bitboard pinned[COLOR_RANGE]{ 0 };
-	Bitboard pinners[COLOR_RANGE]{ 0 };
+	Bitboard pinned[COLOR_RANGE] = { 0 };
+	Bitboard pinners[COLOR_RANGE] = { 0 };
 
 	Piece capturedPiece = NO_PIECE;
 	int halfmoveClock = 0;
@@ -56,6 +56,8 @@ public:
 	Bitboard pieces(PieceType ptype, PieceTypes... types) const;
 	template <typename... PieceTypes>
 	Bitboard pieces(Color side, PieceTypes... types) const;
+	template <typename... PieceTypes>
+	Bitboard pieces(Color side, SquareColor squareColor, PieceTypes... types) const;
 	Square kingPosition(Color side) const;
 
 	// Square-centric operations
@@ -79,6 +81,7 @@ public:
 
 	// Move-counting issues & others
 	Color movingSide() const;
+	int gameStage() const;
 	int halfmovesPlain() const;
 	int halfmovesClocked() const;
 	int moves() const;
@@ -102,6 +105,7 @@ private:
 	Bitboard piecesByType[PIECE_TYPE_RANGE];	// Grouping all pieces of given type
 	Bitboard piecesByColor[COLOR_RANGE];		// Grouping all of side's pieces
 	Square kingSquare[COLOR_RANGE];
+	int gameStageValue = 0;
 
 	PositionInfo* posInfo;
 	PositionInfo* rootState;
@@ -131,6 +135,12 @@ template <typename... PieceTypes>
 inline Bitboard BoardConfig::pieces(Color side, PieceTypes... types) const
 {
 	return pieces(side) & pieces(types...);
+}
+
+template <typename... PieceTypes>
+inline Bitboard BoardConfig::pieces(Color side, SquareColor squareColor, PieceTypes... types) const
+{
+	return pieces(side, types...) & squaresOfColor(squareColor);
 }
 
 inline Square BoardConfig::kingPosition(Color side) const
@@ -181,6 +191,12 @@ inline Bitboard BoardConfig::pinningPieces(Color side) const
 inline Color BoardConfig::movingSide() const
 {
 	return sideOnMove;
+}
+
+inline int BoardConfig::gameStage() const
+{
+	return gameStageValue > GAME_STAGE_MAX_VALUE ? (GAME_STAGE_MAX_VALUE >> 3) :
+												   (gameStageValue >> 3);
 }
 
 inline int BoardConfig::halfmovesPlain() const
