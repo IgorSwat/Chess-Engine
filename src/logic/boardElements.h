@@ -15,6 +15,10 @@ constexpr Bitboard FILES[8]{
 	FILE_A_BB, FILE_B_BB, FILE_C_BB, FILE_D_BB, FILE_E_BB, FILE_F_BB, FILE_G_BB, FILE_H_BB
 };
 
+constexpr Bitboard CENTRAL_FILES = FILE_C_BB | FILE_D_BB | FILE_E_BB | FILE_F_BB;
+constexpr Bitboard BG_FILES = FILE_B_BB | FILE_G_BB;
+constexpr Bitboard EDGE_FILES = FILE_A_BB | FILE_H_BB;
+
 constexpr Bitboard ROW_1 = 0xFF;
 constexpr Bitboard ROW_2 = ROW_1 << (8 * 1);
 constexpr Bitboard ROW_3 = ROW_1 << (8 * 2);
@@ -44,9 +48,11 @@ constexpr Bitboard DARK_SQUARES_BB = 0xaa55aa55aa55aa55;
 constexpr Bitboard LIGHT_SQUARES_BB = 0x55aa55aa55aa55aa;
 
 
+extern int SQUARE_DISTANCE[SQUARE_RANGE][SQUARE_RANGE];
 extern Bitboard PATHS_BETWEEN[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
 extern Bitboard LINES[SQUARE_RANGE][SQUARE_RANGE];				// Lines containing two given squares (superset of PATHS_BETWEEN)
-extern Bitboard ADJACENT_RANK_SQUARES[EXTENDED_SQUARE_RANGE];	// Defines the adjacent rank squares bitboards for each square (used for enpassant checks)
+extern Bitboard ADJACENT_RANK_SQUARES[EXTENDED_SQUARE_RANGE];
+extern Bitboard ADJACENT_FILES[SQUARE_RANGE];
 extern Bitboard PATHS_TO_CENTRAL_FILES[SQUARE_RANGE];
 
 
@@ -91,6 +97,16 @@ constexpr inline Bitboard lineWith(Square sq1, Square sq2)
 constexpr inline Bitboard adjacentRankSquares(Square sq)
 {
 	return ADJACENT_RANK_SQUARES[sq];
+}
+
+constexpr inline Bitboard adjacentFiles(Square sq)
+{
+	return ADJACENT_FILES[sq];
+}
+
+constexpr inline Bitboard adjacentFiles(int file)
+{
+	return ADJACENT_FILES[file];
 }
 
 constexpr inline bool aligned(Square sq1, Square sq2)

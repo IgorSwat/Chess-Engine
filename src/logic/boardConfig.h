@@ -24,6 +24,7 @@ struct PositionInfo
 
 	Piece capturedPiece = NO_PIECE;
 	int halfmoveClock = 0;
+	int gameStageValue = 0;
 
 	PositionInfo* prev = nullptr;
 	PositionInfo* next = nullptr;
@@ -105,7 +106,6 @@ private:
 	Bitboard piecesByType[PIECE_TYPE_RANGE];	// Grouping all pieces of given type
 	Bitboard piecesByColor[COLOR_RANGE];		// Grouping all of side's pieces
 	Square kingSquare[COLOR_RANGE];
-	int gameStageValue = 0;
 
 	PositionInfo* posInfo;
 	PositionInfo* rootState;
@@ -195,8 +195,8 @@ inline Color BoardConfig::movingSide() const
 
 inline int BoardConfig::gameStage() const
 {
-	return gameStageValue > GAME_STAGE_MAX_VALUE ? (GAME_STAGE_MAX_VALUE >> 3) :
-												   (gameStageValue >> 3);
+	return posInfo->gameStageValue > GAME_STAGE_MAX_VALUE ? (GAME_STAGE_MAX_VALUE >> 3) :
+															(posInfo->gameStageValue >> 3);
 }
 
 inline int BoardConfig::halfmovesPlain() const

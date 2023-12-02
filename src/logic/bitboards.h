@@ -71,16 +71,17 @@ namespace Bitboards {
 			dir == SOUTH_EAST ? (bb & NOT_FILE_H) >> 7 : dir == SOUTH_WEST ? (bb & NOT_FILE_A) >> 9 : 0;
 	}
 
-	template <Direction dir, bool doubled>
-	constexpr inline Bitboard verticalShift(Bitboard bb)
+	template <Direction dir>
+	constexpr inline Bitboard shift(Bitboard bb)
 	{
-		if constexpr (doubled)
-			return dir == NORTH ? bb << 16 : bb >> 16;
-		return dir == NORTH ? bb << 8 : bb >> 8;
+		return dir == NORTH ? bb << 8 : dir == SOUTH ? bb >> 8 :
+			dir == EAST ? (bb & NOT_FILE_H) << 1 : dir == WEST ? (bb & NOT_FILE_A) >> 1 :
+			dir == NORTH_EAST ? (bb & NOT_FILE_H) << 9 : dir == NORTH_WEST ? (bb & NOT_FILE_A) << 7 :
+			dir == SOUTH_EAST ? (bb & NOT_FILE_H) >> 7 : dir == SOUTH_WEST ? (bb & NOT_FILE_A) >> 9 : 0;
 	}
 
 	template <Direction dir>
-	inline Bitboard verticalFill(Bitboard bb)
+	constexpr inline Bitboard verticalFill(Bitboard bb)
 	{
 		if constexpr (dir == NORTH) {
 			bb |= (bb << 32);

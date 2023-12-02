@@ -32,8 +32,8 @@ namespace MoveGeneration {
 
 		// Quiet moves (single and double pushes without promotions)
 		if constexpr (gen != CAPTURE) {
-			Bitboard singlePushes = Bitboards::verticalShift<forwardDir, false>(pawnsNotOn7) & emptySquares;
-			Bitboard doublePushes = Bitboards::verticalShift<forwardDir, false>(singlePushes & rank3mark) & emptySquares;
+			Bitboard singlePushes = Bitboards::shift<forwardDir>(pawnsNotOn7) & emptySquares;
+			Bitboard doublePushes = Bitboards::shift<forwardDir>(singlePushes & rank3mark) & emptySquares;
 			if constexpr (gen == CHECK_EVASION) {
 				singlePushes &= target;
 				doublePushes &= target;
@@ -57,8 +57,8 @@ namespace MoveGeneration {
 		// Captures & enpassant
 		if constexpr (gen != QUIET && gen != QUIET_CHECK) {
 			// Common captures
-			Bitboard leftCaptures = Bitboards::shift(pawnsNotOn7, forwardLeftDir) & enemyPieces;
-			Bitboard rightCaptures = Bitboards::shift(pawnsNotOn7, forwardRightDir) & enemyPieces;
+			Bitboard leftCaptures = Bitboards::shift<forwardLeftDir>(pawnsNotOn7) & enemyPieces;
+			Bitboard rightCaptures = Bitboards::shift<forwardRightDir>(pawnsNotOn7) & enemyPieces;
 
 			while (leftCaptures) {
 				Square to = Bitboards::popLsb(leftCaptures);
@@ -80,9 +80,9 @@ namespace MoveGeneration {
 
 		// Promotions (considered as captures because of changing the general material state on the board)
 		if constexpr (gen != QUIET && gen != QUIET_CHECK) {
-			Bitboard quietPromotions = Bitboards::verticalShift<forwardDir, false>(pawnsOn7)& emptySquares;
-			Bitboard leftCapturePromotions = Bitboards::shift(pawnsOn7, forwardLeftDir) & enemyPieces;
-			Bitboard rightCapturePromotions = Bitboards::shift(pawnsOn7, forwardRightDir) & enemyPieces;
+			Bitboard quietPromotions = Bitboards::shift<forwardDir>(pawnsOn7)& emptySquares;
+			Bitboard leftCapturePromotions = Bitboards::shift<forwardLeftDir>(pawnsOn7) & enemyPieces;
+			Bitboard rightCapturePromotions = Bitboards::shift<forwardRightDir>(pawnsOn7) & enemyPieces;
 
 			while (quietPromotions) {
 				Square to = Bitboards::popLsb(quietPromotions);

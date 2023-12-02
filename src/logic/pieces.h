@@ -41,6 +41,15 @@ namespace Pieces {
 		return side == WHITE ? h << 8 : h >> 8;
 	}
 
+	// Returns squares attacked by two pawns of given color
+	template <Color side>
+	inline Bitboard doublePawnAttacks(Bitboard pawnsBB)
+	{
+		constexpr Direction forwardLeft = (side == WHITE ? NORTH_WEST : SOUTH_WEST);
+		constexpr Direction forwardRight = (side == WHITE ? NORTH_EAST : SOUTH_EAST);
+		return Bitboards::shift<forwardLeft>(pawnsBB) & Bitboards::shift<forwardRight>(pawnsBB);
+	}
+
 	inline Bitboard knightAttacks(Bitboard knightsBB)
 	{
 		Bitboard l1 = (knightsBB & NOT_FILE_A) >> 1;
@@ -146,9 +155,19 @@ namespace Pieces {
 		return attacks ^ bishopAttacks(sq, occ ^ blockers);
 	}
 
+	inline Bitboard xRayQueenAttacks(Square sq, Bitboard occ, Bitboard blockers)
+	{
+		return xRayBishopAttacks(sq, occ, blockers) | xRayRookAttacks(sq, occ, blockers);
+	}
+
 	constexpr inline bool inPieceDistance(PieceType type, Square sq1, Square sq2)
 	{
 		return pieceAttacks(type, sq1, 0) & sq2;
+	}
+
+	constexpr inline int kingDistance(Square sq1, Square sq2)
+	{
+		return SQUARE_DISTANCE[sq1][sq2];
 	}
 
 	constexpr inline Bitboard castlingPath(CastleType castle)

@@ -1,37 +1,41 @@
 #include "evaluation.h"
+#include <algorithm>
 
 namespace Evaluation {
 
     constexpr int COLLAPSED_PAWNS_MAX_ID = 256;
     constexpr float MAX_STAGE = 32.f;
+    constexpr float MAX_STORM_POINTS = 16.f;
 
+    // Testing flags
+    constexpr bool knightShow = false;
+    constexpr bool bishopShow = false;
+    constexpr bool rookShow = false;
+    constexpr bool queenShow = false;
+    constexpr bool basicShow = false;
+    constexpr bool passedShow = false;
+    constexpr bool kingShow = true;
+    constexpr bool spaceShow = false;
+    constexpr bool threatsShow = false;
+
+    // Precalculations
     constexpr Bitboard FIANCHETTO_MASKS[COLOR_RANGE] = {
         0x0000000000244281,
         0x8142240000000000
     };
-
+    constexpr int DISTANCE_TO_CENTER[SQUARE_RANGE] = {
+        6, 5, 4, 3, 3, 4, 5, 6,
+        5, 4, 3, 2, 2, 3, 4, 5,
+        4, 3, 2, 1, 1, 2, 3, 4,
+        3, 2, 1, 0, 0, 1, 2, 3,
+        3, 2, 1, 0, 0, 1, 2, 3,
+        4, 3, 2, 1, 1, 2, 3, 4,
+        5, 4, 3, 2, 2, 3, 4, 5,
+        6, 5, 4, 3, 3, 4, 5, 6
+    };
     bool DISTANT_PAWNS_CHECKS[COLLAPSED_PAWNS_MAX_ID] = { false };
 
 
-
-    Value Evaluator::evaluate()
-    {
-        evaluation = 0;
-        stage = board->gameStage();
-        noPawns[WHITE] = Bitboards::popcount(board->pieces(WHITE, PAWN));
-        noPawns[BLACK] = Bitboards::popcount(board->pieces(BLACK, PAWN));
-        pawnAttacks[WHITE] = Pieces::pawnAttacks<WHITE>(board->pieces(WHITE, PAWN));
-        pawnAttacks[BLACK] = Pieces::pawnAttacks<BLACK>(board->pieces(BLACK, PAWN));
-        bishopExistence[WHITE][LIGHT_SQUARE] = board->pieces(WHITE, LIGHT_SQUARE, BISHOP);
-        bishopExistence[WHITE][DARK_SQUARE] = board->pieces(WHITE, DARK_SQUARE, BISHOP);
-        bishopExistence[BLACK][LIGHT_SQUARE] = board->pieces(BLACK, LIGHT_SQUARE, BISHOP);
-        bishopExistence[BLACK][DARK_SQUARE] = board->pieces(BLACK, DARK_SQUARE, BISHOP);
-
-        evaluation += evaluatePieces<WHITE>();
-        evaluation -= evaluatePieces<BLACK>();
-
-        return evaluation;
-    }
 
     void Evaluator::initEvaluationTables()
     {
@@ -41,6 +45,23 @@ namespace Evaluation {
                                                                   linearFunction, stage / MAX_STAGE);
             BISHOP_FIANCHETTO_BONUS_INT[stage] = interpolate(param(BISHOP_FIANCHETTO_BONUS), linearFunction, stage / MAX_STAGE);
             ROOK_UNDEVELOPED_PENALTY_INT[stage] = interpolate(param(ROOK_UNDEVELOPED_PENALTY), linearFunction, stage / MAX_STAGE);
+            ISOLATED_PAWN_BASE_PENALTY_INT[stage] = interpolate(param(ISOLATED_PAWN_BASE_PENALTY), linearFunction, stage / MAX_STAGE);
+            ISOLATED_PAWN_ATTACKED_PENALTY_INT[stage] = interpolate(param(ISOLATED_PAWN_ATTACKED_PENALTY), 
+                                                                    linearFunction, stage / MAX_STAGE);
+            DOUBLED_PAWN_PENALTY_INT[stage] = interpolate(param(DOUBLED_PAWN_PENALTY), linearFunction, stage / MAX_STAGE);
+            BACKWARD_PAWN_BASE_PENALTY_INT[stage] = interpolate(param(BACKWARD_PAWN_BASE_PENALTY),
+                                                                linearFunction, stage / MAX_STAGE);
+            BACKWARD_PAWN_ATTACKED_PENALTY_INT[stage] = interpolate(param(BACKWARD_PAWN_ATTACKED_PENALTY), 
+                                                                    linearFunction, stage / MAX_STAGE);
+            HANGING_PAWN_PENALTY_INT[stage] = interpolate(param(HANGING_PAWN_PENALTY), linearFunction, stage / MAX_STAGE);
+            CONNECTED_PASSER_BONUS_INT[stage] = interpolate(param(CONNECTED_PASSER_BONUS), linearFunction, stage / MAX_STAGE);
+            PAWN_SHIELD_STRONG_BONUS_INT[stage] = interpolate(param(PAWN_SHIELD_STRONG_BONUS), linearFunction, stage / MAX_STAGE);
+            PAWN_SHIELD_WEAKER_BONUS_INT[stage] = interpolate(param(PAWN_SHIELD_WEAKER_BONUS), linearFunction, stage / MAX_STAGE);
+            SEMIOPEN_FILE_NEAR_KING_PENALTY_INT[stage] = interpolate(param(SEMIOPEN_FILE_NEAR_KING_PENALTY), linearFunction, stage / MAX_STAGE);
+            OPEN_FILE_NEAR_KING_PENALTY_INT[stage] = interpolate(param(OPEN_FILE_NEAR_KING_PENALTY), linearFunction, stage /  MAX_STAGE);
+            KING_PAWN_PROXIMITY_VALUE_INT[stage] = interpolate(param(KING_PAWN_PROXIMITY_VALUE), linearFunction, stage / MAX_STAGE);
+            SPACE_BONUS_INT[stage] = interpolate(param(SPACE_BONUS), linearFunction, stage / MAX_STAGE);
+            UNCONTESTED_SPACE_BONUS_INT[stage] = interpolate(param(UNCONTESTED_SPACE_BONUS), linearFunction, stage / MAX_STAGE);
 
 
             for (int pt = PAWN; pt <= QUEEN; pt++)
@@ -74,6 +95,21 @@ namespace Evaluation {
                 ROOK_MOBILITY_INT[mob][stage] = interpolate(rookNoMobilityInt, rookFullMobilityInt, squareRootFunction, mob / 14.f);
             for (int mob = 0; mob < 28; mob++)
                 QUEEN_MOBILITY_INT[mob][stage] = interpolate(queenNoMobilityInt, queenFullMobilityInt, squareRootFunction, mob / 27.f);
+            
+            Value passerBonus = interpolate(param(PASSED_PAWN_MAX_BONUS), linearFunction, stage / MAX_STAGE);
+            for (int dist = 1; dist < 7; dist++) {
+                PASSED_PAWN_RANK_BONUS_INT[dist][stage] = passerBonus;
+                passerBonus >>= 1;
+            }
+
+            Value pawnStormMaxValue = interpolate(param(PAWN_STORM_PENALTY), linearFunction, stage / MAX_STAGE);
+            for (int pts = 0; pts < 17; pts++)
+                PAWN_STORM_PENALTY_INT[pts][stage] = interpolate(0, pawnStormMaxValue, sigmoidLowAbrupt, pts / MAX_STORM_POINTS);
+            
+            Value kingCenterDistanceValue = interpolate(param(KING_CENTER_DISTANCE_MIN_VALUE), 
+                                                        [](float x){return x >= 1.f / 4.f ? 4.f * x / 3.f - 1.f / 3.f: 0.f;}, stage / MAX_STAGE);
+            for (int dist = 0; dist < 7; dist++)
+                KING_CENTER_DISTANCE_VALUE_INT[dist][stage] = interpolate(0, kingCenterDistanceValue, highDegPolynomial, (6 - dist) / 6.f);
         }
 
         // Tables not dependable on game stage
@@ -85,6 +121,11 @@ namespace Evaluation {
             KNIGHT_PAWNS_BONUS_INT[pawns] = interpolate(0, param(KNIGHT_PAWNS_BONUS).opening, quadraticFunction, pawns / 16.f);
         for (int pawns = 0; pawns < 9; pawns++)
             BAD_BISHOP_PENALTY_INT[pawns] = interpolate(0, param(BAD_BISHOP_PENALTY).opening, quadraticFunction, pawns / 8.f);
+        KING_AREA_ATTACKS_MAX_POINTS_INT = param(KING_AREA_ATTACKS_MAX_POINTS).opening;
+        KING_AREA_ATTACKS_VALUE_INT = new Value[KING_AREA_ATTACKS_MAX_POINTS_INT + 1];
+        for (int pts = 0; pts <= KING_AREA_ATTACKS_MAX_POINTS_INT; pts++)
+            KING_AREA_ATTACKS_VALUE_INT[pts] = interpolate(0, param(KING_AREA_ATTACKS_MAX_VALUE).opening,
+                                                           sigmoidLowAbrupt, float(pts) / KING_AREA_ATTACKS_MAX_POINTS_INT);
 
         // Other tables not contained by Evaluator
         for (int id = 1; id < COLLAPSED_PAWNS_MAX_ID; id++)
@@ -92,13 +133,217 @@ namespace Evaluation {
     }
 
 
+    Value Evaluator::evaluate()
+    {
+        evaluation = 0;
+        stage = board->gameStage();
+
+        initSideData<WHITE>();
+        initSideData<BLACK>();
+
+        evaluation += evaluatePieces<WHITE>();
+        evaluation -= evaluatePieces<BLACK>();
+        evaluation += evaluatePawns<WHITE>();
+        evaluation -= evaluatePawns<BLACK>();
+        evaluation += evaluateKing<WHITE>();
+        evaluation -= evaluateKing<BLACK>();
+        evaluation += evaluateOtherFeatures<WHITE>();
+        evaluation -= evaluateOtherFeatures<BLACK>();
+
+        return evaluation;
+    }
+
+
+    template <Color side>
+    void Evaluator::initSideData()
+    {
+        constexpr Color enemy = ~side;
+        constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
+
+        const Square kingPos = board->kingPosition(side);
+        const Bitboard doublePawnAttacks = Pieces::doublePawnAttacks<side>(board->pieces(side, PAWN));
+
+        noPieces[side][PAWN] = Bitboards::popcount(board->pieces(side, PAWN));
+
+        pieceAttacks[side][PAWN] = Pieces::pawnAttacks<side>(board->pieces(side, PAWN));
+        pieceAttacks[side][KING] = Pieces::kingAttacks(kingPos);
+        pieceAttacks[side][KNIGHT] = 0;
+        pieceAttacks[side][BISHOP] = 0;
+        pieceAttacks[side][ROOK] = 0;
+        pieceAttacks[side][QUEEN] = 0;
+        pieceAttacks[side][ALL_PIECES] = pieceAttacks[side][PAWN] | pieceAttacks[side][KING];
+        multipleAttacks[side] = (pieceAttacks[side][PAWN] & pieceAttacks[side][KING]) | doublePawnAttacks;
+
+        bishopExistence[side][LIGHT_SQUARE] = board->pieces(side, LIGHT_SQUARE, BISHOP);
+        bishopExistence[side][DARK_SQUARE] = board->pieces(side, DARK_SQUARE, BISHOP);
+
+        pawnStormPoints[side] = 0;
+
+        kingArea[side] = Pieces::kingAttacks(kingPos) | kingPos;
+        kingArea[side] |= Bitboards::shift<forwardDir>(kingArea[side]);
+        kingUpperArea[side] = kingArea[side] ^ adjacentRankSquares(kingPos) ^ kingPos;
+
+        kingAttackersCount[side] = Bitboards::popcount(board->pieces(enemy, PAWN) & Bitboards::shift<forwardDir>(kingArea[side]));
+        kingAttackersPoints[side] = 0;
+        kingDefendersCount[side] = kingDefendersPoints[side] = 0;
+
+        kingUnsafeArea[side] = kingArea[side] & (~doublePawnAttacks);
+
+        threatCount[side] = 0;
+        threatPoints[side] = 0;
+
+        pawnProximityDistances[side] = 0;
+        pawnProximityWeights[side] = 0;
+    }
+
+    template void Evaluator::initSideData<WHITE>();
+    template void Evaluator::initSideData<BLACK>();
+
 
     template <Color side>
     Value Evaluator::evaluatePawns()
     {
+        constexpr Color enemy = ~side;
+        constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
+        constexpr Direction backwardDir = (side == WHITE ? SOUTH : NORTH);
+        constexpr Bitboard ourHalfOfBoard = (side == WHITE ? 0x00000000ffffffff : 0xffffffff00000000);
+
+        Value result = 0;
+        Bitboard doubledPawns = 0;
+        Bitboard passedPawns = 0;
         Bitboard pawnsBB = board->pieces(side, PAWN);
 
-        return Bitboards::popcount(pawnsBB) * PIECE_BASE_VALUES_INT[PAWN][stage];
+        const Square enemyKingPos = board->kingPosition(enemy);
+        const Bitboard enemyKingFrontArea = Bitboards::verticalFill<backwardDir>(adjacentRankSquares(enemyKingPos) | enemyKingPos);
+        const Bitboard blockedPawns = pawnsBB & Bitboards::shift<backwardDir>(board->pieces(enemy, PAWN));
+
+        increaseValue<side, basicShow>(result, noPieces[side][PAWN] * PIECE_BASE_VALUES_INT[PAWN][stage], "Pawns base value");
+        while (pawnsBB) {
+            Square sq = Bitboards::popLsb(pawnsBB);
+            Bitboard sqBB = squareToBB(sq);
+            Bitboard file = fileBBOf(sq);
+            Bitboard pawnArea = adjacentRankSquares(sq) | sqBB;
+            Bitboard frontSpawn = Bitboards::shift<forwardDir>(sqBB);
+            Bitboard frontArea = Bitboards::verticalFill<forwardDir>(Bitboards::shift<forwardDir>(pawnArea));
+            Bitboard backArea = Bitboards::verticalFill<backwardDir>(pawnArea) ^ sqBB;
+            Bitboard fileFrontArea = frontArea & file;
+            Bitboard fileBackArea = backArea & file;
+
+            // Backwards, isolated and other hanging pawns
+            if (!(backArea & board->pieces(side, PAWN)) && (pieceAttacks[enemy][PAWN] & frontSpawn) && (ourHalfOfBoard & sqBB)) {
+                increaseValue<side, basicShow>(result, BACKWARD_PAWN_BASE_PENALTY_INT[stage], "Backward pawn");
+                if (multipleAttacks[enemy] & sqBB)
+                    increaseValue<side, basicShow>(result, BACKWARD_PAWN_ATTACKED_PENALTY_INT[stage] << 1, "Backward pawn under attack");
+                else if (pieceAttacks[enemy][ALL_PIECES] & sqBB)
+                    increaseValue<side, basicShow>(result, BACKWARD_PAWN_ATTACKED_PENALTY_INT[stage], "Backward pawn under attack");
+                updatePawnProximity<side>(sq, PAWN_DEFENDING_WEIGHT, PAWN_ATTACKING_WEIGHT);
+            }
+            else if (!(adjacentFiles(sq) & board->pieces(side, PAWN))) {
+                increaseValue<side, basicShow>(result, ISOLATED_PAWN_BASE_PENALTY_INT[stage], "Isolated pawn");
+                if (multipleAttacks[enemy] & sqBB)
+                    increaseValue<side, basicShow>(result, ISOLATED_PAWN_ATTACKED_PENALTY_INT[stage] << 1, "Isolated pawn under attack");
+                else if (pieceAttacks[enemy][ALL_PIECES] & sqBB)
+                    increaseValue<side, basicShow>(result, ISOLATED_PAWN_ATTACKED_PENALTY_INT[stage], "Isolated pawn under attack");
+                updatePawnProximity<side>(sq, PAWN_DEFENDING_WEIGHT, PAWN_ATTACKING_WEIGHT);
+            }
+            else if (!(pieceAttacks[side][PAWN] & sqBB)) {
+                increaseValue<side, basicShow>(result, HANGING_PAWN_PENALTY_INT[stage], "Hanging pawn");
+                updatePawnProximity<side>(sq, PAWN_DEFENDING_WEIGHT, PAWN_ATTACKING_WEIGHT);
+            }
+
+            // Doubled pawns
+            if (board->pieces(side, PAWN) & fileBackArea) {
+                doubledPawns |= sqBB;
+                if (doubledPawns & fileBackArea)
+                    increaseValue<side, basicShow>(result, DOUBLED_PAWN_PENALTY_INT[stage] << 2, "Tripled (or worse) pawn");
+                else if (board->pieces(enemy, PAWN) & (frontArea ^ fileFrontArea))
+                    increaseValue<side, basicShow>(result, DOUBLED_PAWN_PENALTY_INT[stage] >> 1, "(A little bit better) doubled pawn");
+                else
+                    increaseValue<side, basicShow>(result, DOUBLED_PAWN_PENALTY_INT[stage], "Doubled pawn");
+            }
+
+            // Passed pawns 1/3
+            if (!(frontArea & board->pieces(enemy, PAWN)) && !(fileFrontArea & board->pieces(side, PAWN))) {
+                passedPawns |= sqBB;
+                int distanceToPromotion = side == WHITE ? 7 - rankOf(sq) : rankOf(sq);
+                passerValues[sq] = PASSED_PAWN_RANK_BONUS_INT[distanceToPromotion][stage];
+                updatePawnProximity<side>(sq, PASSED_PAWN_SUPPORTING_WEIGHT, PASSED_PAWN_STOPPING_WEIGHT);
+            }
+
+            // Pawn storms 1/2
+            if ((enemyKingFrontArea & sqBB) && !(blockedPawns & sqBB)) {
+                int distance = side == WHITE ? rankOf(enemyKingPos) - rankOf(sq) : rankOf(sq) - rankOf(enemyKingPos);
+                pawnStormPoints[enemy] += 7 - distance;
+            }
+        }
+
+        // Passed pawns 2/3
+        Bitboard passedPawnsBB = passedPawns;
+        Bitboard supportedPassers = 0;
+        while (passedPawnsBB) {
+            Square sq = Bitboards::popLsb(passedPawnsBB);
+            Bitboard sqBB = squareToBB(sq);
+            bool isSupported = false;
+
+            // Blockers and attacks on front spawn
+            Square frontSpawn = sq + forwardDir;
+            Piece blocker = board->onSquare(frontSpawn);
+            bool diagonalBlocker = false;
+            if (blocker != NO_PIECE && colorOf(blocker) == side) {      // 3/4 of full bonus
+                passerValues[sq] *= 3;
+                passerValues[sq] >>= 2;
+            }
+            else if (blocker != NO_PIECE) {                             // 1/2 of full bonus
+                passerValues[sq] >>= 1;
+                PieceType type = typeOf(blocker);
+                diagonalBlocker = type == BISHOP || type == QUEEN || type == KING;
+            }
+            else if (multipleAttacks[enemy] & frontSpawn) {             // 5/8 of full bonus
+                passerValues[sq] *= 5;
+                passerValues[sq] >>= 3;
+            }
+            else if (pieceAttacks[enemy][ALL_PIECES] & frontSpawn) {    // 3/4 of full bonus
+                passerValues[sq] *= 3;
+                passerValues[sq] >>= 2;
+            }
+
+            // Left file connected passers
+            Bitboard leftFilePassers = Bitboards::shift<WEST>(fileBBOf(sq)) & passedPawns;
+            if (leftFilePassers) {
+                Square connectedPasserPos = Bitboards::lsb(leftFilePassers);
+                Bitboard connectedPasserPosBB = squareToBB(connectedPasserPos);
+                if (!(supportedPassers & sqBB)) {
+                    passerValues[sq] <<= 1;
+                    passerValues[sq] += CONNECTED_PASSER_BONUS_INT[stage];
+                }
+                if (!(supportedPassers & connectedPasserPosBB)) {
+                    passerValues[connectedPasserPos] <<= 1;
+                    passerValues[connectedPasserPos] += CONNECTED_PASSER_BONUS_INT[stage];
+                }
+                if (diagonalBlocker)
+                    passerValues[connectedPasserPos] >>= 1;
+                supportedPassers |= sqBB;
+                supportedPassers |= connectedPasserPosBB;
+            }
+
+            // Right file connected passers
+            Bitboard rightFilePassers = Bitboards::shift<EAST>(fileBBOf(sq)) & passedPawns;
+            if (rightFilePassers && diagonalBlocker) {
+                Square connectedPasserPos = Bitboards::lsb(rightFilePassers);
+                passerValues[connectedPasserPos] >>= 1;
+            }
+
+            // Protected passed pawn
+            if (!leftFilePassers && !rightFilePassers && (pieceAttacks[side][PAWN] & sqBB))
+                passerValues[sq] <<= 1;
+        }
+
+        while (passedPawns) {
+            Square sq = Bitboards::popLsb(passedPawns);
+            increaseValue<side, passedShow>(result, passerValues[sq], "Passed pawn");
+        }
+
+        return result;
     }
 
     template Value Evaluator::evaluatePawns<WHITE>();
@@ -112,135 +357,197 @@ namespace Evaluation {
         constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
         constexpr Bitboard rank4 = (side == WHITE ? ROW_4 : ROW_5);
         constexpr Bitboard ranks78 = (side == WHITE ? (ROW_7 | ROW_8) : (ROW_1 | ROW_2));
+        constexpr Bitboard ourHalfOfBoard = (side == WHITE ? 0x00000000ffffffff : 0xffffffff00000000);
+        constexpr Bitboard enemyHalfOfBoard = (side == WHITE ? 0xffffffff00000000 : 0x00000000ffffffff);
 
         Value result = 0;
-        Bitboard potentialOutposts = pawnAttacks[side] & (~pawnAttacks[enemy]);
+        const Bitboard potentialOutposts = enemyHalfOfBoard & pieceAttacks[side][PAWN] & (~pieceAttacks[enemy][PAWN]);
+        const Bitboard safeSquares = ~(board->pieces(side) | pieceAttacks[enemy][PAWN]);
 
 
         // Knights
         Bitboard knightsBB = board->pieces(side, KNIGHT);
-        int noKnights = Bitboards::popcount(knightsBB);
+        noPieces[side][KNIGHT] = Bitboards::popcount(knightsBB);
         int collapsedPawnsID = Bitboards::collapseFiles(board->pieces(enemy, PAWN));
-        increaseValue<side, true>(result, noKnights * PIECE_BASE_VALUES_INT[KNIGHT][stage], "Knight base value");
-        increaseValue<side, true>(result, noKnights * KNIGHT_PAWNS_BONUS_INT[noPawns[WHITE] + noPawns[BLACK]], "Knight pawns bonus");
+        increaseValue<side, knightShow>(result, noPieces[side][KNIGHT] * PIECE_BASE_VALUES_INT[KNIGHT][stage], 
+                                        "Knight base value");
+        increaseValue<side, knightShow>(result, noPieces[side][KNIGHT] * KNIGHT_PAWNS_BONUS_INT[noPieces[WHITE][PAWN] + noPieces[BLACK][PAWN]],
+                                        "Knight pawns bonus");
         if (DISTANT_PAWNS_CHECKS[collapsedPawnsID])
-            increaseValue<side, true>(result, noKnights * KNIGHT_DISTANT_PAWNS_PENALTY_INT[stage], "Knight distant pawns penalty");
+            increaseValue<side, knightShow>(result, noPieces[side][KNIGHT] * KNIGHT_DISTANT_PAWNS_PENALTY_INT[stage],
+                                            "Knight distant pawns penalty");
         while (knightsBB) {
             Square sq = Bitboards::popLsb(knightsBB);
             Bitboard sqBB = squareToBB(sq);
-            Bitboard attacks = Pieces::knightAttacks(sq) & (~board->pieces(side));
+            Bitboard attacks = Pieces::knightAttacks(sq);
+            Bitboard safeMoves = attacks & safeSquares;
+
+            multipleAttacks[side] |= attacks & pieceAttacks[side][ALL_PIECES];
+            pieceAttacks[side][KNIGHT] |= attacks;
+            pieceAttacks[side][ALL_PIECES] |= attacks;
+            
+            updateAttackDefenseTables<side, KNIGHT>(attacks);
 
             // Outposts
             if (potentialOutposts & sqBB) {
-                Bitboard pawnsArea = Bitboards::verticalShift<forwardDir, false>(adjacentRankSquares(sq));
+                Bitboard pawnsArea = Bitboards::shift<forwardDir>(adjacentRankSquares(sq));
                 pawnsArea = Bitboards::verticalFill<forwardDir>(pawnsArea);
                 if (!(pawnsArea & board->pieces(enemy, PAWN))) {
                     if (!board->pieces(enemy, KNIGHT) && !bishopExistence[enemy][colorOf(sq)])
-                        increaseValue<side, true>(result, KNIGHT_OUTPOSTS_BONUSES_INT[III_DEG_OUTPOST][stage], "Knight outpost III deg");
+                        increaseValue<side, knightShow>(result, KNIGHT_OUTPOSTS_BONUSES_INT[III_DEG_OUTPOST][stage], "Knight outpost III deg");
                     else
-                        increaseValue<side, true>(result, KNIGHT_OUTPOSTS_BONUSES_INT[II_DEG_OUTPOST][stage], "Knight outpost II deg");
+                        increaseValue<side, knightShow>(result, KNIGHT_OUTPOSTS_BONUSES_INT[II_DEG_OUTPOST][stage], "Knight outpost II deg");
                 }
                 else
-                    increaseValue<side, true>(result, KNIGHT_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage], "Knight outpost I deg");
+                    increaseValue<side, knightShow>(result, KNIGHT_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage], "Knight outpost I deg");
             }
-            else if (potentialOutposts & attacks)
-                increaseValue<side, true>(result, KNIGHT_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage] >> 1, "Knight attack on outpost");
+            else if (potentialOutposts & safeMoves)
+                increaseValue<side, knightShow>(result, KNIGHT_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage] >> 1, "Knight attack on outpost");
             
             // Mobility
-            Bitboard safeMoves = attacks & (~pawnAttacks[enemy]);
-            increaseValue<side, true>(result, KNIGHT_MOBILITY_INT[Bitboards::popcount(safeMoves)][stage], "Knight mobility");
+            int noSafeMoves = Bitboards::popcount(safeMoves);
+            if (board->pinnedPieces(side) & sqBB)
+                noSafeMoves >>= 1;
+            increaseValue<side, knightShow>(result, KNIGHT_MOBILITY_INT[noSafeMoves][stage], "Knight mobility");
         }
 
 
         // Bishops
         Bitboard bishopsBB = board->pieces(side, BISHOP);
+        noPieces[side][BISHOP] = Bitboards::popcount(bishopsBB);
         Bitboard pawnsFrontFill = Bitboards::verticalFill<forwardDir>(board->pieces(side, PAWN) | rank4);
-        increaseValue<side, true>(result, Bitboards::popcount(bishopsBB) * PIECE_BASE_VALUES_INT[BISHOP][stage], "Bishop base value");
+        int noPawnsOnColors[SQUARE_COLOR_RANGE] = { Bitboards::popcount(board->pieces(side, DARK_SQUARE, PAWN)),
+                                                      Bitboards::popcount(board->pieces(side, LIGHT_SQUARE, PAWN)) };
+        increaseValue<side, bishopShow>(result, noPieces[side][BISHOP] * PIECE_BASE_VALUES_INT[BISHOP][stage], "Bishop base value");
         if (bishopExistence[side][LIGHT_SQUARE] && bishopExistence[side][DARK_SQUARE])
-            increaseValue<side, true>(result, BISHOP_PAIR_BONUS_INT, "Bishop pair");
+            increaseValue<side, bishopShow>(result, BISHOP_PAIR_BONUS_INT, "Bishop pair");
         while (bishopsBB) {
             Square sq = Bitboards::popLsb(bishopsBB);
             Bitboard sqBB = squareToBB(sq);
+            SquareColor bishopColor = colorOf(sq);
+            Bitboard attacks = Pieces::bishopAttacks(sq, board->pieces());
+            Bitboard xRayAttacks = Pieces::xRayBishopAttacks(sq, board->pieces(), board->pieces(side, BISHOP, QUEEN));
+            Bitboard allAttacks = attacks | xRayAttacks;
+            Bitboard safeMoves = attacks & safeSquares;
 
-            // Own pawns on square same colored as bishop
-            if (pawnsFrontFill & sqBB)
-                increaseValue<side, true>(result, BAD_BISHOP_PENALTY_INT[noPawns[side]] >> 2, "Bad (but not that bad) bishop");
-            else
-                increaseValue<side, true>(result, BAD_BISHOP_PENALTY_INT[noPawns[side]], "Bad bishop");
+            multipleAttacks[side] |= allAttacks & pieceAttacks[side][ALL_PIECES];
+            pieceAttacks[side][BISHOP] |= attacks;
+            pieceAttacks[side][ALL_PIECES] |= attacks;
 
-            // Fianchetto
-            if (sqBB & FIANCHETTO_MASKS[side])
-                increaseValue<side, true>(result, BISHOP_FIANCHETTO_BONUS_INT[stage], "Bishop fianchetto");
+            updateAttackDefenseTables<side, BISHOP>(allAttacks);
+
+            // Fianchetto & bad bishop
+            if (sqBB & FIANCHETTO_MASKS[side]) {
+                increaseValue<side, bishopShow>(result, BISHOP_FIANCHETTO_BONUS_INT[stage], "Bishop fianchetto");
+                Bitboard longDiagonal = bishopColor == DARK_SQUARE ? DIAG_A1H8 : DIAG_A8H1;
+                if (longDiagonal & board->pieces(side, PAWN)) {     // Fianchetto bishop is considered bad only if there are friendly pawns blocking the long diagonal
+                    if (pawnsFrontFill & sqBB)
+                        increaseValue<side, bishopShow>(result, BAD_BISHOP_PENALTY_INT[noPawnsOnColors[bishopColor]] >> 2, "Bad (but not that bad) fianchetto bishop");
+                    else
+                        increaseValue<side, bishopShow>(result, BAD_BISHOP_PENALTY_INT[noPawnsOnColors[bishopColor]], "Bad fianchetto bishop");
+                }
+            }
+            else {
+                if (pawnsFrontFill & sqBB)
+                    increaseValue<side, bishopShow>(result, BAD_BISHOP_PENALTY_INT[noPawnsOnColors[bishopColor]] >> 2, "Bad (but not that bad) bishop");
+                else
+                    increaseValue<side, bishopShow>(result, BAD_BISHOP_PENALTY_INT[noPawnsOnColors[bishopColor]], "Bad bishop");
+            }
 
             // Color weakness
-            SquareColor bishopColor = colorOf(sq);
             if (!bishopExistence[enemy][bishopColor]) {
                 Square enemyKingPos = board->kingPosition(enemy);
-                Bitboard weakSquares = (Pieces::kingAttacks(enemyKingPos) | enemyKingPos) &
-                                       squaresOfColor(bishopColor) & (~board->pieces(enemy, PAWN));
-                increaseValue<side, true>(result, BISHOP_COLOR_WEAKNESS_BONUS_INT[Bitboards::popcount(weakSquares)][stage], "Color weakness");
+                Bitboard weakSquares = Pieces::kingAttacks(enemyKingPos) & squaresOfColor(bishopColor) & (~board->pieces(enemy, PAWN));
+                increaseValue<side, bishopShow>(result, BISHOP_COLOR_WEAKNESS_BONUS_INT[Bitboards::popcount(weakSquares)][stage], "Color weakness");
             }
 
             // Outposts
-            Bitboard attacks = Pieces::bishopAttacks(sq, board->pieces());
             if (potentialOutposts & sqBB) {
-                Bitboard pawnsArea = Bitboards::verticalShift<forwardDir, false>(adjacentRankSquares(sq));
+                Bitboard pawnsArea = Bitboards::shift<forwardDir>(adjacentRankSquares(sq));
                 pawnsArea = Bitboards::verticalFill<forwardDir>(pawnsArea);
                 if (!(pawnsArea & board->pieces(enemy, PAWN))) {
                     if (!board->pieces(enemy, KNIGHT) && !bishopExistence[enemy][bishopColor])
-                        increaseValue<side, true>(result, BISHOP_OUTPOSTS_BONUSES_INT[III_DEG_OUTPOST][stage], "Bishop outpost III deg");
+                        increaseValue<side, bishopShow>(result, BISHOP_OUTPOSTS_BONUSES_INT[III_DEG_OUTPOST][stage], "Bishop outpost III deg");
                     else
-                        increaseValue<side, true>(result, BISHOP_OUTPOSTS_BONUSES_INT[II_DEG_OUTPOST][stage], "Bishop outpost II deg");
+                        increaseValue<side, bishopShow>(result, BISHOP_OUTPOSTS_BONUSES_INT[II_DEG_OUTPOST][stage], "Bishop outpost II deg");
                 }
                 else
-                    increaseValue<side, true>(result, BISHOP_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage], "Bishop outpost I deg");
+                    increaseValue<side, bishopShow>(result, BISHOP_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage], "Bishop outpost I deg");
             }
-            else if (potentialOutposts & attacks)
-                increaseValue<side, true>(result, BISHOP_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage] >> 1, "Bishop attack on outpost");
+            else if (potentialOutposts & safeMoves)
+                increaseValue<side, bishopShow>(result, BISHOP_OUTPOSTS_BONUSES_INT[I_DEG_OUTPOST][stage] >> 1, "Bishop attack on outpost");
 
             // Mobility
-            Bitboard safeMoves = attacks & (~pawnAttacks[enemy]);
-            increaseValue<side, true>(result, BISHOP_MOBILITY_INT[Bitboards::popcount(safeMoves)][stage], "Bishop mobility");
+            int noSafeMoves = Bitboards::popcount(safeMoves);
+            if (board->pinnedPieces(side) & sqBB)
+                noSafeMoves >>= 1;
+            increaseValue<side, bishopShow>(result, BISHOP_MOBILITY_INT[noSafeMoves][stage], "Bishop mobility");
         }
 
 
         // Rooks
         Bitboard rooksBB = board->pieces(side, ROOK);
-        increaseValue<side, true>(result, Bitboards::popcount(rooksBB) * PIECE_BASE_VALUES_INT[ROOK][stage], "Rook base value");
+        noPieces[side][ROOK] = Bitboards::popcount(rooksBB);
+        increaseValue<side, rookShow>(result, noPieces[side][ROOK] * PIECE_BASE_VALUES_INT[ROOK][stage], "Rook base value");
         while (rooksBB) {
             Square sq = Bitboards::popLsb(rooksBB);
             Bitboard sqBB = squareToBB(sq);
+            Bitboard attacks = Pieces::rookAttacks(sq, board->pieces());
+            Bitboard xRayAttacks = Pieces::xRayRookAttacks(sq, board->pieces(), board->pieces(side, ROOK, QUEEN));
+            Bitboard allAttacks = attacks | xRayAttacks;
+            Bitboard safeMoves = attacks & safeSquares;
+
+            multipleAttacks[side] |= allAttacks & pieceAttacks[side][ALL_PIECES];
+            pieceAttacks[side][ROOK] |= attacks;
+            pieceAttacks[side][ALL_PIECES] |= attacks;
+
+            updateAttackDefenseTables<side, ROOK>(allAttacks);
 
             // Semiopen, open files and development penalty
             Bitboard fileForward = Bitboards::verticalFill<forwardDir>(sqBB);
             if (!(fileForward & board->pieces(side, PAWN))) {
                 if (!(fileForward & board->pieces(enemy, PAWN)))
-                    increaseValue<side, true>(result, ROOK_ON_OPEN_FILE_BONUS_INT, "Rook on open file");
+                    increaseValue<side, rookShow>(result, ROOK_ON_OPEN_FILE_BONUS_INT, "Rook on open file");
                 else
-                    increaseValue<side, true>(result, ROOK_ON_SEMIOPENFILE_BONUS_INT, "Rook on semiopen file");
+                    increaseValue<side, rookShow>(result, ROOK_ON_SEMIOPENFILE_BONUS_INT, "Rook on semiopen file");
             }
-            else if (PATHS_TO_CENTRAL_FILES[sq] & board->pieces(side))
-                increaseValue<side, true>(result, ROOK_UNDEVELOPED_PENALTY_INT[stage], "Undeveloped rook");
+            else if (PATHS_TO_CENTRAL_FILES[sq] & board->pieces(side, KING))
+                increaseValue<side, rookShow>(result, ROOK_UNDEVELOPED_PENALTY_INT[stage], "Undeveloped rook");
             
             // Rooks on 7-8 rank
             if (ranks78 & sqBB)
-                increaseValue<side, true>(result, ROOK_ON_78_RANK_BONUS_INT, "Rook on 7/8 rank");
+                increaseValue<side, rookShow>(result, ROOK_ON_78_RANK_BONUS_INT, "Rook on 7/8 rank");
 
             // Mobility
-            Bitboard safeMoves = Pieces::rookAttacks(sq, board->pieces()) & (~pawnAttacks[enemy]);
-            increaseValue<side, true>(result, ROOK_MOBILITY_INT[Bitboards::popcount(safeMoves)][stage], "Rook mobility");
+            int noSafeMoves = Bitboards::popcount(safeMoves);
+            if (board->pinnedPieces(side) & sqBB)
+                noSafeMoves >>= 1;
+            increaseValue<side, rookShow>(result, ROOK_MOBILITY_INT[noSafeMoves][stage], "Rook mobility");
         }
 
 
         // Queens
         Bitboard queensBB = board->pieces(side, QUEEN);
-        increaseValue<side, true>(result, Bitboards::popcount(queensBB) * PIECE_BASE_VALUES_INT[QUEEN][stage], "Queen base value");
+        noPieces[side][QUEEN] = Bitboards::popcount(queensBB);
+        increaseValue<side, queenShow>(result, noPieces[side][QUEEN] * PIECE_BASE_VALUES_INT[QUEEN][stage], "Queen base value");
         while (queensBB) {
             Square sq = Bitboards::popLsb(queensBB);
+            Bitboard attacks = Pieces::queenAttacks(sq, board->pieces());
+            Bitboard xRayAttacks = Pieces::xRayQueenAttacks(sq, board->pieces(), board->pieces(side, BISHOP, ROOK, QUEEN));
+            Bitboard allAttacks = attacks | xRayAttacks;
+            Bitboard safeMoves = attacks & safeSquares;
+
+            multipleAttacks[side] |= allAttacks & pieceAttacks[side][ALL_PIECES];
+            pieceAttacks[side][QUEEN] |= attacks;
+            pieceAttacks[side][ALL_PIECES] |= attacks;
+
+            updateAttackDefenseTables<side, QUEEN>(allAttacks);
 
             // Mobility
-            Bitboard safeMoves = Pieces::queenAttacks(sq, board->pieces()) & (~pawnAttacks[enemy]);
-            increaseValue<side, true>(result, QUEEN_MOBILITY_INT[Bitboards::popcount(safeMoves)][stage], "Queen mobility");
+            int noSafeMoves = Bitboards::popcount(safeMoves);
+            if (board->pinnedPieces(side) & sq)
+                noSafeMoves >>= 1;
+            increaseValue<side, queenShow>(result, QUEEN_MOBILITY_INT[noSafeMoves][stage], "Queen mobility");
         }
 
         return result;
@@ -250,4 +557,114 @@ namespace Evaluation {
     template Value Evaluator::evaluatePieces<BLACK>();
 
 
+    template <Color side>
+    Value Evaluator::evaluateKing()
+    {
+        constexpr Color enemy = ~side;
+        constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
+
+        Value result = 0;
+        Square sq = board->kingPosition(side);
+        Bitboard sqBB = squareToBB(sq);
+        Bitboard rankArea = adjacentRankSquares(sq) | sqBB;
+
+        // Pawn shield
+        Bitboard frontRankArea = Bitboards::shift<forwardDir>(rankArea);
+        Bitboard frontShield = frontRankArea & board->pieces(side, PAWN);
+        increaseValue<side, kingShow>(result, Bitboards::popcount(frontShield) * PAWN_SHIELD_STRONG_BONUS_INT[stage], "Frontal pawn shield");
+        Bitboard otherShielders = (Bitboards::shift<forwardDir>(frontRankArea) | adjacentRankSquares(sq)) & board->pieces(side, PAWN);
+        increaseValue<side, kingShow>(result, Bitboards::popcount(otherShielders) * PAWN_SHIELD_WEAKER_BONUS_INT[stage], "Other shields");
+
+        // Pawn storms 2/2
+        increaseValue<side, kingShow>(result, PAWN_STORM_PENALTY_INT[std::min(pawnStormPoints[side], 16)][stage], "Pawn storm");
+
+        // Semiopen & open files
+        Bitboard centralFile = fileBBOf(sq);
+        increaseValue<side, kingShow>(result, fileSafetyEval<side>(centralFile), "(Semi)open file near king");
+        increaseValue<side, kingShow>(result, (3 * fileSafetyEval<side>(Bitboards::shift<WEST>(centralFile))) >> 2, "(Semi)open file near king");
+        increaseValue<side, kingShow>(result, (3 * fileSafetyEval<side>(Bitboards::shift<EAST>(centralFile))) >> 2, "(Semi)open file near king");
+
+        // Distance from center
+        int centerDistance = DISTANCE_TO_CENTER[sq];
+        increaseValue<side, kingShow>(result, KING_CENTER_DISTANCE_VALUE_INT[centerDistance][stage], "King distance to center");
+
+        // Pawn proximity
+        float weightedAverage = static_cast<float>(pawnProximityDistances[side]) / pawnProximityWeights[side] - 1.f;
+        Value proximityValue = static_cast<Value>(weightedAverage * KING_PAWN_PROXIMITY_VALUE_INT[stage]);
+        increaseValue<side, kingShow>(result, proximityValue, "King and pawns proximity");
+
+        // King area attacks and defense
+        Value attackDefenseID = std::max(1, 1 + kingAttackersCount[side] - kingDefendersCount[side]) *
+                              std::max(kingAttackersPoints[side] >> 1, kingAttackersPoints[side] - kingDefendersPoints[side]);
+        attackDefenseID = std::min(attackDefenseID, KING_AREA_ATTACKS_MAX_POINTS_INT);
+        increaseValue<side, kingShow>(result, KING_AREA_ATTACKS_VALUE_INT[attackDefenseID], "Attacks on king area");
+
+        return result;
+    }
+
+    template Value Evaluator::evaluateKing<WHITE>();
+    template Value Evaluator::evaluateKing<BLACK>();
+
+
+    template <Color side>
+    Value Evaluator::evaluateOtherFeatures()
+    {
+        constexpr Color enemy = ~side;
+        constexpr Direction backwardDir = (side == WHITE ? SOUTH : NORTH);
+        constexpr Bitboard sideArea = (side == WHITE ? ROW_2 | ROW_3 | ROW_4 : ROW_7 | ROW_6 | ROW_5);
+
+        Value result = 0;
+
+        // Space
+        Value spaceIIIdeg = 0;  // Central files
+        Value spaceIIdeg = 0;   // B and G files
+        Value spaceIdeg = 0;    // A and H files
+
+        Bitboard behindPawns = Bitboards::verticalFill<backwardDir>(Bitboards::shift<backwardDir>(board->pieces(side, PAWN)));
+        Bitboard safeSquares = sideArea & behindPawns & (~pieceAttacks[enemy][PAWN]) & (~board->pieces(side));
+        Bitboard uncontestedSquares = safeSquares & (~pieceAttacks[enemy][ALL_PIECES]);
+        safeSquares ^= uncontestedSquares;
+        spaceIIIdeg += Bitboards::popcount(safeSquares & CENTRAL_FILES) * SPACE_BONUS_INT[stage];
+        spaceIIIdeg += Bitboards::popcount(uncontestedSquares & CENTRAL_FILES) * UNCONTESTED_SPACE_BONUS_INT[stage];
+        spaceIIdeg += Bitboards::popcount(safeSquares & BG_FILES) * SPACE_BONUS_INT[stage];
+        spaceIIdeg += Bitboards::popcount(uncontestedSquares & BG_FILES) * UNCONTESTED_SPACE_BONUS_INT[stage];
+        spaceIIdeg >>= 1;
+        spaceIdeg += Bitboards::popcount(safeSquares & EDGE_FILES) * SPACE_BONUS_INT[stage];
+        spaceIdeg += Bitboards::popcount(uncontestedSquares & EDGE_FILES) * SPACE_BONUS_INT[stage];
+        spaceIdeg >>= 2;
+
+        increaseValue<side, spaceShow>(result, spaceIIIdeg + spaceIIdeg + spaceIdeg, "Space");
+
+        // Threats & connectivity
+        Bitboard safePieces = board->pieces(enemy, KNIGHT, BISHOP, ROOK, QUEEN);
+        Bitboard undefendedSquares = ~pieceAttacks[enemy][ALL_PIECES];
+        
+        Bitboard pawnThreats = safePieces & pieceAttacks[side][PAWN];
+        safePieces ^= pawnThreats;
+        updateThreatsTables<side, PAWN>(pawnThreats);
+        Bitboard knightThreats = ((board->pieces(enemy, BISHOP) & undefendedSquares) |
+                                   board->pieces(enemy, ROOK, QUEEN)) & safePieces & pieceAttacks[side][KNIGHT];
+        safePieces ^= knightThreats;
+        updateThreatsTables<side, KNIGHT>(knightThreats);
+        Bitboard bishopThreats = ((board->pieces(enemy, KNIGHT) & undefendedSquares) |
+                                   board->pieces(enemy, ROOK, QUEEN)) & safePieces & pieceAttacks[side][BISHOP];
+        safePieces ^= bishopThreats;
+        updateThreatsTables<side, BISHOP>(bishopThreats);
+        Bitboard rookThreats = ((safePieces & board->pieces(enemy, KNIGHT, BISHOP) & undefendedSquares) |
+                                 board->pieces(enemy, QUEEN)) & safePieces & pieceAttacks[side][ROOK];
+        safePieces ^= rookThreats;
+        updateThreatsTables<side, ROOK>(rookThreats);
+        Bitboard queenKingThreats = safePieces & undefendedSquares & (pieceAttacks[side][QUEEN] | pieceAttacks[side][KING]);
+        threatCount[side] += Bitboards::popcount(queenKingThreats);
+
+        if (threatCount[side] != 1 && (threatCount[side] & 0x1))
+            increaseValue<side, threatsShow>(result, threatPoints[side] * (threatCount[side] - 1), "Threats");
+        else
+            increaseValue<side, threatsShow>(result, threatPoints[side] * threatCount[side], "Threats");
+        
+        return result;
+    }
+
+    template Value Evaluator::evaluateOtherFeatures<WHITE>();
+    template Value Evaluator::evaluateOtherFeatures<BLACK>();
 }

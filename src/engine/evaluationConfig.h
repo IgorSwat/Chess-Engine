@@ -45,8 +45,27 @@ namespace Evaluation {
         ROOK_MOBILITY_FULL,
         QUEEN_MOBILITY_ZERO,
         QUEEN_MOBILITY_FULL,
+        ISOLATED_PAWN_BASE_PENALTY,
+        ISOLATED_PAWN_ATTACKED_PENALTY,
+        DOUBLED_PAWN_PENALTY,
+        BACKWARD_PAWN_BASE_PENALTY,
+        BACKWARD_PAWN_ATTACKED_PENALTY,
+        HANGING_PAWN_PENALTY,
+        PASSED_PAWN_MAX_BONUS,
+        CONNECTED_PASSER_BONUS,
+        PAWN_SHIELD_STRONG_BONUS,
+        PAWN_SHIELD_WEAKER_BONUS,
+        PAWN_STORM_PENALTY,
+        SEMIOPEN_FILE_NEAR_KING_PENALTY,
+        OPEN_FILE_NEAR_KING_PENALTY,
+        KING_CENTER_DISTANCE_MIN_VALUE,
+        KING_AREA_ATTACKS_MAX_VALUE,
+        KING_AREA_ATTACKS_MAX_POINTS,
+        KING_PAWN_PROXIMITY_VALUE,
+        SPACE_BONUS,
+        UNCONTESTED_SPACE_BONUS,
 
-        EVAL_PARAMETERS_RANGE = 33
+        EVAL_PARAMETERS_RANGE = 51
     };
 
     enum OutpostType {
@@ -96,6 +115,7 @@ namespace Evaluation {
 
     constexpr auto linearFunction = [](float x){return x;};
     constexpr auto quadraticFunction = [](float x){return x * x;};
+    constexpr auto highDegPolynomial = [](float x){return std::pow(x, 4);};
     constexpr auto squareRootFunction = [](float x){return std::sqrt(x);};
     const SigmoidalFunction sigmoidLowAbrupt = SigmoidalFunction([](float x){return 2.f * x * x;});
     const SigmoidalFunction sigmoidMidAbrupt = SigmoidalFunction([](float x){return 4.f * x * x * x;});

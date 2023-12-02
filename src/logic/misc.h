@@ -197,12 +197,12 @@ constexpr int DIRECTION_SHIFTS[DIRECTION_RANGE] = {
 
 constexpr inline Square operator+(Square sq, Direction dir)
 {
-	return sq + DIRECTION_SHIFTS[dir];
+	return Square(sq + DIRECTION_SHIFTS[dir]);
 }
 
 constexpr inline Square operator-(Square sq, Direction dir)
 {
-	return sq - DIRECTION_SHIFTS[dir];
+	return Square(sq - DIRECTION_SHIFTS[dir]);
 }
 
 enum SquareColor
@@ -219,7 +219,7 @@ constexpr inline SquareColor operator~(SquareColor color)
 
 constexpr inline SquareColor colorOf(Square s)
 {
-	return SquareColor(s & 0x1);
+	return SquareColor(((s >> 3) & 0x1) ^ (s & 0x1));
 }
 
 
