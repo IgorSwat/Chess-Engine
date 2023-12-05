@@ -14,8 +14,8 @@ namespace Evaluation {
     constexpr bool queenShow = false;
     constexpr bool basicShow = false;
     constexpr bool passedShow = false;
-    constexpr bool kingShow = true;
-    constexpr bool spaceShow = false;
+    constexpr bool kingShow = false;
+    constexpr bool spaceShow = true;
     constexpr bool threatsShow = false;
 
     // Precalculations
@@ -23,6 +23,7 @@ namespace Evaluation {
         0x0000000000244281,
         0x8142240000000000
     };
+
     constexpr int DISTANCE_TO_CENTER[SQUARE_RANGE] = {
         6, 5, 4, 3, 3, 4, 5, 6,
         5, 4, 3, 2, 2, 3, 4, 5,
@@ -33,6 +34,7 @@ namespace Evaluation {
         5, 4, 3, 2, 2, 3, 4, 5,
         6, 5, 4, 3, 3, 4, 5, 6
     };
+
     bool DISTANT_PAWNS_CHECKS[COLLAPSED_PAWNS_MAX_ID] = { false };
 
 
@@ -135,22 +137,22 @@ namespace Evaluation {
 
     Value Evaluator::evaluate()
     {
-        evaluation = 0;
+        pieceEvaluation = kingEvaluation = 0;
         stage = board->gameStage();
 
         initSideData<WHITE>();
         initSideData<BLACK>();
 
-        evaluation += evaluatePieces<WHITE>();
-        evaluation -= evaluatePieces<BLACK>();
-        evaluation += evaluatePawns<WHITE>();
-        evaluation -= evaluatePawns<BLACK>();
-        evaluation += evaluateKing<WHITE>();
-        evaluation -= evaluateKing<BLACK>();
-        evaluation += evaluateOtherFeatures<WHITE>();
-        evaluation -= evaluateOtherFeatures<BLACK>();
+        pieceEvaluation += evaluatePieces<WHITE>();
+        pieceEvaluation -= evaluatePieces<BLACK>();
+        pieceEvaluation += evaluatePawns<WHITE>();
+        pieceEvaluation -= evaluatePawns<BLACK>();
+        kingEvaluation += evaluateKing<WHITE>();
+        kingEvaluation -= evaluateKing<BLACK>();
+        pieceEvaluation += evaluateOtherFeatures<WHITE>();
+        pieceEvaluation -= evaluateOtherFeatures<BLACK>();
 
-        return evaluation;
+        return adjustWinningChances();
     }
 
 
@@ -194,6 +196,8 @@ namespace Evaluation {
 
         pawnProximityDistances[side] = 0;
         pawnProximityWeights[side] = 0;
+
+        passedPawns[side] = 0;
     }
 
     template void Evaluator::initSideData<WHITE>();
@@ -210,7 +214,7 @@ namespace Evaluation {
 
         Value result = 0;
         Bitboard doubledPawns = 0;
-        Bitboard passedPawns = 0;
+        Bitboard passers = 0;
         Bitboard pawnsBB = board->pieces(side, PAWN);
 
         const Square enemyKingPos = board->kingPosition(enemy);
@@ -264,7 +268,7 @@ namespace Evaluation {
 
             // Passed pawns 1/3
             if (!(frontArea & board->pieces(enemy, PAWN)) && !(fileFrontArea & board->pieces(side, PAWN))) {
-                passedPawns |= sqBB;
+                passers |= sqBB;
                 int distanceToPromotion = side == WHITE ? 7 - rankOf(sq) : rankOf(sq);
                 passerValues[sq] = PASSED_PAWN_RANK_BONUS_INT[distanceToPromotion][stage];
                 updatePawnProximity<side>(sq, PASSED_PAWN_SUPPORTING_WEIGHT, PASSED_PAWN_STOPPING_WEIGHT);
@@ -278,7 +282,8 @@ namespace Evaluation {
         }
 
         // Passed pawns 2/3
-        Bitboard passedPawnsBB = passedPawns;
+        passedPawns[side] = passers;
+        Bitboard passedPawnsBB = passers;
         Bitboard supportedPassers = 0;
         while (passedPawnsBB) {
             Square sq = Bitboards::popLsb(passedPawnsBB);
@@ -308,7 +313,7 @@ namespace Evaluation {
             }
 
             // Left file connected passers
-            Bitboard leftFilePassers = Bitboards::shift<WEST>(fileBBOf(sq)) & passedPawns;
+            Bitboard leftFilePassers = Bitboards::shift<WEST>(fileBBOf(sq)) & passers;
             if (leftFilePassers) {
                 Square connectedPasserPos = Bitboards::lsb(leftFilePassers);
                 Bitboard connectedPasserPosBB = squareToBB(connectedPasserPos);
@@ -327,7 +332,7 @@ namespace Evaluation {
             }
 
             // Right file connected passers
-            Bitboard rightFilePassers = Bitboards::shift<EAST>(fileBBOf(sq)) & passedPawns;
+            Bitboard rightFilePassers = Bitboards::shift<EAST>(fileBBOf(sq)) & passers;
             if (rightFilePassers && diagonalBlocker) {
                 Square connectedPasserPos = Bitboards::lsb(rightFilePassers);
                 passerValues[connectedPasserPos] >>= 1;
@@ -338,8 +343,8 @@ namespace Evaluation {
                 passerValues[sq] <<= 1;
         }
 
-        while (passedPawns) {
-            Square sq = Bitboards::popLsb(passedPawns);
+        while (passers) {
+            Square sq = Bitboards::popLsb(passers);
             increaseValue<side, passedShow>(result, passerValues[sq], "Passed pawn");
         }
 
@@ -419,7 +424,7 @@ namespace Evaluation {
         int noPawnsOnColors[SQUARE_COLOR_RANGE] = { Bitboards::popcount(board->pieces(side, DARK_SQUARE, PAWN)),
                                                       Bitboards::popcount(board->pieces(side, LIGHT_SQUARE, PAWN)) };
         increaseValue<side, bishopShow>(result, noPieces[side][BISHOP] * PIECE_BASE_VALUES_INT[BISHOP][stage], "Bishop base value");
-        if (bishopExistence[side][LIGHT_SQUARE] && bishopExistence[side][DARK_SQUARE])
+        if (bishopPair<side>())
             increaseValue<side, bishopShow>(result, BISHOP_PAIR_BONUS_INT, "Bishop pair");
         while (bishopsBB) {
             Square sq = Bitboards::popLsb(bishopsBB);
@@ -667,4 +672,36 @@ namespace Evaluation {
 
     template Value Evaluator::evaluateOtherFeatures<WHITE>();
     template Value Evaluator::evaluateOtherFeatures<BLACK>();
+
+
+    // This function takes the calculated values of pieceEvaluation and kingEvaluation
+    // and adjust them considering winning chances in given position, returns the final evaluation of the position
+    Value Evaluator::adjustWinningChances()
+    {
+        // Consider most common types of difficult endgames to win
+        if (stage <= ENDGAME_MARK) {
+            if (oppositeColorBishops()) {       // Opposite color bishops endgame
+                float factor = OPPOSITE_COLOR_BISHOPS_FACTOR[stage];
+                pieceEvaluation *= factor;
+            }
+            else if (!board->pieces(KNIGHT, BISHOP) && !passedPawns[WHITE] && !passedPawns[BLACK]) {        // Rook endgame
+                float factor = ROOKS_ENDGAME_FACTOR[stage];
+                pieceEvaluation *= factor;
+            }
+            else if (pieceEvaluation > 0 && noPieces[WHITE][PAWN] == 0)
+                pieceEvaluation >>= 1;
+            else if (pieceEvaluation < 0 && noPieces[BLACK][PAWN] == 0)
+                pieceEvaluation >>= 1;
+        }
+
+        int totalEvaluation = pieceEvaluation + kingEvaluation;
+
+        // Flattening the eval with no progress determined by halfmove clock
+        int halfmoveClock = board->halfmovesClocked();
+        totalEvaluation *= (100 - halfmoveClock);
+        totalEvaluation /= 100;
+
+        return Value(totalEvaluation);
+    }
+
 }

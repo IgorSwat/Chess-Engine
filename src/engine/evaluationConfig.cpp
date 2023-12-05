@@ -42,7 +42,7 @@ namespace Evaluation {
         {-4, -19},          // DOUBLED_PAWN_PENALTY
         {-10, -30},         // BACKWARD_PAWN_BASE_PENALTY
         {-9, -20},          // BACKWARD_PAWN_ATTACKED_PENALTY
-        {-4, -15},          // HANGING_PAWN_PENALTY
+        {-3, -15},          // HANGING_PAWN_PENALTY
         {152, 196},         // PASSED_PAWN_MAX_BONUS
         {12, 32},           // CONNECTED_PASSER_BONUS
 
@@ -51,13 +51,13 @@ namespace Evaluation {
         {-56, -11},         // PAWN_STORM_PENALTY
         {-20, 0},           // SEMIOPEN_FILE_NEAR_KING_PENALTY
         {-34, 0},           // OPEN_FILE_NEAR_KING_PENALTY
-        {-260, 0},         // KING_CENTER_DISTANCE_MIN_VALUE
+        {-260, 0},          // KING_CENTER_DISTANCE_MIN_VALUE
         {-600, -600},       // KING_AREA_ATTACKS_MAX_VALUE
         {80, 80},           // KING_AREA_ATTACKS_MAX_POINTS
         {0, -40},           // KING_PAWN_PROXIMITY_VALUE
 
         {5, 0},             // SPACE_BONUS
-        {6, 0},             // UNCONTESTED_SPACE_BONUS
+        {7, 0},             // UNCONTESTED_SPACE_BONUS
     };
     
 }

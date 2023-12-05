@@ -28,6 +28,15 @@ namespace Evaluation {
     constexpr int PASSED_PAWN_SUPPORTING_WEIGHT = 10;
     constexpr int PASSED_PAWN_STOPPING_WEIGHT = 8;
 
+    constexpr int ENDGAME_MARK = 8;
+
+    constexpr float OPPOSITE_COLOR_BISHOPS_FACTOR[ENDGAME_MARK + 1] = {
+        0.8f, 0.75f, 0.7f, 0.65f, 0.6f, 0.55f, 0.5f, 0.f, 0.f
+    };
+    constexpr float ROOKS_ENDGAME_FACTOR[ENDGAME_MARK + 1] = {
+        1.f, 0.75f, 0.7f, 0.65f, 0.6f, 0.5f, 1.f, 1.f, 1.f
+    };
+
 
 
     class Evaluator
@@ -54,7 +63,11 @@ namespace Evaluation {
         Value evaluateKing();
         template <Color side>
         Value evaluateOtherFeatures();
+        Value adjustWinningChances();
 
+        template <Color side>
+        bool bishopPair() const;
+        bool oppositeColorBishops() const;
         template <Color side>
         void updatePawnProximity(Square pawnSq, int ourWeight, int enemyWeight);
         template <Color side, PieceType type>
@@ -67,7 +80,8 @@ namespace Evaluation {
         BoardConfig* board;
 
         // Calculations shared among multiple evaluation parts
-        Value evaluation = 0;
+        Value pieceEvaluation = 0;
+        Value kingEvaluation = 0;
         int stage = GAME_STAGE_MAX_VALUE;
 
         int noPieces[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };
@@ -77,6 +91,7 @@ namespace Evaluation {
         Bitboard kingArea[COLOR_RANGE] = { 0 };
         Bitboard kingUpperArea[COLOR_RANGE] = { 0 };
         Bitboard kingUnsafeArea[COLOR_RANGE] = { 0 };
+        Bitboard passedPawns[COLOR_RANGE] = { 0 };
 
         Value passerValues[SQUARE_RANGE] = { 0 };
         int pawnStormPoints[COLOR_RANGE] = { 0 };
@@ -133,6 +148,19 @@ namespace Evaluation {
     inline int Evaluator::threats() const
     {
         return threatCount[side];
+    }
+
+    template <Color side>
+    inline bool Evaluator::bishopPair() const
+    {
+        return bishopExistence[side][LIGHT_SQUARE] && bishopExistence[side][DARK_SQUARE];
+    }
+
+    inline bool Evaluator::oppositeColorBishops() const
+    {
+        return noPieces[WHITE][BISHOP] == 1 && 
+               noPieces[BLACK][BISHOP] == 1 &&
+               bishopExistence[WHITE][LIGHT_SQUARE] != bishopExistence[BLACK][LIGHT_SQUARE];
     }
 
     template <Color side>
