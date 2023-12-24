@@ -1,4 +1,5 @@
 #include "test.h"
+#include "pgnZobristTester.h"
 #include <cassert>
 #include <iostream>
 using namespace std;
@@ -6,14 +7,14 @@ using namespace std;
 namespace Testing {
 	void testMagics()
 	{
-		cout << Bitboards::bitboardToString(Pieces::queenAttacks(SQ_E4, 0x011000008a101010)) << endl << endl;
-		assert(Pieces::queenAttacks(SQ_E4, 0x011000008a101010) == 0x01925438e8384482);
-		cout << Bitboards::bitboardToString(Pieces::queenAttacks(SQ_A1, 0x0040200000040080)) << endl << endl;
-		assert(Pieces::queenAttacks(SQ_A1, 0x0040200000040080) == 0x01010101010503fe);
-		cout << Bitboards::bitboardToString(Pieces::queenAttacks(SQ_C8, 0x0a04010000000000)) << endl << endl;
-		assert(Pieces::queenAttacks(SQ_C8, 0x0a04010000000000) == 0x0a0e112040800000);
-		cout << Bitboards::bitboardToString(Pieces::queenAttacks(SQ_C6, 0x000a0a0e00000000)) << endl << endl;
-		assert(Pieces::queenAttacks(SQ_C6, 0x000a0a0e00000000) == 0x040e0a0e00000000);
+		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_E4, 0x011000008a101010)) << endl << endl;
+		assert(Pieces::pieceAttacks<QUEEN>(SQ_E4, 0x011000008a101010) == 0x01925438e8384482);
+		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_A1, 0x0040200000040080)) << endl << endl;
+		assert(Pieces::pieceAttacks<QUEEN>(SQ_A1, 0x0040200000040080) == 0x01010101010503fe);
+		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_C8, 0x0a04010000000000)) << endl << endl;
+		assert(Pieces::pieceAttacks<QUEEN>(SQ_C8, 0x0a04010000000000) == 0x0a0e112040800000);
+		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_C6, 0x000a0a0e00000000)) << endl << endl;
+		assert(Pieces::pieceAttacks<QUEEN>(SQ_C6, 0x000a0a0e00000000) == 0x040e0a0e00000000);
 	}
 
 	void testXRayAttacks()
@@ -171,4 +172,29 @@ namespace Testing {
 		assert(board.enpassantSquare() == INVALID_SQUARE);
 		assert(board.hasCastlingRight(ALL_RIGHTS));
 	}
+
+
+
+	// Universal PGN tests
+	void PGNTest(PGNParser& parser, const std::string& pgnPath)
+	{
+		parser.loadPGN(pgnPath);
+		while (parser.applyNextMove()) {}
+	}
+
+	void testZobrist()
+	{
+		std::cout << "Position 1:\n";
+
+		BoardConfig board1;
+		PGNZobristTester parser1(&board1);
+		PGNTest(parser1, "testpos/zobrist-test-1.pgn");
+
+		std::cout << "\nPosition 2:\n";
+
+		BoardConfig board2;
+		PGNZobristTester parser2(&board2);
+		PGNTest(parser2, "testpos/zobrist-test-2.pgn");
+	}
+
 }

@@ -3,6 +3,7 @@
 #include "bitboards.h"
 #include "pieces.h"
 #include "move.h"
+#include "zobrist.h"
 #include <string>
 
 
@@ -18,13 +19,15 @@ struct PositionInfo
 	int castlingRights = ALL_RIGHTS;
 	Square enpassantSquare = INVALID_SQUARE;
 
-	Bitboard checkers = 0;
-	Bitboard pinned[COLOR_RANGE] = { 0 };
-	Bitboard pinners[COLOR_RANGE] = { 0 };
+	Bitboard checkers = 0ULL;
+	Bitboard pinned[COLOR_RANGE] = { 0ULL };
+	Bitboard pinners[COLOR_RANGE] = { 0ULL };
 
 	Piece capturedPiece = NO_PIECE;
 	int halfmoveClock = 0;
 	int gameStageValue = 0;
+
+	std::uint64_t hash = 0ULL;
 
 	PositionInfo* prev = nullptr;
 	PositionInfo* next = nullptr;
@@ -67,6 +70,7 @@ public:
 
 	// Castling & enpassant
 	Square enpassantSquare() const;
+	int castlingRights() const;
 	bool hasCastlingRight(CastlingRights right) const;
 	bool isCastlingPathClear(CastleType castle) const;
 
@@ -86,6 +90,7 @@ public:
 	int halfmovesPlain() const;
 	int halfmovesClocked() const;
 	int moves() const;
+	std::uint64_t hash() const;
 
 	friend std::ostream& operator<<(std::ostream& os, const BoardConfig& board);
 
@@ -111,6 +116,8 @@ private:
 	PositionInfo* rootState;
 
 	int halfmoveCount = 0;	// Counts the total number of moves for each side. To retrieve no. move: (halfmoveCount + 2 - sideOnMove) / 2
+
+	Zobrist::ZobristHash zobrist;
 };
 
 
@@ -156,6 +163,11 @@ inline Piece BoardConfig::onSquare(Square sq) const
 inline Square BoardConfig::enpassantSquare() const
 {
 	return posInfo->enpassantSquare;
+}
+
+inline int BoardConfig::castlingRights() const
+{
+	return posInfo->castlingRights;
 }
 
 inline bool BoardConfig::hasCastlingRight(CastlingRights right) const
@@ -212,6 +224,11 @@ inline int BoardConfig::halfmovesClocked() const
 inline int BoardConfig::moves() const
 {
 	return (halfmoveCount + 2 - sideOnMove) >> 1;
+}
+
+inline std::uint64_t BoardConfig::hash() const
+{
+	return zobrist.getHash();
 }
 
 inline void BoardConfig::pushStateList(const Move& lastMove)

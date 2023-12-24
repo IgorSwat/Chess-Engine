@@ -1,5 +1,6 @@
 #include "boardController.h"
 #include "../logic/boardConfig.h"
+#include "../engine/evaluation.h"
 
 namespace {
 	constexpr int BOARD_SIZE = 800;
@@ -19,16 +20,17 @@ void runGUI()
 	Pieces::initAttackTables();
 	initBoardElements();
 	BoardConfig config;
-	config.loadFromFen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
-	BoardController controller = { &config };
+	config.loadFromFen("8/1p5p/3p1kp1/3P4/6P1/1K3P2/P7/8 b - - 0 1");
+	Evaluation::Evaluator evaluator(&config);
+	BoardController controller = { &config, &evaluator};
 	controller.run();
 }
 
 
 
 
-BoardController::BoardController(BoardConfig* board)
-	: config(board), gui(std::make_unique<BoardImage>(this)),
+BoardController::BoardController(BoardConfig* board, Evaluation::Evaluator* evaluator)
+	: config(board), gui(std::make_unique<BoardImage>(this, evaluator)),
 	  navbar(std::make_unique<Navbar>(NAVBAR_POS, NAVBAR_SIZE))
 {
 	gui->loadPosition(config);

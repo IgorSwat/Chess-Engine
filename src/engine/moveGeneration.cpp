@@ -129,7 +129,7 @@ namespace MoveGeneration {
 		constexpr Movemask flags = (gen == CAPTURE ? CAPTURE_FLAG : QUIET_MOVE_FLAG);
 		Square from = board.kingPosition(side);
 
-		Bitboard potentialMoves = Pieces::kingAttacks(from) & target;
+		Bitboard potentialMoves = Pieces::pieceAttacks<KING>(from) & target;
 		if constexpr (gen != PSEUDO_LEGAL && gen != CHECK_EVASION) {
 			while (potentialMoves)
 				moveList.push_back(Move(from, Bitboards::popLsb(potentialMoves), flags));

@@ -1,0 +1,22 @@
+[Event "Rated Rapid game"]
+[Site "https://lichess.org/mcJZMpO7"]
+[Date "2023.12.15"]
+[White "AYUHSEMUA"]
+[Black "HopeWillNeverDie"]
+[Result "1-0"]
+[UTCDate "2023.12.15"]
+[UTCTime "17:42:18"]
+[WhiteElo "1761"]
+[BlackElo "1743"]
+[WhiteRatingDiff "+6"]
+[BlackRatingDiff "-12"]
+[Variant "Standard"]
+[TimeControl "900+10"]
+[ECO "B30"]
+[Opening "Sicilian Defense: Portsmouth Gambit"]
+[Termination "Normal"]
+[Annotator "lichess.org"]
+
+1. e4 { [%eval 0.14] [%clk 0:15:00] } 1... c5 { [%eval 0.33] [%clk 0:15:00] } 2. Nf3 { [%eval 0.0] [%clk 0:14:49] } 2... Nc6 { [%eval 0.29] [%clk 0:15:08] } 3. b4?! { (0.29 → -0.49) Inaccuracy. d4 was best. } { [%eval -0.49] [%clk 0:14:51] } { B30 Sicilian Defense: Portsmouth Gambit } (3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 d6 7. Nd5 Nxd5) 3... cxb4 { [%eval -0.36] [%clk 0:15:15] } 4. d4 { [%eval -0.46] [%clk 0:14:51] } 4... d5 { [%eval -0.31] [%clk 0:14:02] } 5. exd5 { [%eval -0.11] [%clk 0:14:25] } 5... Qxd5 { [%eval -0.08] [%clk 0:14:12] } 6. c4 { [%eval -0.23] [%clk 0:14:27] } 6... bxc3 { [%eval -0.45] [%clk 0:13:39] } 7. Nxc3 { [%eval -0.28] [%clk 0:14:20] } 7... Qa5 { [%eval -0.08] [%clk 0:12:34] } 8. Rb1 { [%eval -0.1] [%clk 0:14:18] } 8... Qxc3+ { [%eval -0.14] [%clk 0:12:24] } 9. Bd2 { [%eval -0.1] [%clk 0:14:19] } 9... Qa3 { [%eval -0.07] [%clk 0:12:16] } 10. d5 { [%eval -0.05] [%clk 0:14:19] } 10... e6 { [%eval 0.0] [%clk 0:08:07] } 11. dxc6 { [%eval -0.07] [%clk 0:13:23] } 11... bxc6 { [%eval -0.07] [%clk 0:08:17] } 12. Qc2 { [%eval -0.04] [%clk 0:13:04] } 12... Qc5 { [%eval -0.03] [%clk 0:06:23] } 13. Qa4 { [%eval 0.0] [%clk 0:10:43] } 13... a5 { [%eval 0.18] [%clk 0:05:25] } 14. Rc1 { [%eval -0.15] [%clk 0:10:26] } 14... Qa3?? { (-0.15 → 9.25) Blunder. Qd6 was best. } { [%eval 9.25] [%clk 0:05:24] } { Black resigns. } (14... Qd6 15. Rxc6 Bd7 16. Bb5 Qd5 17. Bxa5 Nf6 18. O-O Bd6 19. Rd1 Rxa5 20. Rxd5 Rxa4 21. Rdxd6) 1-0
+
+

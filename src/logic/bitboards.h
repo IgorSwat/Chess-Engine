@@ -7,13 +7,6 @@
 
 // Some general bitwise operations	
 namespace Bitboards {
-	constexpr Bitboard POPCOUNT_K1 = 0x5555555555555555;
-	constexpr Bitboard POPCOUNT_K2 = 0x3333333333333333;
-	constexpr Bitboard POPCOUNT_K4 = 0x0f0f0f0f0f0f0f0f;
-	constexpr Bitboard POPCOUNT_KF = 0x0101010101010101;
-	constexpr Bitboard MIRROR_HORIZONTAL_K1 = 0x5555555555555555;
-	constexpr Bitboard MIRROR_HORIZONTAL_K2 = 0x3333333333333333;
-	constexpr Bitboard MIRROR_HORIZONTAL_K4 = 0x0f0f0f0f0f0f0f0f;
 
 	std::string bitboardToString(Bitboard bb);
 
@@ -57,6 +50,9 @@ namespace Bitboards {
 
 	inline Bitboard mirrorHorizontal(Bitboard x)
 	{
+		constexpr Bitboard MIRROR_HORIZONTAL_K1 = 0x5555555555555555;
+		constexpr Bitboard MIRROR_HORIZONTAL_K2 = 0x3333333333333333;
+		constexpr Bitboard MIRROR_HORIZONTAL_K4 = 0x0f0f0f0f0f0f0f0f;
 		x = ((x >> 1) & MIRROR_HORIZONTAL_K1) | ((x & MIRROR_HORIZONTAL_K1) << 1);
 		x = ((x >> 2) & MIRROR_HORIZONTAL_K2) | ((x & MIRROR_HORIZONTAL_K2) << 2);
 		x = ((x >> 4) & MIRROR_HORIZONTAL_K4) | ((x & MIRROR_HORIZONTAL_K4) << 4);

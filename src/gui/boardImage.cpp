@@ -1,4 +1,5 @@
 #include "../logic/boardConfig.h"
+#include "../engine/evaluation.h"
 #include "boardImage.h"
 
 using namespace BoardTextures;
@@ -21,8 +22,8 @@ namespace {
 }
 
 
-BoardImage::BoardImage(BoardController* boardController)
-    : controller(boardController),
+BoardImage::BoardImage(BoardController* boardController, Evaluation::Evaluator* evaluator)
+    : controller(boardController), evaluator(evaluator),
       piecesTables(PIECE_RANGE), squaresTexture(BoardTextures::getTexture("squares")),
       movedTo(sf::Vector2f(TILE_SIZE, TILE_SIZE)), movedFrom(sf::Vector2f(TILE_SIZE, TILE_SIZE)),
       checkBlur(TILE_SIZE / 1.9f, CIRCLES_PER_BLUR),
@@ -82,6 +83,7 @@ void BoardImage::loadPosition(const BoardConfig* board)
         }
     }
     updateCheckBlur(board);
+    showEvaluationStats();
 }
 
 void BoardImage::updatePieces(BoardConfig* board)
@@ -230,4 +232,11 @@ Move BoardImage::translateMove(Square from, Square to, Piece piece, Piece onTarg
     if (!Pieces::inPieceDistance(type, from, to))
         return NULL_MOVE;
     return onTargetSquare != NO_PIECE ? Move(from, to, CAPTURE_FLAG) : Move(from, to, QUIET_MOVE_FLAG);
+}
+
+void BoardImage::showEvaluationStats()
+{
+    system("cls");
+    Value eval = evaluator->evaluate();
+    std::cout << "Total eval: " << eval << std::endl;
 }

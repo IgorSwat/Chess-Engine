@@ -168,7 +168,7 @@ namespace Evaluation {
         noPieces[side][PAWN] = Bitboards::popcount(board->pieces(side, PAWN));
 
         pieceAttacks[side][PAWN] = Pieces::pawnAttacks<side>(board->pieces(side, PAWN));
-        pieceAttacks[side][KING] = Pieces::kingAttacks(kingPos);
+        pieceAttacks[side][KING] = Pieces::pieceAttacks<KING>(kingPos);
         pieceAttacks[side][KNIGHT] = 0;
         pieceAttacks[side][BISHOP] = 0;
         pieceAttacks[side][ROOK] = 0;
@@ -181,7 +181,7 @@ namespace Evaluation {
 
         pawnStormPoints[side] = 0;
 
-        kingArea[side] = Pieces::kingAttacks(kingPos) | kingPos;
+        kingArea[side] = Pieces::pieceAttacks<KING>(kingPos) | kingPos;
         kingArea[side] |= Bitboards::shift<forwardDir>(kingArea[side]);
         kingUpperArea[side] = kingArea[side] ^ adjacentRankSquares(kingPos) ^ kingPos;
 
@@ -384,7 +384,7 @@ namespace Evaluation {
         while (knightsBB) {
             Square sq = Bitboards::popLsb(knightsBB);
             Bitboard sqBB = squareToBB(sq);
-            Bitboard attacks = Pieces::knightAttacks(sq);
+            Bitboard attacks = Pieces::pieceAttacks<KNIGHT>(sq);
             Bitboard safeMoves = attacks & safeSquares;
 
             multipleAttacks[side] |= attacks & pieceAttacks[side][ALL_PIECES];
@@ -430,7 +430,7 @@ namespace Evaluation {
             Square sq = Bitboards::popLsb(bishopsBB);
             Bitboard sqBB = squareToBB(sq);
             SquareColor bishopColor = colorOf(sq);
-            Bitboard attacks = Pieces::bishopAttacks(sq, board->pieces());
+            Bitboard attacks = Pieces::pieceAttacks<BISHOP>(sq, board->pieces());
             Bitboard xRayAttacks = Pieces::xRayBishopAttacks(sq, board->pieces(), board->pieces(side, BISHOP, QUEEN));
             Bitboard allAttacks = attacks | xRayAttacks;
             Bitboard safeMoves = attacks & safeSquares;
@@ -462,7 +462,7 @@ namespace Evaluation {
             // Color weakness
             if (!bishopExistence[enemy][bishopColor]) {
                 Square enemyKingPos = board->kingPosition(enemy);
-                Bitboard weakSquares = Pieces::kingAttacks(enemyKingPos) & squaresOfColor(bishopColor) & (~board->pieces(enemy, PAWN));
+                Bitboard weakSquares = Pieces::pieceAttacks<KING>(enemyKingPos) & squaresOfColor(bishopColor) & (~board->pieces(enemy, PAWN));
                 increaseValue<side, bishopShow>(result, BISHOP_COLOR_WEAKNESS_BONUS_INT[Bitboards::popcount(weakSquares)][stage], "Color weakness");
             }
 
@@ -497,7 +497,7 @@ namespace Evaluation {
         while (rooksBB) {
             Square sq = Bitboards::popLsb(rooksBB);
             Bitboard sqBB = squareToBB(sq);
-            Bitboard attacks = Pieces::rookAttacks(sq, board->pieces());
+            Bitboard attacks = Pieces::pieceAttacks<ROOK>(sq, board->pieces());
             Bitboard xRayAttacks = Pieces::xRayRookAttacks(sq, board->pieces(), board->pieces(side, ROOK, QUEEN));
             Bitboard allAttacks = attacks | xRayAttacks;
             Bitboard safeMoves = attacks & safeSquares;
@@ -537,7 +537,7 @@ namespace Evaluation {
         increaseValue<side, queenShow>(result, noPieces[side][QUEEN] * PIECE_BASE_VALUES_INT[QUEEN][stage], "Queen base value");
         while (queensBB) {
             Square sq = Bitboards::popLsb(queensBB);
-            Bitboard attacks = Pieces::queenAttacks(sq, board->pieces());
+            Bitboard attacks = Pieces::pieceAttacks<QUEEN>(sq, board->pieces());
             Bitboard xRayAttacks = Pieces::xRayQueenAttacks(sq, board->pieces(), board->pieces(side, BISHOP, ROOK, QUEEN));
             Bitboard allAttacks = attacks | xRayAttacks;
             Bitboard safeMoves = attacks & safeSquares;

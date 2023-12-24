@@ -74,66 +74,38 @@ namespace Pieces {
 		return PAWN_ATTACKS[side][sq];
 	}
 
-	inline Bitboard knightAttacks(Square sq)
-	{
-		return PIECE_ATTACKS[KNIGHT][sq];
-	}
-
-	inline Bitboard kingAttacks(Square sq)
-	{
-		return PIECE_ATTACKS[KING][sq];
-	}
-
-	inline Bitboard bishopAttacks(Square sq, Bitboard occ)
-	{
-		Magic& m = BISHOP_MAGICS[sq];
-		return m.attacks[m.index(occ)];
-	}
-
-	inline Bitboard rookAttacks(Square sq, Bitboard occ)
-	{
-		Magic& m = ROOK_MAGICS[sq];
-		return m.attacks[m.index(occ)];
-	}
-
-	inline Bitboard queenAttacks(Square sq, Bitboard occ)
-	{
-		return bishopAttacks(sq, occ) | rookAttacks(sq, occ);
-	}
-
 	template <PieceType type>
-	inline Bitboard pieceAttacks(Square sq, Bitboard occ);
-
-	template <>
-	inline Bitboard pieceAttacks<KNIGHT>(Square sq, Bitboard occ)
+	inline Bitboard pieceAttacks(Square sq, Bitboard occ = 0)
 	{
-		return knightAttacks(sq);
+		return PIECE_ATTACKS[type][sq];
 	}
 
 	template <>
 	inline Bitboard pieceAttacks<BISHOP>(Square sq, Bitboard occ)
 	{
-		return bishopAttacks(sq, occ);
+		Magic& m = BISHOP_MAGICS[sq];
+		return m.attacks[m.index(occ)];
 	}
 
 	template <>
 	inline Bitboard pieceAttacks<ROOK>(Square sq, Bitboard occ)
 	{
-		return rookAttacks(sq, occ);
+		Magic& m = ROOK_MAGICS[sq];
+		return m.attacks[m.index(occ)];
 	}
 
 	template <>
 	inline Bitboard pieceAttacks<QUEEN>(Square sq, Bitboard occ)
 	{
-		return queenAttacks(sq, occ);
+		return pieceAttacks<BISHOP>(sq, occ) | pieceAttacks<ROOK>(sq, occ);
 	}
 
-	inline Bitboard pieceAttacks(PieceType piece, Square sq, Bitboard occ)
+	inline Bitboard pieceAttacks(PieceType type, Square sq, Bitboard occ)
 	{
-		return piece == KNIGHT ? knightAttacks(sq) :
-			piece == BISHOP ? bishopAttacks(sq, occ) :
-			piece == ROOK ? rookAttacks(sq, occ) :
-			piece == QUEEN ? queenAttacks(sq, occ) : kingAttacks(sq);
+		return type == KNIGHT ? pieceAttacks<KNIGHT>(sq) :
+			type == BISHOP ? pieceAttacks<BISHOP>(sq, occ) :
+			type == ROOK ? pieceAttacks<ROOK>(sq, occ) :
+			type == QUEEN ? pieceAttacks<QUEEN>(sq, occ) : pieceAttacks<KING>(sq);
 	}
 
 	inline Bitboard pseudoAttacks(PieceType piece, Square sq)
@@ -143,16 +115,16 @@ namespace Pieces {
 
 	inline Bitboard xRayRookAttacks(Square sq, Bitboard occ, Bitboard blockers)	// By default blockers = own pieces
 	{
-		Bitboard attacks = rookAttacks(sq, occ);
+		Bitboard attacks = pieceAttacks<ROOK>(sq, occ);
 		blockers &= attacks;
-		return attacks ^ rookAttacks(sq, occ ^ blockers);
+		return attacks ^ pieceAttacks<ROOK>(sq, occ ^ blockers);
 	}
 
 	inline Bitboard xRayBishopAttacks(Square sq, Bitboard occ, Bitboard blockers)
 	{
-		Bitboard attacks = bishopAttacks(sq, occ);
+		Bitboard attacks = pieceAttacks<BISHOP>(sq, occ);
 		blockers &= attacks;
-		return attacks ^ bishopAttacks(sq, occ ^ blockers);
+		return attacks ^ pieceAttacks<BISHOP>(sq, occ ^ blockers);
 	}
 
 	inline Bitboard xRayQueenAttacks(Square sq, Bitboard occ, Bitboard blockers)
@@ -160,9 +132,9 @@ namespace Pieces {
 		return xRayBishopAttacks(sq, occ, blockers) | xRayRookAttacks(sq, occ, blockers);
 	}
 
-	constexpr inline bool inPieceDistance(PieceType type, Square sq1, Square sq2)
+	inline bool inPieceDistance(PieceType type, Square sq1, Square sq2)
 	{
-		return pieceAttacks(type, sq1, 0) & sq2;
+		return pseudoAttacks(type, sq1) & sq2;
 	}
 
 	constexpr inline int kingDistance(Square sq1, Square sq2)

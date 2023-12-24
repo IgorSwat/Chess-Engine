@@ -14,6 +14,7 @@ namespace GUI {
 
 class BoardController;
 class BoardConfig;
+namespace Evaluation { class Evaluator; }
 
 struct PieceImageStack
 {
@@ -28,7 +29,7 @@ struct PieceImageStack
 class BoardImage : public sf::Drawable
 {
 public:
-	BoardImage(BoardController* boardController);
+	BoardImage(BoardController* boardController, Evaluation::Evaluator* evalutor);
 
 	void loadPosition(const BoardConfig* board);
 	void updatePieces(BoardConfig* board);
@@ -41,8 +42,10 @@ private:
 	void clearPosition();
 	void updateCheckBlur(const BoardConfig* board);
 	Move translateMove(Square from, Square to, Piece piece, Piece onTargetSquare) const;
+	void showEvaluationStats();
 
 	BoardController* controller;
+	Evaluation::Evaluator* evaluator;
 
 	// Graphical resources & objects
 	sf::VertexArray squareGrid;

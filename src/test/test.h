@@ -1,6 +1,7 @@
 #pragma once
 #include "../logic/boardConfig.h"
 #include "../logic/pieces.h"
+#include "../logic/zobrist.h"
 #include "../engine/moveGeneration.h"
 #include <functional>
 
@@ -41,6 +42,7 @@ public:
 	{
 		Pieces::initAttackTables();
 		initBoardElements();
+		Zobrist::initZobristHashing();
 	}
 
 	void test(TestingFunction testingFunction)
@@ -82,4 +84,7 @@ namespace Testing {
 	void perftSpeedTestMidgamePos();
 	template <bool deep>
 	void perftSpeedTestEndgamePos();
+
+	// Universal PGN tests
+	void testZobrist();
 }

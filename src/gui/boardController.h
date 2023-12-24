@@ -5,13 +5,15 @@
 #include <memory>
 
 
+namespace Evaluation { class Evaluator; }
+
 void runGUI();
 
 
 class BoardController
 {
 public:
-	BoardController(BoardConfig* board);
+	BoardController(BoardConfig* board, Evaluation::Evaluator* evaluator);
 	~BoardController();
 
 	void run();

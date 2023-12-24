@@ -125,6 +125,8 @@ void BoardConfig::loadFromFen(const std::string& fen)
 	updateChecks(sideOnMove);
 	updatePins(WHITE);
 	updatePins(BLACK);
+
+	zobrist.generateHash(this);
 }
 
 void BoardConfig::loadFromConfig(const BoardConfig& other)
@@ -139,6 +141,8 @@ void BoardConfig::loadFromConfig(const BoardConfig& other)
 	halfmoveCount = other.halfmoveCount;
 
 	*posInfo = *other.posInfo;
+
+	zobrist.generateHash(this);
 }
 
 void BoardConfig::makeMove(const Move& move)
@@ -167,29 +171,43 @@ void BoardConfig::normalMove(const Move& move)
 	Square to = move.to();
 
 	pushStateList(move);
+
 	posInfo->castlingRights = posInfo->prev->castlingRights & castlingRightsLoss[from];
+	zobrist.updateByCastlingRightsChange(posInfo->prev->castlingRights);
+	zobrist.updateByCastlingRightsChange(posInfo->castlingRights);
 
 	if (move.isCapture()) {
 		posInfo->capturedPiece = board[to];
 		posInfo->halfmoveClock = 0;
 		posInfo->castlingRights &= castlingRightsLoss[to];
 		posInfo->gameStageValue = posInfo->prev->gameStageValue - GAME_STAGE_INFLUENCE[posInfo->capturedPiece];
+		zobrist.updateByPlacementChange(board[to], to);
 		removePiece(to);
 	}
 	else {
 		posInfo->halfmoveClock = typeOf(board[from]) == PAWN ? 0 : posInfo->prev->halfmoveClock + 1;
 		posInfo->gameStageValue = posInfo->prev->gameStageValue;
 	}
+	zobrist.updateByPlacementChange(board[from], from);
+	zobrist.updateByPlacementChange(board[from], to);
 	movePiece(from, to);
 
 	sideOnMove = ~sideOnMove;
+	zobrist.updateBySideOnMoveChange();
+
 	posInfo->enpassantSquare = move.isDoublePawnPush() ? to : INVALID_SQUARE;
+	zobrist.updateByEnpassantChange(posInfo->prev->enpassantSquare);
+	zobrist.updateByEnpassantChange(posInfo->enpassantSquare);
+
 	halfmoveCount++;
+
+	posInfo->hash = zobrist.getHash();
 
 	// ---------- CHECKS & PINS ----------
 	updateChecks(sideOnMove);
 	updatePins(WHITE);
 	updatePins(BLACK);
+
 }
 
 void BoardConfig::promotion(const Move& move)
@@ -206,18 +224,30 @@ void BoardConfig::promotion(const Move& move)
 	if (move.isCapture()) {
 		posInfo->capturedPiece = board[to];
 		posInfo->castlingRights &= castlingRightsLoss[to];
+		zobrist.updateByCastlingRightsChange(posInfo->prev->castlingRights);
+		zobrist.updateByCastlingRightsChange(posInfo->castlingRights);
 		posInfo->gameStageValue = posInfo->prev->gameStageValue - GAME_STAGE_INFLUENCE[posInfo->capturedPiece] + GAME_STAGE_INFLUENCE[promotedPiece];
+		zobrist.updateByPlacementChange(board[to], to);
 		removePiece(to);
 	}
 	else
 		posInfo->gameStageValue = posInfo->prev->gameStageValue + GAME_STAGE_INFLUENCE[promotedPiece];
+	zobrist.updateByPlacementChange(board[from], from);
+	zobrist.updateByPlacementChange(promotedPiece, to);
 	removePiece(from);
 	placePiece(promotedPiece, to);
 
 	sideOnMove = ~sideOnMove;
+	zobrist.updateBySideOnMoveChange();
+
 	posInfo->enpassantSquare = INVALID_SQUARE;
+	zobrist.updateByEnpassantChange(posInfo->prev->enpassantSquare);
+	zobrist.updateByEnpassantChange(INVALID_SQUARE);
+
 	posInfo->halfmoveClock = 0;
 	halfmoveCount++;
+
+	posInfo->hash = zobrist.getHash();
 
 	// ---------- CHECKS & PINS ----------
 	updateChecks(sideOnMove);
@@ -235,14 +265,28 @@ void BoardConfig::castle(const Move& move)
 	pushStateList(move);
 
 	posInfo->gameStageValue = posInfo->prev->gameStageValue;
+	zobrist.updateByPlacementChange(board[kingFrom], kingFrom);
+	zobrist.updateByPlacementChange(board[kingFrom], kingTo);
+	zobrist.updateByPlacementChange(board[rookFrom], rookFrom);
+	zobrist.updateByPlacementChange(board[rookFrom], rookTo);
 	movePiece(kingFrom, kingTo);
 	movePiece(rookFrom, rookTo);
 
 	sideOnMove = ~sideOnMove;
+	zobrist.updateBySideOnMoveChange();
+
 	posInfo->castlingRights = posInfo->prev->castlingRights & castlingRightsLoss[kingFrom];
+	zobrist.updateByCastlingRightsChange(posInfo->prev->castlingRights);
+	zobrist.updateByCastlingRightsChange(posInfo->castlingRights);
+
 	posInfo->enpassantSquare = INVALID_SQUARE;
+	zobrist.updateByEnpassantChange(posInfo->prev->enpassantSquare);
+	zobrist.updateByEnpassantChange(INVALID_SQUARE);
+
 	posInfo->halfmoveClock = posInfo->prev->halfmoveClock + 1;
 	halfmoveCount++;
+
+	posInfo->hash = zobrist.getHash();
 
 	// ---------- CHECKS & PINS ----------
 	updateChecks(sideOnMove);
@@ -260,14 +304,25 @@ void BoardConfig::enpassant(const Move& move)
 
 	posInfo->capturedPiece = board[captureSquare];
 	posInfo->gameStageValue = posInfo->prev->gameStageValue;
+	zobrist.updateByPlacementChange(posInfo->capturedPiece, captureSquare);
+	zobrist.updateByPlacementChange(board[from], from);
+	zobrist.updateByPlacementChange(board[from], to);
 	removePiece(captureSquare);
 	movePiece(from, to);
 
 	sideOnMove = ~sideOnMove;
+	zobrist.updateBySideOnMoveChange();
+
 	posInfo->castlingRights = posInfo->prev->castlingRights;
+
 	posInfo->enpassantSquare = INVALID_SQUARE;
+	zobrist.updateByEnpassantChange(posInfo->prev->enpassantSquare);
+	zobrist.updateByEnpassantChange(INVALID_SQUARE);
+
 	posInfo->halfmoveClock = 0;
 	halfmoveCount++;
+
+	posInfo->hash = zobrist.getHash();
 
 	// ---------- CHECKS & PINS ----------
 	updateChecks(sideOnMove);
@@ -310,6 +365,9 @@ void BoardConfig::undoLastMove()
 	}
 
 	halfmoveCount--;
+	
+	zobrist.restoreHash(posInfo->hash);
+
 	posInfo = posInfo->prev;
 }
 
@@ -338,10 +396,10 @@ void BoardConfig::clear()
 Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) const
 {
 	Bitboard result = (Pieces::pawnAttacks(~side, sq) & pieces(PAWN)) |
-		(Pieces::knightAttacks(sq) & pieces(KNIGHT)) |
-		(Pieces::bishopAttacks(sq, occ) & pieces(BISHOP, QUEEN)) |
-		(Pieces::rookAttacks(sq, occ) & pieces(ROOK, QUEEN)) |
-		(Pieces::kingAttacks(sq) & pieces(KING));
+		(Pieces::pieceAttacks<KNIGHT>(sq) & pieces(KNIGHT)) |
+		(Pieces::pieceAttacks<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN)) |
+		(Pieces::pieceAttacks<ROOK>(sq, occ) & pieces(ROOK, QUEEN)) |
+		(Pieces::pieceAttacks<KING>(sq) & pieces(KING));
 	return result & pieces(side);
 }
 
@@ -356,8 +414,8 @@ bool BoardConfig::legalityCheckLight(const Move& move) const
 	if (move.isEnpassant()) {
 		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
 		Square kingSq = kingSquare[side];
-		return !(Pieces::bishopAttacks(kingSq, occ) & pieces(enemy, BISHOP, QUEEN)) &&
-			!(Pieces::rookAttacks(kingSq, occ) & pieces(enemy, ROOK, QUEEN));
+		return !(Pieces::pieceAttacks<BISHOP>(kingSq, occ) & pieces(enemy, BISHOP, QUEEN)) &&
+			!(Pieces::pieceAttacks<ROOK>(kingSq, occ) & pieces(enemy, ROOK, QUEEN));
 	}
 
 	if (move.isCastle()) {
