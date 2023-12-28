@@ -82,7 +82,7 @@ namespace Evaluation {
         // Calculations shared among multiple evaluation parts
         Value pieceEvaluation = 0;
         Value kingEvaluation = 0;
-        int stage = GAME_STAGE_MAX_VALUE;
+        std::uint16_t stage = GAME_STAGE_MAX_VALUE;
 
         int noPieces[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };
         Bitboard pieceAttacks[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };

@@ -42,7 +42,7 @@ private:
 	void clearPosition();
 	void updateCheckBlur(const BoardConfig* board);
 	Move translateMove(Square from, Square to, Piece piece, Piece onTargetSquare) const;
-	void showEvaluationStats();
+	void showEvaluationStats(const BoardConfig* board);
 
 	BoardController* controller;
 	Evaluation::Evaluator* evaluator;

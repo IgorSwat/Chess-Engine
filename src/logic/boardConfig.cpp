@@ -63,6 +63,7 @@ PositionInfo& PositionInfo::operator=(const PositionInfo& other)
 	pinners[BLACK] = other.pinners[BLACK];
 	capturedPiece = other.capturedPiece;
 	halfmoveClock = other.halfmoveClock;
+	hash = other.hash;
 	return *this;
 }
 
@@ -127,6 +128,7 @@ void BoardConfig::loadFromFen(const std::string& fen)
 	updatePins(BLACK);
 
 	zobrist.generateHash(this);
+	posInfo->hash = zobrist.getHash();
 }
 
 void BoardConfig::loadFromConfig(const BoardConfig& other)
@@ -142,7 +144,7 @@ void BoardConfig::loadFromConfig(const BoardConfig& other)
 
 	*posInfo = *other.posInfo;
 
-	zobrist.generateHash(this);
+	zobrist.restoreHash(posInfo->hash);
 }
 
 void BoardConfig::makeMove(const Move& move)
@@ -365,10 +367,10 @@ void BoardConfig::undoLastMove()
 	}
 
 	halfmoveCount--;
-	
-	zobrist.restoreHash(posInfo->hash);
 
 	posInfo = posInfo->prev;
+
+	zobrist.restoreHash(posInfo->hash);
 }
 
 void BoardConfig::clear()

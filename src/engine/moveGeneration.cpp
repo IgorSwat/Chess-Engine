@@ -161,8 +161,10 @@ namespace MoveGeneration {
 		Bitboard target = gen == QUIET ? ~board.pieces() :
 						  gen == CAPTURE ? board.pieces(enemy) :
 						  gen == QUIET_CHECK ? ~board.pieces() : ~board.pieces(side);	// TO DO: change after adding checks fragmentation
-		if (board.isInCheck(side)) {
+
+		if constexpr (gen == CHECK_EVASION) {
 			Bitboard checkers = board.checkingPieces();
+
 			if (Bitboards::isSinglePopulated(checkers)) {
 				Square checkSquare = Bitboards::popLsb(checkers);
 				Bitboard evasionTarget = target & (pathBetween(board.kingPosition(side), checkSquare) | checkSquare);
@@ -173,19 +175,17 @@ namespace MoveGeneration {
 				generatePieceMoves<side, QUEEN, CHECK_EVASION>(moveList, board, evasionTarget);
 				generateKingMoves<side, CHECK_EVASION>(moveList, board, target);
 			}
-			else {
+			else
 				generateKingMoves<side, CHECK_EVASION>(moveList, board, target);
-				return;
-			}
+			return;
 		}
-		else {
-			generatePawnMoves<side, gen>(moveList, board, target);
-			generatePieceMoves<side, KNIGHT, gen>(moveList, board, target);
-			generatePieceMoves<side, BISHOP, gen>(moveList, board, target);
-			generatePieceMoves<side, ROOK, gen>(moveList, board, target);
-			generatePieceMoves<side, QUEEN, gen>(moveList, board, target);
-			generateKingMoves<side, gen>(moveList, board, target);
-		}
+
+		generatePawnMoves<side, gen>(moveList, board, target);
+		generatePieceMoves<side, KNIGHT, gen>(moveList, board, target);
+		generatePieceMoves<side, BISHOP, gen>(moveList, board, target);
+		generatePieceMoves<side, ROOK, gen>(moveList, board, target);
+		generatePieceMoves<side, QUEEN, gen>(moveList, board, target);
+		generateKingMoves<side, gen>(moveList, board, target);
 	}
 
 	template <MoveGenType gen>
@@ -200,6 +200,7 @@ namespace MoveGeneration {
 	template void generateMoves<QUIET>(MoveList& moveList, const BoardConfig& board);
 	template void generateMoves<CAPTURE>(MoveList& moveList, const BoardConfig& board);
 	template void generateMoves<QUIET_CHECK>(MoveList& moveList, const BoardConfig& board);
+	template void generateMoves<CHECK_EVASION>(MoveList& moveList, const BoardConfig& board);
 	template void generateMoves<PSEUDO_LEGAL>(MoveList& moveList, const BoardConfig& board);
 
 	template <>

@@ -15,7 +15,7 @@ namespace Evaluation {
     constexpr bool basicShow = false;
     constexpr bool passedShow = false;
     constexpr bool kingShow = false;
-    constexpr bool spaceShow = true;
+    constexpr bool spaceShow = false;
     constexpr bool threatsShow = false;
 
     // Precalculations
@@ -666,6 +666,10 @@ namespace Evaluation {
             increaseValue<side, threatsShow>(result, threatPoints[side] * (threatCount[side] - 1), "Threats");
         else
             increaseValue<side, threatsShow>(result, threatPoints[side] * threatCount[side], "Threats");
+
+        // Tempo bonus
+        if (board->movingSide() == side)
+            result += 28;
         
         return result;
     }

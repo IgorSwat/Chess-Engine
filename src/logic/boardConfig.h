@@ -24,8 +24,8 @@ struct PositionInfo
 	Bitboard pinners[COLOR_RANGE] = { 0ULL };
 
 	Piece capturedPiece = NO_PIECE;
-	int halfmoveClock = 0;
-	int gameStageValue = 0;
+	std::uint16_t halfmoveClock = 0;
+	std::uint16_t gameStageValue = 0;
 
 	std::uint64_t hash = 0ULL;
 
@@ -86,10 +86,10 @@ public:
 
 	// Move-counting issues & others
 	Color movingSide() const;
-	int gameStage() const;
-	int halfmovesPlain() const;
-	int halfmovesClocked() const;
-	int moves() const;
+	std::uint16_t gameStage() const;
+	std::uint16_t halfmovesPlain() const;
+	std::uint16_t halfmovesClocked() const;
+	std::uint16_t moves() const;
 	std::uint64_t hash() const;
 
 	friend std::ostream& operator<<(std::ostream& os, const BoardConfig& board);
@@ -115,7 +115,7 @@ private:
 	PositionInfo* posInfo;
 	PositionInfo* rootState;
 
-	int halfmoveCount = 0;	// Counts the total number of moves for each side. To retrieve no. move: (halfmoveCount + 2 - sideOnMove) / 2
+	std::uint16_t halfmoveCount = 0;	// Counts the total number of moves for each side. To retrieve no. move: (halfmoveCount + 2 - sideOnMove) / 2
 
 	Zobrist::ZobristHash zobrist;
 };
@@ -205,23 +205,23 @@ inline Color BoardConfig::movingSide() const
 	return sideOnMove;
 }
 
-inline int BoardConfig::gameStage() const
+inline std::uint16_t BoardConfig::gameStage() const
 {
 	return posInfo->gameStageValue > GAME_STAGE_MAX_VALUE ? (GAME_STAGE_MAX_VALUE >> 3) :
 															(posInfo->gameStageValue >> 3);
 }
 
-inline int BoardConfig::halfmovesPlain() const
+inline std::uint16_t BoardConfig::halfmovesPlain() const
 {
 	return halfmoveCount;
 }
 
-inline int BoardConfig::halfmovesClocked() const
+inline std::uint16_t BoardConfig::halfmovesClocked() const
 {
 	return posInfo->halfmoveClock;
 }
 
-inline int BoardConfig::moves() const
+inline std::uint16_t BoardConfig::moves() const
 {
 	return (halfmoveCount + 2 - sideOnMove) >> 1;
 }

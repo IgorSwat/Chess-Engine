@@ -17,12 +17,10 @@ namespace {
 void runGUI()
 {
 	BoardTextures::loadTextures();
-	Pieces::initAttackTables();
-	initBoardElements();
 	BoardConfig config;
 	config.loadFromFen("8/1p5p/3p1kp1/3P4/6P1/1K3P2/P7/8 b - - 0 1");
-	Evaluation::Evaluator evaluator(&config);
-	BoardController controller = { &config, &evaluator};
+	std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&config);
+	BoardController controller = { &config, evaluator.get()};
 	controller.run();
 }
 

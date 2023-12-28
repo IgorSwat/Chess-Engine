@@ -83,7 +83,9 @@ enum MoveGenType {
 	CAPTURE,
 	CHECK_EVASION,
 	LEGAL, 			// Collective generation of legal moves for testing purposes
-	PSEUDO_LEGAL	// Collective generation of pseudo legal moves for either testing or search
+	PSEUDO_LEGAL,	// Collective generation of pseudo legal moves for either testing or search
+
+	MAX_USED_CATEGORIES = 3
 };
 
 

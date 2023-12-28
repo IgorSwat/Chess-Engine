@@ -83,7 +83,7 @@ void BoardImage::loadPosition(const BoardConfig* board)
         }
     }
     updateCheckBlur(board);
-    showEvaluationStats();
+    showEvaluationStats(board);
 }
 
 void BoardImage::updatePieces(BoardConfig* board)
@@ -234,9 +234,10 @@ Move BoardImage::translateMove(Square from, Square to, Piece piece, Piece onTarg
     return onTargetSquare != NO_PIECE ? Move(from, to, CAPTURE_FLAG) : Move(from, to, QUIET_MOVE_FLAG);
 }
 
-void BoardImage::showEvaluationStats()
+void BoardImage::showEvaluationStats(const BoardConfig* board)
 {
     system("cls");
     Value eval = evaluator->evaluate();
     std::cout << "Total eval: " << eval << std::endl;
+    //std::cout << "Zobrist: " << std::hex << board->hash() << std::endl;
 }
