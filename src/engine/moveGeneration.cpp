@@ -16,8 +16,8 @@ namespace MoveGeneration {
 	void generatePawnMoves(MoveList& moveList, const BoardConfig& board, Bitboard target)
 	{
 		constexpr Color enemy = ~side;
-		constexpr Bitboard rank7mark = (side == WHITE ? ROW_7 : ROW_2);
-		constexpr Bitboard rank3mark = (side == WHITE ? ROW_3 : ROW_6);
+		constexpr Bitboard rank7mark = (side == WHITE ? Board::RANK_7 : Board::RANK_2);
+		constexpr Bitboard rank3mark = (side == WHITE ? Board::RANK_3 : Board::RANK_6);
 		constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
 		constexpr Direction forwardLeftDir = (side == WHITE ? NORTH_WEST : SOUTH_WEST);
 		constexpr Direction forwardRightDir = (side == WHITE ? NORTH_EAST : SOUTH_EAST);
@@ -32,19 +32,19 @@ namespace MoveGeneration {
 
 		// Quiet moves (single and double pushes without promotions)
 		if constexpr (gen != CAPTURE) {
-			Bitboard singlePushes = Bitboards::shift<forwardDir>(pawnsNotOn7) & emptySquares;
-			Bitboard doublePushes = Bitboards::shift<forwardDir>(singlePushes & rank3mark) & emptySquares;
+			Bitboard singlePushes = Bitboards::shift_s<forwardDir>(pawnsNotOn7) & emptySquares;
+			Bitboard doublePushes = Bitboards::shift_s<forwardDir>(singlePushes & rank3mark) & emptySquares;
 			if constexpr (gen == CHECK_EVASION) {
 				singlePushes &= target;
 				doublePushes &= target;
 			}
 
 			while (singlePushes) {
-				Square to = Bitboards::popLsb(singlePushes);
+				Square to = Bitboards::pop_lsb(singlePushes);
 				moveList.push_back(Move(to - forwardDir, to, QUIET_MOVE_FLAG));
 			}
 			while (doublePushes) {
-				Square to = Bitboards::popLsb(doublePushes);
+				Square to = Bitboards::pop_lsb(doublePushes);
 				moveList.push_back(Move(to - forwardDir - forwardDir, to, DOUBLE_PAWN_PUSH_FLAG));
 			}
 		}
@@ -57,43 +57,43 @@ namespace MoveGeneration {
 		// Captures & enpassant
 		if constexpr (gen != QUIET && gen != QUIET_CHECK) {
 			// Common captures
-			Bitboard leftCaptures = Bitboards::shift<forwardLeftDir>(pawnsNotOn7) & enemyPieces;
-			Bitboard rightCaptures = Bitboards::shift<forwardRightDir>(pawnsNotOn7) & enemyPieces;
+			Bitboard leftCaptures = Bitboards::shift_s<forwardLeftDir>(pawnsNotOn7) & enemyPieces;
+			Bitboard rightCaptures = Bitboards::shift_s<forwardRightDir>(pawnsNotOn7) & enemyPieces;
 
 			while (leftCaptures) {
-				Square to = Bitboards::popLsb(leftCaptures);
+				Square to = Bitboards::pop_lsb(leftCaptures);
 				moveList.push_back(Move(to - forwardLeftDir, to, CAPTURE_FLAG));
 			}
 			while (rightCaptures) {
-				Square to = Bitboards::popLsb(rightCaptures);
+				Square to = Bitboards::pop_lsb(rightCaptures);
 				moveList.push_back(Move(to - forwardRightDir, to, CAPTURE_FLAG));
 			}
 
 			// En passant
 			if (gen != CHECK_EVASION || (target & board.enpassantSquare())) {
-				Bitboard enpassantPawns = pawnsNotOn7 & adjacentRankSquares(board.enpassantSquare());
+				Bitboard enpassantPawns = pawnsNotOn7 & Board::AdjacentRankSquares[board.enpassantSquare()];
 				Square to = board.enpassantSquare() + forwardDir;
 				while (enpassantPawns)
-					moveList.push_back(Move(Bitboards::popLsb(enpassantPawns), to, ENPASSANT_FLAG));
+					moveList.push_back(Move(Bitboards::pop_lsb(enpassantPawns), to, ENPASSANT_FLAG));
 			}
 		}
 
 		// Promotions (considered as captures because of changing the general material state on the board)
 		if constexpr (gen != QUIET && gen != QUIET_CHECK) {
-			Bitboard quietPromotions = Bitboards::shift<forwardDir>(pawnsOn7)& emptySquares;
-			Bitboard leftCapturePromotions = Bitboards::shift<forwardLeftDir>(pawnsOn7) & enemyPieces;
-			Bitboard rightCapturePromotions = Bitboards::shift<forwardRightDir>(pawnsOn7) & enemyPieces;
+			Bitboard quietPromotions = Bitboards::shift_s<forwardDir>(pawnsOn7)& emptySquares;
+			Bitboard leftCapturePromotions = Bitboards::shift_s<forwardLeftDir>(pawnsOn7) & enemyPieces;
+			Bitboard rightCapturePromotions = Bitboards::shift_s<forwardRightDir>(pawnsOn7) & enemyPieces;
 
 			while (quietPromotions) {
-				Square to = Bitboards::popLsb(quietPromotions);
+				Square to = Bitboards::pop_lsb(quietPromotions);
 				generatePromotions<false>(moveList, to - forwardDir, to);
 			}
 			while (leftCapturePromotions) {
-				Square to = Bitboards::popLsb(leftCapturePromotions);
+				Square to = Bitboards::pop_lsb(leftCapturePromotions);
 				generatePromotions<true>(moveList, to - forwardLeftDir, to);
 			}
 			while (rightCapturePromotions) {
-				Square to = Bitboards::popLsb(rightCapturePromotions);
+				Square to = Bitboards::pop_lsb(rightCapturePromotions);
 				generatePromotions<true>(moveList, to - forwardRightDir, to);
 			}
 		}
@@ -106,19 +106,19 @@ namespace MoveGeneration {
 
 		Bitboard pieces = board.pieces(side, pieceType);
 		while (pieces) {
-			Square from = Bitboards::popLsb(pieces);
-			Bitboard potentialMoves = Pieces::pieceAttacks<pieceType>(from, board.pieces()) & target;
+			Square from = Bitboards::pop_lsb(pieces);
+			Bitboard potentialMoves = Pieces::piece_attacks_s<pieceType>(from, board.pieces()) & target;
 			if constexpr (gen != PSEUDO_LEGAL && gen != CHECK_EVASION) {
 				while (potentialMoves)
-					moveList.push_back(Move(from, Bitboards::popLsb(potentialMoves), flags));
+					moveList.push_back(Move(from, Bitboards::pop_lsb(potentialMoves), flags));
 			}
 			if constexpr (gen == PSEUDO_LEGAL || gen == CHECK_EVASION) {
 				Bitboard captures = potentialMoves & board.pieces();
 				Bitboard quiets = potentialMoves & (~captures);
 				while (quiets)
-					moveList.push_back(Move(from, Bitboards::popLsb(quiets), QUIET_MOVE_FLAG));
+					moveList.push_back(Move(from, Bitboards::pop_lsb(quiets), QUIET_MOVE_FLAG));
 				while (captures)
-					moveList.push_back(Move(from, Bitboards::popLsb(captures), CAPTURE_FLAG));
+					moveList.push_back(Move(from, Bitboards::pop_lsb(captures), CAPTURE_FLAG));
 			}
 		}
 	}
@@ -129,27 +129,27 @@ namespace MoveGeneration {
 		constexpr Movemask flags = (gen == CAPTURE ? CAPTURE_FLAG : QUIET_MOVE_FLAG);
 		Square from = board.kingPosition(side);
 
-		Bitboard potentialMoves = Pieces::pieceAttacks<KING>(from) & target;
+		Bitboard potentialMoves = Pieces::piece_attacks_s<KING>(from) & target;
 		if constexpr (gen != PSEUDO_LEGAL && gen != CHECK_EVASION) {
 			while (potentialMoves)
-				moveList.push_back(Move(from, Bitboards::popLsb(potentialMoves), flags));
+				moveList.push_back(Move(from, Bitboards::pop_lsb(potentialMoves), flags));
 		}
 		if constexpr (gen == PSEUDO_LEGAL || gen == CHECK_EVASION) {
 			Bitboard captures = potentialMoves & board.pieces();
 			Bitboard quiets = potentialMoves & (~captures);
 			while (quiets)
-				moveList.push_back(Move(from, Bitboards::popLsb(quiets), QUIET_MOVE_FLAG));
+				moveList.push_back(Move(from, Bitboards::pop_lsb(quiets), QUIET_MOVE_FLAG));
 			while (captures)
-				moveList.push_back(Move(from, Bitboards::popLsb(captures), CAPTURE_FLAG));
+				moveList.push_back(Move(from, Bitboards::pop_lsb(captures), CAPTURE_FLAG));
 		}
 
 		if constexpr (gen != CAPTURE && gen != CHECK_EVASION) {
-			CastleType kingside = getCastleType(side, KINGSIDE_CASTLE);
-			CastleType queenside = getCastleType(side, QUEENSIDE_CASTLE);
+			CastleType kingside = make_castle_type(side, KINGSIDE_CASTLE);
+			CastleType queenside = make_castle_type(side, QUEENSIDE_CASTLE);
 			if (board.hasCastlingRight(kingside) && board.isCastlingPathClear(kingside))
-				moveList.push_back(Move(from, from + 2, KINGSIDE_CASTLE_FLAG));
+				moveList.push_back(Move(from, Square(from + 2), KINGSIDE_CASTLE_FLAG));
 			if (board.hasCastlingRight(queenside) && board.isCastlingPathClear(queenside))
-				moveList.push_back(Move(from, from - 2, QUEENSIDE_CASTLE_FLAG));
+				moveList.push_back(Move(from, Square(from - 2), QUEENSIDE_CASTLE_FLAG));
 		}
 	}
 
@@ -165,9 +165,9 @@ namespace MoveGeneration {
 		if constexpr (gen == CHECK_EVASION) {
 			Bitboard checkers = board.checkingPieces();
 
-			if (Bitboards::isSinglePopulated(checkers)) {
-				Square checkSquare = Bitboards::popLsb(checkers);
-				Bitboard evasionTarget = target & (pathBetween(board.kingPosition(side), checkSquare) | checkSquare);
+			if (Bitboards::single_populated(checkers)) {
+				Square checkSquare = Bitboards::pop_lsb(checkers);
+				Bitboard evasionTarget = target & (Board::Paths[board.kingPosition(side)][checkSquare] | checkSquare);
 				generatePawnMoves<side, CHECK_EVASION>(moveList, board, evasionTarget);
 				generatePieceMoves<side, KNIGHT, CHECK_EVASION>(moveList, board, evasionTarget);
 				generatePieceMoves<side, BISHOP, CHECK_EVASION>(moveList, board, evasionTarget);
@@ -206,7 +206,10 @@ namespace MoveGeneration {
 	template <>
 	void generateMoves<LEGAL>(MoveList& moveList, const BoardConfig& board)
 	{
-		generateMoves<PSEUDO_LEGAL>(moveList, board);
+		if (board.isInCheck(board.movingSide()))
+			generateMoves<CHECK_EVASION>(moveList, board);
+		else
+			generateMoves<PSEUDO_LEGAL>(moveList, board);
 		Move* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
 										 [&board](const Move& move) {return board.legalityCheckLight(move);});
 		moveList.setEndOfList(legalsEnd);

@@ -17,7 +17,7 @@ namespace {
 
     sf::Vector2f squareToVector(Square sq)
     {
-        return sf::Vector2f(TILE_SIZE * fileOf(sq), TILE_SIZE * (7 -rankOf(sq)));
+        return sf::Vector2f(TILE_SIZE * file_of(sq), TILE_SIZE * (7 -rank_of(sq)));
     }
 }
 
@@ -54,7 +54,7 @@ BoardImage::BoardImage(BoardController* boardController, Evaluation::Evaluator* 
 	for (int p = W_PAWN; p <= W_KING; p++) {
 		Piece whitePiece = Piece(p);
 		Piece blackPiece = Piece(p | BLACK_PIECE);
-        PieceType type = typeOf(whitePiece);
+        PieceType type = type_of(whitePiece);
         for (int i = 0; i < MAX_PIECES_TYPES[type]; i++) {
             piecesTables[whitePiece].pieces.emplace_back(whitePiece, BoardTextures::pieceTexture(whitePiece));
             piecesTables[blackPiece].pieces.emplace_back(blackPiece, BoardTextures::pieceTexture(blackPiece));
@@ -74,7 +74,7 @@ void BoardImage::loadPosition(const BoardConfig* board)
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             sf::Vector2f screenPos = { TILE_SIZE * j, TILE_SIZE * i };
-            Piece piece = board->onSquare(getSquare(7 - i, j));
+            Piece piece = board->onSquare(make_square(7 - i, j));
             if (piece != NO_PIECE) {
                 PieceImage* pieceImage = piecesTables[piece].top();
                 pieceImage->setPermPosition(screenPos);
@@ -93,7 +93,7 @@ void BoardImage::updatePieces(BoardConfig* board)
     sf::Vector2i mousePos = sf::Mouse::getPosition(*window);
     if (!mouseLeftButtonClicked && selectedPiece == nullptr && isMousePressed) {
         for (PieceImage* pieceImage : pieces) {
-            if (colorOf(pieceImage->piece()) != sideOnMove)
+            if (color_of(pieceImage->piece()) != sideOnMove)
                 continue;
             sf::FloatRect bounds = pieceImage->getGlobalBounds();
             if (bounds.contains(mousePos.x, mousePos.y)) {
@@ -111,8 +111,8 @@ void BoardImage::updatePieces(BoardConfig* board)
         int rank = 7 - int(mousePos.y / TILE_SIZE);
         int file = mousePos.x / TILE_SIZE;
         if (rank >= 0 && rank < 8 && file >= 0 && file < 8) {
-            Square to = getSquare(rank, file);
-            Square from = getSquare(7 - int(lastPos.y / TILE_SIZE), int(lastPos.x / TILE_SIZE));
+            Square to = make_square(rank, file);
+            Square from = make_square(7 - int(lastPos.y / TILE_SIZE), int(lastPos.x / TILE_SIZE));
             Move move = translateMove(from, to, selectedPiece->piece(), board->onSquare(to));
             if (move != NULL_MOVE && board->legalityCheckFull(move)) { // Test for legality
                 sf::Vector2f oldPos = selectedPiece->getStablePosition();
@@ -208,28 +208,28 @@ void BoardImage::updateCheckBlur(const BoardConfig* board)
 
 Move BoardImage::translateMove(Square from, Square to, Piece piece, Piece onTargetSquare) const
 {
-    PieceType type = typeOf(piece);
-    Color color = colorOf(piece);
+    PieceType type = type_of(piece);
+    Color color = color_of(piece);
 
     if (type == PAWN) {
         int rankDiff1 = color == WHITE ? 1 : -1;
         int rankDiff2 = rankDiff1 * 2;
-        bool promotion = rankOf(to) == 0 || rankOf(to) == 7;
-        if (fileOf(from) == fileOf(to) && rankOf(to) - rankOf(from) == rankDiff1)
+        bool promotion = rank_of(to) == 0 || rank_of(to) == 7;
+        if (file_of(from) == file_of(to) && rank_of(to) - rank_of(from) == rankDiff1)
             return promotion ? Move(from, to, PROMOTION_FLAG) : Move(from, to, QUIET_MOVE_FLAG);
-        if (fileOf(from) == fileOf(to) && rankOf(to) - rankOf(from) == rankDiff2)
-            return rankOf(from) == PAWN_STARTING_RANK[color] ? Move(from, to, DOUBLE_PAWN_PUSH_FLAG) : NULL_MOVE;
-        if (!(Pieces::pawnAttacks(color, from) & to))
+        if (file_of(from) == file_of(to) && rank_of(to) - rank_of(from) == rankDiff2)
+            return rank_of(from) == PAWN_STARTING_RANK[color] ? Move(from, to, DOUBLE_PAWN_PUSH_FLAG) : NULL_MOVE;
+        if (!(Pieces::pawn_attacks(color, from) & to))
             return NULL_MOVE;
         return onTargetSquare != NO_PIECE ? (promotion ? Move(from, to, CAPTURE_FLAG | PROMOTION_FLAG) : Move(from, to, CAPTURE_FLAG)) : 
             Move(from, to, ENPASSANT_FLAG);
     }
 
-    if (type == KING && rankOf(from) == rankOf(to) && (from == to - 2 || from == to + 2))
+    if (type == KING && rank_of(from) == rank_of(to) && (from == to - 2 || from == to + 2))
         return to == from - 2 ? Move(from, to, QUEENSIDE_CASTLE_FLAG) : Move(from, to, KINGSIDE_CASTLE_FLAG);
 
 
-    if (!Pieces::inPieceDistance(type, from, to))
+    if (!Pieces::in_piece_range(type, from, to))
         return NULL_MOVE;
     return onTargetSquare != NO_PIECE ? Move(from, to, CAPTURE_FLAG) : Move(from, to, QUIET_MOVE_FLAG);
 }

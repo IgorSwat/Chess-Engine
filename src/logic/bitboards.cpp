@@ -3,28 +3,30 @@
 
 
 namespace Bitboards {
-	std::string bitboardToString(Bitboard bb)
+
+	Bitboard shift_d(Bitboard bb, Direction dir)
 	{
-		int bb2D[8][8];
-		int i = 7, j = 0;
-		for (int k = 0; k < 64; k++)
-		{
-			bb2D[i][j] = bb % 2;
-			bb >>= 1;
-			j++;
-			if (j == 8)
-			{
-				i--;
-				j = 0;
-			}
-		}
+		return dir == NORTH ? shift_s<NORTH>(bb) :
+			dir == SOUTH ? shift_s<SOUTH>(bb) :
+			dir == EAST ? shift_s<EAST>(bb) :
+			dir == WEST ? shift_s<WEST>(bb) :
+			dir == NORTH_EAST ? shift_s<NORTH_EAST>(bb) :
+			dir == NORTH_WEST ? shift_s<NORTH_WEST>(bb) :
+			dir == SOUTH_EAST ? shift_s<SOUTH_EAST>(bb) : shift_s<SOUTH_WEST>(bb);
+	}
+
+	std::string to_string(Bitboard bb)
+	{
 		std::ostringstream stream;
-		for (int i = 0; i < 8; i++)
-		{
-			for (int j = 0; j < 8; j++)
-				stream << bb2D[i][j];
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				int offset = i * 8 + j;
+				Bitboard shifted = bb >> (63 - offset);
+				stream << (shifted % 2) << " ";
+			}
 			stream << std::endl;
 		}
 		return stream.str();
 	}
+
 }

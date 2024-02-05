@@ -66,6 +66,7 @@ public:
 
 	// Square-centric operations
 	Piece onSquare(Square sq) const;
+	Bitboard attackersToSquare(Square sq, Bitboard occ) const;
 	Bitboard attackersToSquare(Square sq, Color side, Bitboard occ) const;
 
 	// Castling & enpassant
@@ -83,6 +84,9 @@ public:
 	// Move attributes checks
 	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator
 	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source
+
+	// Static exchange evaluation
+	int see(Square from, PieceType attackingPiece, Square to, PieceType attackedPiece) const;
 
 	// Move-counting issues & others
 	Color movingSide() const;
@@ -104,6 +108,8 @@ private:
 	// Checks & pins handlers
 	void updateChecks(Color checkedSide);
 	void updatePins(Color side);
+	// Static exchange evaluation
+	Bitboard lvp(Color side, Bitboard area, PieceType& piece) const;	// Least valuable piece
 
 	Color sideOnMove = WHITE;
 
@@ -147,7 +153,7 @@ inline Bitboard BoardConfig::pieces(Color side, PieceTypes... types) const
 template <typename... PieceTypes>
 inline Bitboard BoardConfig::pieces(Color side, SquareColor squareColor, PieceTypes... types) const
 {
-	return pieces(side, types...) & squaresOfColor(squareColor);
+	return pieces(side, types...) & Board::squares_of_color(squareColor);
 }
 
 inline Square BoardConfig::kingPosition(Color side) const
@@ -177,7 +183,7 @@ inline bool BoardConfig::hasCastlingRight(CastlingRights right) const
 
 inline bool BoardConfig::isCastlingPathClear(CastleType castle) const
 {
-	return !(pieces() & Pieces::castlingPath(castle));
+	return !(pieces() & Pieces::castle_path(castle));
 }
 
 inline bool BoardConfig::isInCheck(Color side) const
@@ -243,9 +249,9 @@ inline void BoardConfig::pushStateList(const Move& lastMove)
 
 inline void BoardConfig::placePiece(Piece piece, Square square)
 {
-	Bitboard squareBB = squareToBB(square);
-	Color side = colorOf(piece);
-	PieceType type = typeOf(piece);
+	Bitboard squareBB = square_to_bb(square);
+	Color side = color_of(piece);
+	PieceType type = type_of(piece);
 	board[square] = piece;
 	piecesByColor[side] |= squareBB;
 	piecesByType[type] |= squareBB;
@@ -256,10 +262,10 @@ inline void BoardConfig::placePiece(Piece piece, Square square)
 inline void BoardConfig::removePiece(Square square)
 {
 	Piece piece = board[square];
-	Bitboard squareBB = squareToBB(square);
+	Bitboard squareBB = square_to_bb(square);
 	board[square] = NO_PIECE;
-	piecesByColor[colorOf(piece)] ^= squareBB;
-	piecesByType[typeOf(piece)] ^= squareBB;
+	piecesByColor[color_of(piece)] ^= squareBB;
+	piecesByType[type_of(piece)] ^= squareBB;
 	piecesByType[ALL_PIECES] ^= squareBB;
 	// We assume that king is never captured or removed from the board
 }
@@ -267,9 +273,9 @@ inline void BoardConfig::removePiece(Square square)
 inline void BoardConfig::movePiece(Square from, Square to)
 {
 	Piece piece = board[from];
-	Color side = colorOf(piece);
-	PieceType type = typeOf(piece);
-	Bitboard moveBB = squareToBB(from) | squareToBB(to);
+	Color side = color_of(piece);
+	PieceType type = type_of(piece);
+	Bitboard moveBB = square_to_bb(from) | square_to_bb(to);
 	board[from] = NO_PIECE;
 	board[to] = piece;
 	piecesByColor[side] ^= moveBB;

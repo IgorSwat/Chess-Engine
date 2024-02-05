@@ -7,6 +7,7 @@
 #include <bitset>
 
 namespace {
+
 	const std::string STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 	constexpr CastlingRights castlingRightsLoss[SQUARE_RANGE] = {
@@ -47,6 +48,33 @@ namespace {
 		0, 0, 9, 9, 14, 64, 0, 0,
 		0, 0, 9, 9, 14, 64, 0, 0
 	};
+
+	constexpr int PIECE_EXCHANGE_VALUES[PIECE_TYPE_RANGE] = {0, 1, 3, 3, 5, 9, 1000, 0};
+
+
+	// ----------------
+	// Helper functions
+	// ----------------
+
+	Piece pieceFromChar(char c)
+	{
+		char lowerC = std::tolower(c);
+		Piece piece = lowerC == 'p' ? W_PAWN :
+			lowerC == 'n' ? W_KNIGHT :
+			lowerC == 'b' ? W_BISHOP :
+			lowerC == 'r' ? W_ROOK :
+			lowerC == 'q' ? W_QUEEN :
+			lowerC == 'k' ? W_KING : NO_PIECE;
+		return (piece == NO_PIECE || std::isupper(c)) ? piece : Piece(piece | BLACK_PIECE);
+	}
+
+	CastlingRights castlingRightsFromChar(char c)
+	{
+		return c == 'K' ? WHITE_OO :
+			c == 'Q' ? WHITE_OOO :
+			c == 'k' ? BLACK_OO :
+			c == 'q' ? BLACK_OOO : NO_CASTLING;
+	}
 }
 
 
@@ -117,7 +145,7 @@ void BoardConfig::loadFromFen(const std::string& fen)
 	if (!stream.eof() && (c = stream.get()) != '-') {
 		int epRank = sideOnMove == WHITE ? 4 : 3;
 		int epFile = static_cast<int>(c - 'a');
-		posInfo->enpassantSquare = getSquare(epRank, epFile);
+		posInfo->enpassantSquare = make_square(epRank, epFile);
 	}
 	stream >> posInfo->halfmoveClock;
 	stream >> halfmoveCount;
@@ -187,7 +215,7 @@ void BoardConfig::normalMove(const Move& move)
 		removePiece(to);
 	}
 	else {
-		posInfo->halfmoveClock = typeOf(board[from]) == PAWN ? 0 : posInfo->prev->halfmoveClock + 1;
+		posInfo->halfmoveClock = type_of(board[from]) == PAWN ? 0 : posInfo->prev->halfmoveClock + 1;
 		posInfo->gameStageValue = posInfo->prev->gameStageValue;
 	}
 	zobrist.updateByPlacementChange(board[from], from);
@@ -218,7 +246,7 @@ void BoardConfig::promotion(const Move& move)
 	Square to = move.to();
 	Color side = to > from ? WHITE : BLACK;
 	PieceType promotionType = move.promotionType();
-	Piece promotedPiece = getPiece(side, promotionType);
+	Piece promotedPiece = make_piece(side, promotionType);
 
 	pushStateList(move);
 	posInfo->castlingRights = posInfo->prev->castlingRights;
@@ -354,7 +382,7 @@ void BoardConfig::undoLastMove()
 		removePiece(to);
 		if (lastMove.isCapture())
 			placePiece(posInfo->capturedPiece, to);
-		placePiece(getPiece(sideOnMove, PAWN), from);
+		placePiece(make_piece(sideOnMove, PAWN), from);
 		break;
 	case CASTLE:
 		movePiece(to, from);	// King
@@ -395,13 +423,22 @@ void BoardConfig::clear()
 	posInfo->gameStageValue = 0;
 }
 
+Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
+{
+	return ((Pieces::pawn_attacks(WHITE, sq) | Pieces::pawn_attacks(BLACK, sq)) & pieces(PAWN)) |
+		(Pieces::piece_attacks_s<KNIGHT>(sq) & pieces(KNIGHT)) |
+		(Pieces::piece_attacks_s<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN)) |
+		(Pieces::piece_attacks_s<ROOK>(sq, occ) & pieces(ROOK, QUEEN)) |
+		(Pieces::piece_attacks_s<KING>(sq) & pieces(KING));
+}
+
 Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) const
 {
-	Bitboard result = (Pieces::pawnAttacks(~side, sq) & pieces(PAWN)) |
-		(Pieces::pieceAttacks<KNIGHT>(sq) & pieces(KNIGHT)) |
-		(Pieces::pieceAttacks<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN)) |
-		(Pieces::pieceAttacks<ROOK>(sq, occ) & pieces(ROOK, QUEEN)) |
-		(Pieces::pieceAttacks<KING>(sq) & pieces(KING));
+	Bitboard result = (Pieces::pawn_attacks(~side, sq) & pieces(PAWN)) |
+		(Pieces::piece_attacks_s<KNIGHT>(sq) & pieces(KNIGHT)) |
+		(Pieces::piece_attacks_s<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN)) |
+		(Pieces::piece_attacks_s<ROOK>(sq, occ) & pieces(ROOK, QUEEN)) |
+		(Pieces::piece_attacks_s<KING>(sq) & pieces(KING));
 	return result & pieces(side);
 }
 
@@ -410,14 +447,14 @@ bool BoardConfig::legalityCheckLight(const Move& move) const
 	Square from = move.from();
 	Square to = move.to();
 	Piece piece = board[from];
-	Color side = colorOf(piece);
+	Color side = color_of(piece);
 	Color enemy = ~side;
 
 	if (move.isEnpassant()) {
 		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
 		Square kingSq = kingSquare[side];
-		return !(Pieces::pieceAttacks<BISHOP>(kingSq, occ) & pieces(enemy, BISHOP, QUEEN)) &&
-			!(Pieces::pieceAttacks<ROOK>(kingSq, occ) & pieces(enemy, ROOK, QUEEN));
+		return !(Pieces::piece_attacks_s<BISHOP>(kingSq, occ) & pieces(enemy, BISHOP, QUEEN)) &&
+			!(Pieces::piece_attacks_s<ROOK>(kingSq, occ) & pieces(enemy, ROOK, QUEEN));
 	}
 
 	if (move.isCastle()) {
@@ -426,10 +463,10 @@ bool BoardConfig::legalityCheckLight(const Move& move) const
 			!attackersToSquare(to, enemy, pieces());
 	}
 
-	if (typeOf(piece) == KING)
+	if (type_of(piece) == KING)
 		return !attackersToSquare(to, enemy, pieces() ^ from);
 
-	return !(pinnedPieces(side) & from) || aligned(kingSquare[side], to, from);
+	return !(pinnedPieces(side) & from) || Board::aligned(kingSquare[side], to, from);
 }
 
 bool BoardConfig::legalityCheckFull(const Move& move) const
@@ -437,19 +474,19 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 	Square from = move.from();
 	Square to = move.to();
 	Piece piece = board[from];
-	Color side = colorOf(piece);
+	Color side = color_of(piece);
 	if (pieces(side) & to) return false;	// Target square cannot be already occupied by friendly piece
 
 	if (move.isEnpassant()) {
-		if (!(adjacentRankSquares(enpassantSquare()) & from) || fileOf(enpassantSquare()) != fileOf(to)) return false;
+		if (!(Board::AdjacentRankSquares[enpassantSquare()] & from) || file_of(enpassantSquare()) != file_of(to)) return false;
 		Square kingSq = kingSquare[side];
 		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
 		return !attackersToSquare(kingSq, ~side, occ) ||
-			(checkingPieces() && ((Bitboards::isSinglePopulated(checkingPieces())) && enpassantSquare() == Bitboards::lsb(checkingPieces())));
+			(checkingPieces() && ((Bitboards::single_populated(checkingPieces())) && enpassantSquare() == Bitboards::lsb(checkingPieces())));
 	}
 
 	if (move.isCastle()) {
-		CastleType castleType = getCastleType(side, to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE);
+		CastleType castleType = make_castle_type(side, to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE);
 		if (!hasCastlingRight(castleType)) return false;
 		if (!isCastlingPathClear(castleType)) return false;
 		Direction dir = (castleType & KINGSIDE_CASTLE) ? EAST : WEST;
@@ -458,15 +495,43 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 			attackersToSquare(to, enemy, pieces()) == 0 && !isInCheck(side);
 	}
 
-	if (typeOf(piece) == KING)
+	if (type_of(piece) == KING)
 		return !attackersToSquare(to, ~side, pieces() ^ from);	// The "to" square cannot be in check after king move
 
 	// Handle any other moves
 	Square kingSq = kingSquare[side];
-	if (checkingPieces() && !Bitboards::isSinglePopulated(checkingPieces())) return false;			// Double check blocks any other pieces than king
-	if (checkingPieces() && to != Bitboards::lsb(checkingPieces()) && !aligned(kingSq, Bitboards::lsb(checkingPieces()), to)) return false;
-	Bitboard between = pathBetween(from, to) & (~from) & (~to);
-	return !(between & pieces()) && (!(pinnedPieces(side) & from) || aligned(kingSq, to, from));
+	if (checkingPieces() && !Bitboards::single_populated(checkingPieces())) return false;			// Double check blocks any other pieces than king
+	if (checkingPieces() && to != Bitboards::lsb(checkingPieces()) && !Board::aligned(kingSq, Bitboards::lsb(checkingPieces()), to)) return false;
+	Bitboard between = Board::Paths[from][to] & (~from) & (~to);
+	return !(between & pieces()) && (!(pinnedPieces(side) & from) || Board::aligned(kingSq, to, from));
+}
+
+int BoardConfig::see(Square from, PieceType attackingPiece, Square to, PieceType attackedPiece) const
+{
+	int gain[33], depth = sideOnMove;
+	Bitboard mayXray = pieces() ^ pieces(KNIGHT) ^ pieces(KING);
+	Bitboard occ = pieces();
+	Bitboard fromSet = square_to_bb(from);
+	Bitboard attackdef = attackersToSquare(to, occ);
+
+	gain[depth] = PIECE_EXCHANGE_VALUES[attackedPiece];
+	do {
+		depth++;
+		gain[depth] = PIECE_EXCHANGE_VALUES[attackingPiece] - gain[depth - 1];
+		if (std::max(-gain[depth - 1], gain[depth]) < 0)
+			break;
+		attackdef ^= fromSet;
+		if (fromSet & mayXray) {
+			Bitboard xRayAttackers = (Pieces::xRayBishopAttacks(to, occ, fromSet) & pieces(BISHOP, QUEEN)) |
+									 (Pieces::xRayRookAttacks(to, occ, fromSet) & pieces(ROOK, QUEEN));
+			attackdef |= xRayAttackers;
+		}
+		occ ^= fromSet;
+		fromSet = lvp(Color(depth & 0x1), attackdef, attackingPiece);
+	} while (fromSet);
+	while (--depth)
+		gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+	return gain[sideOnMove];
 }
 
 void BoardConfig::updatePins(Color side)
@@ -478,17 +543,27 @@ void BoardConfig::updatePins(Color side)
 		(Pieces::xRayBishopAttacks(kingSq, pieces(), pieces(side)) & pieces(enemy, BISHOP, QUEEN));
 	Bitboard pinnersTmp = posInfo->pinners[side];
 	while (pinnersTmp) {
-		Square sq = Bitboards::popLsb(pinnersTmp);
-		posInfo->pinned[side] |= (pathBetween(kingSq, sq) & pieces(side));
+		Square sq = Bitboards::pop_lsb(pinnersTmp);
+		posInfo->pinned[side] |= (Board::Paths[kingSq][sq] & pieces(side));
 	}
 	posInfo->pinned[side] &= ~kingSq;	// Only if PATHS[sq1][sq2] contains sq1 and sq2
+}
+
+Bitboard BoardConfig::lvp(Color side, Bitboard area, PieceType& piece) const
+{
+	for (piece = PAWN; piece <= KING; piece = PieceType(piece + 1)) {
+		Bitboard subset = area & pieces(side, piece);
+		if (subset)
+			return square_to_bb(Bitboards::lsb(subset));
+	}
+	return 0;
 }
 
 std::ostream& operator<<(std::ostream& os, const BoardConfig& board)
 {
 	os << "---------- Side on move: " << (board.sideOnMove == WHITE ? "WHITE" : "BLACK") << std::endl;
-	os << "---------- White pieces placement:\n" << Bitboards::bitboardToString(board.piecesByColor[WHITE]) << std::endl;
-	os << "---------- Black pieces placement:\n" << Bitboards::bitboardToString(board.piecesByColor[BLACK]) << std::endl;
+	os << "---------- White pieces placement:\n" << Bitboards::to_string(board.piecesByColor[WHITE]) << std::endl;
+	os << "---------- Black pieces placement:\n" << Bitboards::to_string(board.piecesByColor[BLACK]) << std::endl;
 	os << "---------- Castling rights mask: " << std::bitset<4>(board.posInfo->castlingRights) << std::endl;
 	os << "---------- En passant square:\n" << board.posInfo->enpassantSquare << std::endl;
 	os << "---------- Move counts (half moves | half moves clock): " << board.halfmoveCount << " | " << board.posInfo->halfmoveClock << std::endl;

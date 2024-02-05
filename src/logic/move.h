@@ -1,6 +1,6 @@
 #pragma once
 
-#include "misc.h"
+#include "types.h"
 #include <iostream>
 #include <iomanip>
 
@@ -172,8 +172,8 @@ inline bool operator!=(const Move& m1, const Move& m2)
 inline std::ostream& operator<<(std::ostream& os, const Move& move)
 {
 	os << std::dec;
-	os << "Move   |   from: " << char('A' + fileOf(move.from())) << 1 + rankOf(move.from()) << " ";
-	os << "to: " << char('A' + fileOf(move.to())) << 1 + rankOf(move.to()) << " ";
+	os << "Move   |   from: " << char('A' + file_of(move.from())) << 1 + rank_of(move.from()) << " ";
+	os << "to: " << char('A' + file_of(move.to())) << 1 + rank_of(move.to()) << " ";
 	os << "flags: " << std::hex << move.flags();
 	return os;
 }

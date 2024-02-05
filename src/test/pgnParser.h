@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../logic/misc.h"
+#include "../logic/types.h"
 #include "../logic/move.h"
 #include <string>
 #include <sstream>

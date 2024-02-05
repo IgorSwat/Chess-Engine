@@ -10,8 +10,8 @@ namespace {
 
     Square readPosition(char fileSymbol, char rankSymbol)
     {
-        Bitboard file = FILES[fileSymbol - 'a'];
-        Bitboard rank = ROWS[rankSymbol - '1'];
+        Bitboard file = Board::Files[fileSymbol - 'a'];
+        Bitboard rank = Board::Ranks[rankSymbol - '1'];
         return Bitboards::lsb(file & rank);
     }
 
@@ -95,7 +95,7 @@ Move PGNParser::moveFromNotation(const std::string& moveNotation) const
 
         if (moveNotation[targetId] != 'x' && (isdigit(moveNotation[targetId]) || isalpha(moveNotation[targetId + 1]))) {
             char specifier = moveNotation[targetId];
-            Bitboard specifiedArea = isalpha(specifier) ? FILES[specifier - 'a'] : ROWS[specifier - '1'];
+            Bitboard specifiedArea = isalpha(specifier) ? Board::Files[specifier - 'a'] : Board::Ranks[specifier - '1'];
             mask &= specifiedArea;
             targetId++;
         }
@@ -106,7 +106,7 @@ Move PGNParser::moveFromNotation(const std::string& moveNotation) const
         }
         
         Square to = readPosition(moveNotation[targetId], moveNotation[targetId + 1]);
-        mask &= Pieces::pieceAttacks(pieceType, to, board->pieces());
+        mask &= Pieces::piece_attacks_d(pieceType, to, board->pieces());
         Square from = Bitboards::lsb(mask & board->pieces(sideOnMove, pieceType));
 
         return Move(from, to, flags);
@@ -114,7 +114,7 @@ Move PGNParser::moveFromNotation(const std::string& moveNotation) const
     else {      // Pawn move
         Square from, to;
         Movemask flags = QUIET_MOVE_FLAG;
-        mask &= FILES[moveNotation[0] - 'a'];
+        mask &= Board::Files[moveNotation[0] - 'a'];
 
         int sep = moveNotation.find('=');
         if (sep != std::string::npos) {     // Promotion

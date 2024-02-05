@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cinttypes>
-#include "misc.h"
+#include "types.h"
 
 class BoardConfig;
 
@@ -28,6 +28,9 @@ namespace Zobrist {
     extern U64 hashCodes[HASH_CODES_NUM];
 
 
+    // -----------------------------
+    // Zobrist container and methods
+    // -----------------------------
 
     class ZobristHash
     {

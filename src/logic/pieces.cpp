@@ -5,6 +5,10 @@
 
 namespace Pieces {
 
+	// ---------------------------
+	// Precalculated attack tables
+	// ---------------------------
+
 	Bitboard RAY_ATTACKS[SQUARE_RANGE][DIRECTION_RANGE];
 
 	Bitboard PAWN_ATTACKS[COLOR_RANGE][SQUARE_RANGE];
@@ -12,14 +16,19 @@ namespace Pieces {
 	Magic ROOK_MAGICS[SQUARE_RANGE];
 	Magic BISHOP_MAGICS[SQUARE_RANGE];
 
+
+	// ---------------------------------------------
+	// Ray attacks by calculation - Classical Method
+	// ---------------------------------------------
+
 	void initRayAttacks()
 	{
-		for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
-			for (Direction dir = WEST; dir <= NORTH_WEST; ++dir) {
+		for (int sq = SQ_A1; sq <= SQ_H8; ++sq) {
+			for (int dir = WEST; dir <= NORTH_WEST; ++dir) {
 				Bitboard attacks = 0;
-				Bitboard squareBB = squareToBB(sq);
+				Bitboard squareBB = square_to_bb(Square(sq));
 				while (squareBB != 0) {
-					squareBB = Bitboards::shift(squareBB, dir);
+					squareBB = Bitboards::shift_d(squareBB, Direction(dir));
 					attacks |= squareBB;
 				}
 				RAY_ATTACKS[sq][dir] = attacks;
@@ -57,7 +66,7 @@ namespace Pieces {
 		return positiveRayAttacks<NORTH_WEST>(sq, occ) | negativeRayAttacks<SOUTH_EAST>(sq, occ);
 	}
 
-	Bitboard rowAttacks(Square sq, Bitboard occ)
+	Bitboard rankAttacks(Square sq, Bitboard occ)
 	{
 		return positiveRayAttacks<EAST>(sq, occ) | negativeRayAttacks<WEST>(sq, occ);
 	}
@@ -74,7 +83,7 @@ namespace Pieces {
 
 	Bitboard rookAttacksCalc(Square sq, Bitboard occ)
 	{
-		return rowAttacks(sq, occ) | fileAttacks(sq, occ);
+		return rankAttacks(sq, occ) | fileAttacks(sq, occ);
 	}
 
 	Bitboard bishopAttacksCalc(Square sq, Bitboard occ)
@@ -88,24 +97,27 @@ namespace Pieces {
 	}
 
 
-	constexpr int MAX_ATTACK_TABLE_SIZE = 4096;
-	constexpr int RANDOM_SEED = 128;
-	constexpr int ROOK_ATTACKS_SETS = 102400;
-	constexpr int BISHOP_ATTACKS_SETS = 5248;
+	// -------------------
+	// Magics initializers
+	// -------------------
 
-	Bitboard rookTable[ROOK_ATTACKS_SETS] = {};	// for Magic Bitboards
-	Bitboard bishopTable[BISHOP_ATTACKS_SETS] = {};	// for Magic Bitboards
+	Bitboard rookTable[102400] = {};
+	Bitboard bishopTable[5248] = {};
 
 	void initMagics(Magic* magics, Bitboard* table, AttacksCalculator attacksCalc)
 	{
+		constexpr int MAX_ATTACK_TABLE_SIZE = 4096;
+		constexpr int RANDOM_SEED = 128;
+
 		Bitboard* occupancies = new Bitboard[MAX_ATTACK_TABLE_SIZE]{};
 		Bitboard* attacks = new Bitboard[MAX_ATTACK_TABLE_SIZE]{};
 		uint64_t* magicsHelper = new uint64_t[MAX_ATTACK_TABLE_SIZE]{};
 		int size = 0;
-		for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
-			Bitboard squareBB = squareToBB(sq);
-			Bitboard edges = ((ROW_1 | ROW_8) & ~rankBBOf(sq)) | ((FILE_A_BB | FILE_H_BB) & ~fileBBOf(sq));
-			Bitboard mask = attacksCalc(sq, 0) & ~edges;
+
+		for (int sq = SQ_A1; sq <= SQ_H8; ++sq) {
+			Bitboard squareBB = square_to_bb(Square(sq));
+			Bitboard edges = ((Board::RANK_1 | Board::RANK_8) & ~Board::rank_bb_of(Square(sq))) | ((Board::FILE_A | Board::FILE_H) & ~Board::file_bb_of(Square(sq)));
+			Bitboard mask = attacksCalc(Square(sq), 0) & ~edges;
 			Magic& m = magics[sq];
 			m.mask = mask;
 			m.shift = 64 - Bitboards::popcount(m.mask);
@@ -115,7 +127,7 @@ namespace Pieces {
 			Bitboard bb = 0;
 			do {
 				occupancies[size] = bb;
-				attacks[size] = attacksCalc(sq, bb);
+				attacks[size] = attacksCalc(Square(sq), bb);
 				bb = (bb - mask) & mask;
 				size++;
 			} while (bb != 0);
@@ -136,6 +148,7 @@ namespace Pieces {
 				}
 			}
 		}
+
 		delete[] occupancies;
 		delete[] attacks;
 		delete[] magicsHelper;
@@ -146,15 +159,28 @@ namespace Pieces {
 		initRayAttacks();
 		initMagics(ROOK_MAGICS, rookTable, rookAttacksCalc);
 		initMagics(BISHOP_MAGICS, bishopTable, bishopAttacksCalc);
-		for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
-			Bitboard squareBB = squareToBB(sq);
-			PAWN_ATTACKS[WHITE][sq] = pawnAttacks<WHITE>(squareBB);
-			PAWN_ATTACKS[BLACK][sq] = pawnAttacks<BLACK>(squareBB);
-			PIECE_ATTACKS[KNIGHT][sq] = knightAttacks(squareBB);
-			PIECE_ATTACKS[KING][sq] = kingAttacks(squareBB);
-			PIECE_ATTACKS[BISHOP][sq] = bishopAttacksCalc(sq, 0);
-			PIECE_ATTACKS[ROOK][sq] = rookAttacksCalc(sq, 0);
-			PIECE_ATTACKS[QUEEN][sq] = queenAttacksCalc(sq, 0);
+		for (int sq = SQ_A1; sq <= SQ_H8; ++sq) {
+			Bitboard squareBB = square_to_bb(Square(sq));
+			PAWN_ATTACKS[WHITE][sq] = pawn_attacks<WHITE>(squareBB);
+			PAWN_ATTACKS[BLACK][sq] = pawn_attacks<BLACK>(squareBB);
+			PIECE_ATTACKS[KNIGHT][sq] = knight_attacks(squareBB);
+			PIECE_ATTACKS[KING][sq] = king_attacks(squareBB);
+			PIECE_ATTACKS[BISHOP][sq] = bishopAttacksCalc(Square(sq), 0);
+			PIECE_ATTACKS[ROOK][sq] = rookAttacksCalc(Square(sq), 0);
+			PIECE_ATTACKS[QUEEN][sq] = queenAttacksCalc(Square(sq), 0);
 		}
+	}
+
+
+	// ---------------
+	// Other functions
+	// ---------------
+
+	Bitboard piece_attacks_d(PieceType type, Square sq, Bitboard occ)
+	{
+		return type == KNIGHT ? piece_attacks_s<KNIGHT>(sq) :
+			type == BISHOP ? piece_attacks_s<BISHOP>(sq, occ) :
+			type == ROOK ? piece_attacks_s<ROOK>(sq, occ) :
+			type == QUEEN ? piece_attacks_s<QUEEN>(sq, occ) : piece_attacks_s<KING>(sq);
 	}
 }

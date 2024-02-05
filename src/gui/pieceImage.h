@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../logic/misc.h"
+#include "../logic/types.h"
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>

@@ -21,17 +21,6 @@ Value Engine::evaluate(Depth depth)
     return search(std::numeric_limits<Value>::min() + 1, std::numeric_limits<Value>::max(), depth);
 }
 
-void Engine::speedTest(Depth depth)
-{
-    nodes = 0;
-    auto start = std::chrono::high_resolution_clock::now();
-    evaluate(depth);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-    std::cout << "Visited nodes: " << nodes << "\nTime taken: " << duration.count() << std::endl;
-    std::cout << "Nodes/s: " << std::setprecision(8) << (float)nodes / duration.count() << std::endl;
-}
-
 Value Engine::search(Value alpha, Value beta, Depth depth)
 {
     if constexpr (countNodes)
@@ -70,16 +59,6 @@ Value Engine::search(Value alpha, Value beta, Depth depth)
     transpositionTable.set({virtualBoard.hash(), virtualBoard.pieces(), depth, bestScore, bestMove, typeOfNode, virtualBoard.halfmovesPlain()},
                             realBoard->halfmovesPlain());
     return alpha;
-}
-
-void Engine::showBestLine()
-{
-    const TranspositionTable::Entry* entry;
-    while ((entry = transpositionTable.probe(virtualBoard.hash(), virtualBoard.pieces())) != nullptr) {
-        std::cout << entry->bestMove << ", score: " << std::dec << entry->score << std::endl;
-        virtualBoard.makeMove(entry->bestMove);
-    }
-    reset();
 }
 
 void Engine::generateMoves(MoveList* moveLists)

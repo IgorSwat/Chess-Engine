@@ -7,14 +7,14 @@ using namespace std;
 namespace Testing {
 	void testMagics()
 	{
-		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_E4, 0x011000008a101010)) << endl << endl;
-		assert(Pieces::pieceAttacks<QUEEN>(SQ_E4, 0x011000008a101010) == 0x01925438e8384482);
-		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_A1, 0x0040200000040080)) << endl << endl;
-		assert(Pieces::pieceAttacks<QUEEN>(SQ_A1, 0x0040200000040080) == 0x01010101010503fe);
-		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_C8, 0x0a04010000000000)) << endl << endl;
-		assert(Pieces::pieceAttacks<QUEEN>(SQ_C8, 0x0a04010000000000) == 0x0a0e112040800000);
-		cout << Bitboards::bitboardToString(Pieces::pieceAttacks<QUEEN>(SQ_C6, 0x000a0a0e00000000)) << endl << endl;
-		assert(Pieces::pieceAttacks<QUEEN>(SQ_C6, 0x000a0a0e00000000) == 0x040e0a0e00000000);
+		cout << Bitboards::to_string(Pieces::piece_attacks_s<QUEEN>(SQ_E4, 0x011000008a101010)) << endl << endl;
+		assert(Pieces::piece_attacks_s<QUEEN>(SQ_E4, 0x011000008a101010) == 0x01925438e8384482);
+		cout << Bitboards::to_string(Pieces::piece_attacks_s<QUEEN>(SQ_A1, 0x0040200000040080)) << endl << endl;
+		assert(Pieces::piece_attacks_s<QUEEN>(SQ_A1, 0x0040200000040080) == 0x01010101010503fe);
+		cout << Bitboards::to_string(Pieces::piece_attacks_s<QUEEN>(SQ_C8, 0x0a04010000000000)) << endl << endl;
+		assert(Pieces::piece_attacks_s<QUEEN>(SQ_C8, 0x0a04010000000000) == 0x0a0e112040800000);
+		cout << Bitboards::to_string(Pieces::piece_attacks_s<QUEEN>(SQ_C6, 0x000a0a0e00000000)) << endl << endl;
+		assert(Pieces::piece_attacks_s<QUEEN>(SQ_C6, 0x000a0a0e00000000) == 0x040e0a0e00000000);
 	}
 
 	void testXRayAttacks()
@@ -72,19 +72,19 @@ namespace Testing {
 		assert(board.pinnedPieces(BLACK) == 0);
 		assert(board.checkingPieces() == 0);
 		board.makeMove(Move(SQ_D7, SQ_D6, QUIET_MOVE_FLAG));
-		assert(board.pinnedPieces(BLACK) == squareToBB(SQ_C6));
-		assert(board.pinningPieces(BLACK) == squareToBB(SQ_B5));
+		assert(board.pinnedPieces(BLACK) == square_to_bb(SQ_C6));
+		assert(board.pinningPieces(BLACK) == square_to_bb(SQ_B5));
 		board.makeMove(Move(SQ_E1, SQ_G1, KINGSIDE_CASTLE_FLAG));
 		board.makeMove(Move(SQ_A7, SQ_A6, QUIET_MOVE_FLAG));
 		assert(board.checkingPieces() == 0);
 		board.makeMove(Move(SQ_B5, SQ_C6, CAPTURE_FLAG));
-		assert(board.checkingPieces() == squareToBB(SQ_C6));
+		assert(board.checkingPieces() == square_to_bb(SQ_C6));
 		assert(board.pinnedPieces(WHITE) == 0);
 		assert(board.pinnedPieces(BLACK) == 0);
 		board.makeMove(Move(SQ_C8, SQ_D7, QUIET_MOVE_FLAG));
 		assert(board.checkingPieces() == 0);
-		assert(board.pinnedPieces(BLACK) == squareToBB(SQ_D7));
-		assert(board.pinningPieces(BLACK) == squareToBB(SQ_C6));
+		assert(board.pinnedPieces(BLACK) == square_to_bb(SQ_D7));
+		assert(board.pinningPieces(BLACK) == square_to_bb(SQ_C6));
 		board.makeMove(Move(SQ_F1, SQ_E1, QUIET_MOVE_FLAG));
 		board.makeMove(Move(SQ_B7, SQ_C6, CAPTURE_FLAG));
 		assert(board.checkingPieces() == 0);
@@ -95,18 +95,18 @@ namespace Testing {
 		board.undoLastMove();
 		board.undoLastMove();
 		assert(board.checkingPieces() == 0);
-		assert(board.pinnedPieces(BLACK) == squareToBB(SQ_D7));
-		assert(board.pinningPieces(BLACK) == squareToBB(SQ_C6));
+		assert(board.pinnedPieces(BLACK) == square_to_bb(SQ_D7));
+		assert(board.pinningPieces(BLACK) == square_to_bb(SQ_C6));
 		board.undoLastMove();
-		assert(board.checkingPieces() == squareToBB(SQ_C6));
+		assert(board.checkingPieces() == square_to_bb(SQ_C6));
 		assert(board.pinnedPieces(WHITE) == 0);
 		assert(board.pinnedPieces(BLACK) == 0);
 		board.undoLastMove();
 		assert(board.checkingPieces() == 0);
 		board.undoLastMove();
 		board.undoLastMove();
-		assert(board.pinnedPieces(BLACK) == squareToBB(SQ_C6));
-		assert(board.pinningPieces(BLACK) == squareToBB(SQ_B5));
+		assert(board.pinnedPieces(BLACK) == square_to_bb(SQ_C6));
+		assert(board.pinningPieces(BLACK) == square_to_bb(SQ_B5));
 		board.undoLastMove();
 		assert(board.pinnedPieces(WHITE) == 0);
 		assert(board.pinnedPieces(BLACK) == 0);

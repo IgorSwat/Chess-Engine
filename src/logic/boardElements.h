@@ -1,120 +1,101 @@
 #pragma once
 
-#include "misc.h"
+#include "types.h"
+#include <cstdlib>
 
 
-constexpr Bitboard FILE_A_BB = 0x0101010101010101;
-constexpr Bitboard FILE_B_BB = FILE_A_BB << 1;
-constexpr Bitboard FILE_C_BB = FILE_A_BB << 2;
-constexpr Bitboard FILE_D_BB = FILE_A_BB << 3;
-constexpr Bitboard FILE_E_BB = FILE_A_BB << 4;
-constexpr Bitboard FILE_F_BB = FILE_A_BB << 5;
-constexpr Bitboard FILE_G_BB = FILE_A_BB << 6;
-constexpr Bitboard FILE_H_BB = FILE_A_BB << 7;
-constexpr Bitboard FILES[8]{
-	FILE_A_BB, FILE_B_BB, FILE_C_BB, FILE_D_BB, FILE_E_BB, FILE_F_BB, FILE_G_BB, FILE_H_BB
-};
+namespace Board {
 
-constexpr Bitboard CENTRAL_FILES = FILE_C_BB | FILE_D_BB | FILE_E_BB | FILE_F_BB;
-constexpr Bitboard BG_FILES = FILE_B_BB | FILE_G_BB;
-constexpr Bitboard EDGE_FILES = FILE_A_BB | FILE_H_BB;
+	// ------------------------
+	// Board geometry bitboards
+	// ------------------------
 
-constexpr Bitboard ROW_1 = 0xFF;
-constexpr Bitboard ROW_2 = ROW_1 << (8 * 1);
-constexpr Bitboard ROW_3 = ROW_1 << (8 * 2);
-constexpr Bitboard ROW_4 = ROW_1 << (8 * 3);
-constexpr Bitboard ROW_5 = ROW_1 << (8 * 4);
-constexpr Bitboard ROW_6 = ROW_1 << (8 * 5);
-constexpr Bitboard ROW_7 = ROW_1 << (8 * 6);
-constexpr Bitboard ROW_8 = ROW_1 << (8 * 7);
-constexpr Bitboard ROWS[8]{
-	ROW_1, ROW_2, ROW_3, ROW_4, ROW_5, ROW_6, ROW_7, ROW_8
-};
+	constexpr Bitboard FILE_A = 0x0101010101010101;
+	constexpr Bitboard FILE_B = FILE_A << 1;
+	constexpr Bitboard FILE_C = FILE_A << 2;
+	constexpr Bitboard FILE_D = FILE_A << 3;
+	constexpr Bitboard FILE_E = FILE_A << 4;
+	constexpr Bitboard FILE_F = FILE_A << 5;
+	constexpr Bitboard FILE_G = FILE_A << 6;
+	constexpr Bitboard FILE_H = FILE_A << 7;
+	constexpr Bitboard Files[8] = { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H };
 
-constexpr Bitboard NOT_FILE_A = ~FILE_A_BB;
-constexpr Bitboard NOT_FILE_H = ~FILE_H_BB;
-constexpr Bitboard NOT_FILE_AB = ~(FILE_A_BB | FILE_B_BB);
-constexpr Bitboard NOT_FILE_GH = ~(FILE_G_BB | FILE_H_BB);
-constexpr Bitboard NOT_ROW_1 = ~ROW_1;
-constexpr Bitboard NOT_ROW_8 = ~ROW_8;
-constexpr Bitboard NOT_ROW_12 = ~(ROW_1 & ROW_2);
-constexpr Bitboard NOT_ROW_78 = ~(ROW_7 & ROW_8);
+	constexpr Bitboard CENTRAL_FILES = FILE_C | FILE_D | FILE_E | FILE_F;
+	constexpr Bitboard BG_FILES = FILE_B | FILE_G;
+	constexpr Bitboard EDGE_FILES = FILE_A | FILE_H;
+	constexpr Bitboard NOT_FILE_A = ~FILE_A;
+	constexpr Bitboard NOT_FILE_H = ~FILE_H;
+	constexpr Bitboard NOT_FILE_AB = ~(FILE_A | FILE_B);
+	constexpr Bitboard NOT_FILE_GH = ~(FILE_G | FILE_H);
 
+	constexpr Bitboard RANK_1 = 0xff;
+	constexpr Bitboard RANK_2 = RANK_1 << (8 * 1);
+	constexpr Bitboard RANK_3 = RANK_1 << (8 * 2);
+	constexpr Bitboard RANK_4 = RANK_1 << (8 * 3);
+	constexpr Bitboard RANK_5 = RANK_1 << (8 * 4);
+	constexpr Bitboard RANK_6 = RANK_1 << (8 * 5);
+	constexpr Bitboard RANK_7 = RANK_1 << (8 * 6);
+	constexpr Bitboard RANK_8 = RANK_1 << (8 * 7);
+	constexpr Bitboard Ranks[8] = { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8 };
 
-constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
-constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
+	constexpr Bitboard NOT_RANK_1 = ~RANK_1;
+	constexpr Bitboard NOT_RANK_8 = ~RANK_8;
+	constexpr Bitboard NOT_RANK_12 = ~(RANK_1 & RANK_2);
+	constexpr Bitboard NOT_RANK_78 = ~(RANK_7 & RANK_8);
 
-constexpr Bitboard DARK_SQUARES_BB = 0xaa55aa55aa55aa55;
-constexpr Bitboard LIGHT_SQUARES_BB = 0x55aa55aa55aa55aa;
+	constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
+	constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
-
-extern int SQUARE_DISTANCE[SQUARE_RANGE][SQUARE_RANGE];
-extern Bitboard PATHS_BETWEEN[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
-extern Bitboard LINES[SQUARE_RANGE][SQUARE_RANGE];				// Lines containing two given squares (superset of PATHS_BETWEEN)
-extern Bitboard ADJACENT_RANK_SQUARES[EXTENDED_SQUARE_RANGE];
-extern Bitboard ADJACENT_FILES[SQUARE_RANGE];
-extern Bitboard PATHS_TO_CENTRAL_FILES[SQUARE_RANGE];
+	constexpr Bitboard DARK_SQUARES = 0xaa55aa55aa55aa55;
+	constexpr Bitboard LIGHT_SQUARES = 0x55aa55aa55aa55aa;
 
 
+	// ------------------------------
+	// Precalculated board properties
+	// ------------------------------
 
-void initBoardElements();
+	extern Bitboard Paths[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
+	extern Bitboard Lines[SQUARE_RANGE][SQUARE_RANGE];				// Lines containing two given squares (superset of PATHS_BETWEEN)
+	extern Bitboard AdjacentFiles[SQUARE_RANGE];
+	extern Bitboard AdjacentRankSquares[EXTENDED_SQUARE_RANGE];
+	extern Bitboard CentralFilePaths[SQUARE_RANGE];
 
-constexpr inline Bitboard fileBB(int file)
-{
-	return FILES[file];
-}
 
-constexpr inline Bitboard rankBB(int rank)
-{
-	return ROWS[rank];
-}
+	// -----------------------
+	// Board-related functions
+	// -----------------------
 
-constexpr inline Bitboard fileBBOf(Square s)
-{
-	return FILES[fileOf(s)];
-}
+	void initBoardElements();
 
-constexpr inline Bitboard rankBBOf(Square s)
-{
-	return ROWS[rankOf(s)];
-}
+	constexpr inline Bitboard file_bb_of(Square sq)
+	{
+		return Files[file_of(sq)];
+	}
 
-constexpr inline Bitboard squaresOfColor(SquareColor color)
-{
-	return color == DARK_SQUARE ? DARK_SQUARES_BB : LIGHT_SQUARES_BB;
-}
+	constexpr inline Bitboard rank_bb_of(Square sq)
+	{
+		return Ranks[rank_of(sq)];
+	}
 
-constexpr inline Bitboard pathBetween(Square sq1, Square sq2)
-{
-	return PATHS_BETWEEN[sq1][sq2];
-}
+	inline int square_distance(Square sq1, Square sq2)
+	{
+		return std::abs(file_of(sq1) - file_of(sq2)) + std::abs(rank_of(sq1) - rank_of(sq2));
+	}
 
-constexpr inline Bitboard lineWith(Square sq1, Square sq2)
-{
-	return LINES[sq1][sq2];
-}
+	inline bool aligned(Square sq1, Square sq2)
+	{
+		return Lines[sq1][sq2];
+	}
 
-constexpr inline Bitboard adjacentRankSquares(Square sq)
-{
-	return ADJACENT_RANK_SQUARES[sq];
-}
+	inline bool aligned(Square sq1, Square sq2, Square midd)
+	{
+		return Lines[sq1][sq2] & midd;
+	}
 
-constexpr inline Bitboard adjacentFiles(Square sq)
-{
-	return ADJACENT_FILES[sq];
-}
+	// TODO: Remove it
+	constexpr inline Bitboard squares_of_color(SquareColor color)
+	{
+		return color == DARK_SQUARE ? DARK_SQUARES : LIGHT_SQUARES;
+	}
 
-constexpr inline Bitboard adjacentFiles(int file)
-{
-	return ADJACENT_FILES[file];
-}
-
-constexpr inline bool aligned(Square sq1, Square sq2)
-{
-	return LINES[sq1][sq2];
-}
-
-constexpr inline bool aligned(Square sq1, Square sq2, Square midd)
-{
-	return LINES[sq1][sq2] & midd;
 }

@@ -41,7 +41,7 @@ public:
 	Tester()
 	{
 		Pieces::initAttackTables();
-		initBoardElements();
+		Board::initBoardElements();
 		Zobrist::initZobristHashing();
 	}
 

@@ -6,14 +6,14 @@
 #include <numeric>
 #include <algorithm>
 
-namespace {
-    constexpr unsigned int SEED = 410376;
-}
 
 namespace Zobrist {
 
     U64 hashCodes[HASH_CODES_NUM] = { 0 };
 
+    // ----------------------------
+    // Hamming distance calculation
+    // ----------------------------
 
     int hammingDistance(U64 code1, U64 code2)
     {
@@ -51,9 +51,16 @@ namespace Zobrist {
 		return minHammingDistance;
     }
 
+
+    // --------------------
+    // Zobrist initializers
+    // --------------------
+
     // Global initialization for prn codes
     void initZobristHashing()
     {
+        constexpr unsigned int SEED = 410376;
+
         MersenneTwister64 generator(SEED);
         std::unordered_set<U64> generatedCodes;
         
@@ -68,16 +75,19 @@ namespace Zobrist {
     }
 
 
+    // -----------------------------
+    // Zobrist container and methods
+    // -----------------------------
 
     void ZobristHash::generateHash(BoardConfig* board)
     {
         hash = 0ULL;
 
         // Piece placement hashing
-        for (Square sq = SQ_A1; sq <= SQ_H8; ++sq) {
-            Piece piece = board->onSquare(sq);
+        for (int sq = SQ_A1; sq <= SQ_H8; ++sq) {
+            Piece piece = board->onSquare(Square(sq));
             if (piece != NO_PIECE)
-                updateByPlacementChange(piece, sq);
+                updateByPlacementChange(piece, Square(sq));
         }
 
         // Other parameters hashing

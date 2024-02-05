@@ -1,5 +1,5 @@
 #include "promotionBar.h"
-#include "../logic/misc.h"
+#include "../logic/types.h"
 
 
 namespace {
@@ -23,7 +23,7 @@ PromotionBar::PromotionBar(Color side, float tileSize)
         entries[i].circle.setFillColor(colorDefault);
         entries[i].sprite.setScale(SPRITE_SCALE_FACTOR, SPRITE_SCALE_FACTOR);
 
-        Piece promotionPiece = getPiece(side, PROMOTION_TYPES[i]);
+        Piece promotionPiece = make_piece(side, PROMOTION_TYPES[i]);
         entries[i].sprite.setTexture(BoardTextures::pieceTexture(promotionPiece));
     }
 }

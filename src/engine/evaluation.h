@@ -9,19 +9,10 @@ namespace Evaluation {
 
     // Hyperparameters
     constexpr int ATTACK_WEIGHTS[PIECE_TYPE_RANGE] = { 0, 0, 2, 2, 3, 5, 0, 0 };
-
     constexpr int DEFENSE_WEIGHTS[PIECE_TYPE_RANGE] = { 0, 0, 3, 3, 2, 1, 0, 0 };
 
-    constexpr int THREAT_VALUES[PIECE_TYPE_RANGE][PIECE_TYPE_RANGE] = {
-        {0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 25, 27, 29, 33, 0, 0},
-        {0, 0, 0, 17, 24, 30, 0, 0},
-        {0, 0, 15, 0, 23, 29, 0, 0},
-        {0, 0, 12, 14, 0, 24, 0, 0},
-        {0, 0, 7, 5, 0, 0, 0, 0},
-        {0, 0, 6, 5, 0, 6, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0},
-    };
+    constexpr int THREAT_TYPE_1_POINTS = 1;     // Attack on undefended piece threat
+    constexpr int THREAT_TYPE_2_POINTS = 2;     // Attack on more valuable piece threat
 
     constexpr int PAWN_DEFENDING_WEIGHT = 2;
     constexpr int PAWN_ATTACKING_WEIGHT = 3;
@@ -72,8 +63,8 @@ namespace Evaluation {
         void updatePawnProximity(Square pawnSq, int ourWeight, int enemyWeight);
         template <Color side, PieceType type>
         void updateAttackDefenseTables(Bitboard attacks);
-        template <Color side, PieceType type>
-        void updateThreatsTables(Bitboard threatenedPieces);
+        template <Color side>
+        void updateThreatsTables(Bitboard threats, int points);
         template <Color side>
         Value fileSafetyEval(Bitboard fileBB);
 
@@ -99,8 +90,10 @@ namespace Evaluation {
         int kingAttackersPoints[COLOR_RANGE] = { 0 };
         int kingDefendersCount[COLOR_RANGE] = { 0 };
         int kingDefendersPoints[COLOR_RANGE] = { 0 };
+        // Threats
         int threatCount[COLOR_RANGE] = { 0 };
-        Value threatPoints[COLOR_RANGE] = { 0 };
+        int threatPoints[COLOR_RANGE] = { 0 };
+        // King-pawns proximity
         int pawnProximityDistances[COLOR_RANGE] = { 0 };
         int pawnProximityWeights[COLOR_RANGE] = { 0 };
 
@@ -167,9 +160,9 @@ namespace Evaluation {
     inline void Evaluator::updatePawnProximity(Square pawnSq, int ourWeight, int enemyWeight)
     {
         constexpr Color enemy =  ~side;
-        pawnProximityDistances[side] += ourWeight * Pieces::kingDistance(board->kingPosition(side), pawnSq);
+        pawnProximityDistances[side] += ourWeight * Board::square_distance(board->kingPosition(side), pawnSq);
         pawnProximityWeights[side] += ourWeight;
-        pawnProximityDistances[enemy] += enemyWeight * Pieces::kingDistance(board->kingPosition(enemy), pawnSq);
+        pawnProximityDistances[enemy] += enemyWeight * Board::square_distance(board->kingPosition(enemy), pawnSq);
         pawnProximityWeights[enemy] += enemyWeight;
     }
 
@@ -189,14 +182,13 @@ namespace Evaluation {
         }
     }
 
-    template <Color side, PieceType type>
-    inline void Evaluator::updateThreatsTables(Bitboard threatenedPieces)
+    template <Color side>
+    inline void Evaluator::updateThreatsTables(Bitboard threats, int points)
     {
-        while (threatenedPieces) {
-            Square sq = Bitboards::popLsb(threatenedPieces);
-            threatPoints[side] += THREAT_VALUES[type][typeOf(board->onSquare(sq))];
-            threatCount[side]++;
-        }
+        int noThreats = Bitboards::popcount(threats);
+
+        threatCount[side] += noThreats;
+        threatPoints[side] += noThreats * points;
     }
 
     template <Color side>

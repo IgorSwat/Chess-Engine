@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../logic/misc.h"
+#include "../logic/types.h"
 #include <unordered_map>
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>

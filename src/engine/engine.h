@@ -15,10 +15,6 @@ public:
     // Search
     Value evaluate(Depth depth);
 
-    // Testing & others
-    void showBestLine();
-    void speedTest(Depth depth);
-
     static constexpr Depth MAX_REACHABLE_DEPTH = 10;
 
 private:
