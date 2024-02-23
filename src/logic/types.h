@@ -220,16 +220,3 @@ constexpr inline CastleType make_castle_type(Color side, CastlingRights castling
 {
 	return side == WHITE ? CastleType(castling & WHITE_BOTH) : CastleType(castling & BLACK_BOTH);
 }
-
-
-
-// ----------------------------------------
-// Game stage
-// ----------------------------------------
-
-enum GameStage {
-	OPENING = 200, MIDGAME = 128, ENDGAME = 0,
-
-	GAME_STAGE_MAX_VALUE = 256,
-	GAME_STAGE_RANGE = 33
-};

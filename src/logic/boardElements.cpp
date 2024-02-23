@@ -15,6 +15,8 @@ namespace Board {
 	Bitboard AdjacentRankSquares[EXTENDED_SQUARE_RANGE] = { 0 };
 	Bitboard CentralFilePaths[SQUARE_RANGE] = { 0 };
 
+	Bitboard FrontSpan[SQUARE_RANGE][COLOR_RANGE];
+
 
 	// -----------------------
 	// Board-related functions
@@ -23,12 +25,12 @@ namespace Board {
 	void initBoardElements()
 	{
 		// Initialising paths between squares
-		for (int sq1 = SQ_A1; sq1 <= SQ_H8; ++sq1) {
+		for (int sq1 = SQ_A1; sq1 <= SQ_H8; sq1++) {
 			Bitboard sq1BB = square_to_bb(Square(sq1));
 
 			// Initialize the paths between squares
 			Paths[sq1][sq1] = sq1BB;
-			for (int sq2 = sq1 + 1; sq2 <= SQ_H8; ++sq2) {
+			for (int sq2 = sq1 + 1; sq2 <= SQ_H8; sq2++) {
 				Bitboard sq2BB = square_to_bb(Square(sq2));
 				int xDiff = file_of(Square(sq1)) - file_of(Square(sq2));
 				int yDiff = rank_of(Square(sq1)) - rank_of(Square(sq2));
@@ -60,19 +62,24 @@ namespace Board {
 				}
 			}
 
-			// Initialise adjacent rank squares
+			// Initialize adjacent rank squares
 			AdjacentRankSquares[sq1] = Bitboards::shift_s<WEST>(sq1BB) | Bitboards::shift_s<EAST>(sq1BB);
 
-			// Initialise paths to central files
+			// Initialize paths to central files
 			Bitboard centralFile = file_of(Square(sq1)) < E_FILE ? FILE_D : FILE_E;
 			Square centralSquare = Bitboards::lsb(rank_bb_of(Square(sq1)) & centralFile);
-			CentralFilePaths[sq1] = Paths[sq1][centralSquare] ^ sq1;
+			CentralFilePaths[sq1] = Paths[sq1][centralSquare] ^ Square(sq1);
 
-			// Initialise adjacent files bitboards
+			// Initialize adjacent files bitboards
 			Bitboard adjacentFiles = 0;
 			if (file_of(Square(sq1)) != 0) adjacentFiles |= Files[file_of(Square(sq1)) - 1];
 			if (file_of(Square(sq1)) != 7) adjacentFiles |= Files[file_of(Square(sq1)) + 1];
 			AdjacentFiles[sq1] = adjacentFiles;
+
+			// Initialize front span bitboards
+			Bitboard rankArea = AdjacentRankSquares[sq1] | Square(sq1);
+			FrontSpan[sq1][WHITE] = Bitboards::fill_v<NORTH>(rankArea) ^ rankArea;
+			FrontSpan[sq1][BLACK] = Bitboards::fill_v<SOUTH>(rankArea) ^ rankArea;
 		}
 
 		AdjacentRankSquares[INVALID_SQUARE] = 0;

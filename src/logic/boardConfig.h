@@ -4,6 +4,7 @@
 #include "pieces.h"
 #include "move.h"
 #include "zobrist.h"
+#include "../engine/evaluationConfig.h"
 #include <string>
 
 
@@ -213,8 +214,7 @@ inline Color BoardConfig::movingSide() const
 
 inline std::uint16_t BoardConfig::gameStage() const
 {
-	return posInfo->gameStageValue > GAME_STAGE_MAX_VALUE ? (GAME_STAGE_MAX_VALUE >> 3) :
-															(posInfo->gameStageValue >> 3);
+	return std::min(posInfo->gameStageValue, std::uint16_t(Evaluation::GAME_STAGE_MAX_VALUE));
 }
 
 inline std::uint16_t BoardConfig::halfmovesPlain() const

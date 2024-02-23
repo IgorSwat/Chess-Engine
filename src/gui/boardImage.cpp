@@ -96,16 +96,16 @@ void BoardImage::updatePieces(BoardConfig* board)
             if (color_of(pieceImage->piece()) != sideOnMove)
                 continue;
             sf::FloatRect bounds = pieceImage->getGlobalBounds();
-            if (bounds.contains(mousePos.x, mousePos.y)) {
+            if (bounds.contains(float(mousePos.x), float(mousePos.y))) {
                 selectedPiece = pieceImage;
                 selectedPiece->updateOrigin(mousePos);
-                selectedPiece->setTempPosition(sf::Vector2f(mousePos.x, mousePos.y));
+                selectedPiece->setTempPosition(sf::Vector2f(float(mousePos.x), float(mousePos.y)));
                 break;
             }
         }
     }
     else if (selectedPiece != nullptr && isMousePressed)
-        selectedPiece->setTempPosition(sf::Vector2f(mousePos.x, mousePos.y));
+        selectedPiece->setTempPosition(sf::Vector2f(float(mousePos.x), float(mousePos.y)));
     else if (selectedPiece != nullptr && !isMousePressed) {
         sf::Vector2f lastPos = selectedPiece->getStablePosition();
         int rank = 7 - int(mousePos.y / TILE_SIZE);

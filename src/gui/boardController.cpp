@@ -18,8 +18,9 @@ void runGUI()
 {
 	BoardTextures::loadTextures();
 	BoardConfig config;
-	config.loadFromFen("8/1p5p/3p1kp1/3P4/6P1/1K3P2/P7/8 b - - 0 1");
-	std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&config);
+	config.loadFromFen("3k4/1p2bp1p/p7/5p2/8/PP6/2PKBPP1/8 w - - 0 1");
+	// config.loadFromFen("3kb3/2p5/1p6/pP4p1/P5Pp/7P/1P2B3/2K5 w - - 0 1");
+	std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&config, Evaluation::EvaluationConfig);
 	BoardController controller = { &config, evaluator.get()};
 	controller.run();
 }

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <iostream>
 #include "boardConfig.h"
+#include "../engine/evaluationConfig.h"
+#include <iostream>
 #include <cctype>
 #include <sstream>
 #include <bitset>
@@ -44,12 +45,7 @@ namespace {
 		SQ_D8, SQ_D8, SQ_D8, SQ_D8, INVALID_SQUARE, SQ_F8, SQ_F8, SQ_F8,
 	};
 
-	constexpr int GAME_STAGE_INFLUENCE[PIECE_RANGE] = {
-		0, 0, 9, 9, 14, 64, 0, 0,
-		0, 0, 9, 9, 14, 64, 0, 0
-	};
-
-	constexpr int PIECE_EXCHANGE_VALUES[PIECE_TYPE_RANGE] = {0, 1, 3, 3, 5, 9, 1000, 0};
+	constexpr int PieceExchangeValue[PIECE_TYPE_RANGE] = {0, 1, 3, 3, 5, 9, 1000, 0};
 
 
 	// ----------------
@@ -132,7 +128,7 @@ void BoardConfig::loadFromFen(const std::string& fen)
 			Square square = Square((7 - i) * 8 + j);
 			Piece piece = pieceFromChar(c);
 			placePiece(piece, square);
-			posInfo->gameStageValue += GAME_STAGE_INFLUENCE[piece];
+			posInfo->gameStageValue += Evaluation::PieceStageInfluence[piece];
 			j++;
 		}
 	}
@@ -210,7 +206,7 @@ void BoardConfig::normalMove(const Move& move)
 		posInfo->capturedPiece = board[to];
 		posInfo->halfmoveClock = 0;
 		posInfo->castlingRights &= castlingRightsLoss[to];
-		posInfo->gameStageValue = posInfo->prev->gameStageValue - GAME_STAGE_INFLUENCE[posInfo->capturedPiece];
+		posInfo->gameStageValue = posInfo->prev->gameStageValue - Evaluation::PieceStageInfluence[posInfo->capturedPiece];
 		zobrist.updateByPlacementChange(board[to], to);
 		removePiece(to);
 	}
@@ -256,12 +252,13 @@ void BoardConfig::promotion(const Move& move)
 		posInfo->castlingRights &= castlingRightsLoss[to];
 		zobrist.updateByCastlingRightsChange(posInfo->prev->castlingRights);
 		zobrist.updateByCastlingRightsChange(posInfo->castlingRights);
-		posInfo->gameStageValue = posInfo->prev->gameStageValue - GAME_STAGE_INFLUENCE[posInfo->capturedPiece] + GAME_STAGE_INFLUENCE[promotedPiece];
+		posInfo->gameStageValue = posInfo->prev->gameStageValue - Evaluation::PieceStageInfluence[posInfo->capturedPiece] 
+																+ Evaluation::PieceStageInfluence[promotedPiece];
 		zobrist.updateByPlacementChange(board[to], to);
 		removePiece(to);
 	}
 	else
-		posInfo->gameStageValue = posInfo->prev->gameStageValue + GAME_STAGE_INFLUENCE[promotedPiece];
+		posInfo->gameStageValue = posInfo->prev->gameStageValue + Evaluation::PieceStageInfluence[promotedPiece];
 	zobrist.updateByPlacementChange(board[from], from);
 	zobrist.updateByPlacementChange(promotedPiece, to);
 	removePiece(from);
@@ -514,10 +511,10 @@ int BoardConfig::see(Square from, PieceType attackingPiece, Square to, PieceType
 	Bitboard fromSet = square_to_bb(from);
 	Bitboard attackdef = attackersToSquare(to, occ);
 
-	gain[depth] = PIECE_EXCHANGE_VALUES[attackedPiece];
+	gain[depth] = PieceExchangeValue[attackedPiece];
 	do {
 		depth++;
-		gain[depth] = PIECE_EXCHANGE_VALUES[attackingPiece] - gain[depth - 1];
+		gain[depth] = PieceExchangeValue[attackingPiece] - gain[depth - 1];
 		if (std::max(-gain[depth - 1], gain[depth]) < 0)
 			break;
 		attackdef ^= fromSet;

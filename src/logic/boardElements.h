@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include <cstdlib>
+#include <algorithm>
 
 
 namespace Board {
@@ -27,6 +28,7 @@ namespace Board {
 	constexpr Bitboard NOT_FILE_H = ~FILE_H;
 	constexpr Bitboard NOT_FILE_AB = ~(FILE_A | FILE_B);
 	constexpr Bitboard NOT_FILE_GH = ~(FILE_G | FILE_H);
+	constexpr Bitboard NOT_EDGE_FILES = ~EDGE_FILES;
 
 	constexpr Bitboard RANK_1 = 0xff;
 	constexpr Bitboard RANK_2 = RANK_1 << (8 * 1);
@@ -38,6 +40,7 @@ namespace Board {
 	constexpr Bitboard RANK_8 = RANK_1 << (8 * 7);
 	constexpr Bitboard Ranks[8] = { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8 };
 
+	constexpr Bitboard CENTRAL_RANKS = RANK_3 | RANK_4 | RANK_5 | RANK_6;
 	constexpr Bitboard NOT_RANK_1 = ~RANK_1;
 	constexpr Bitboard NOT_RANK_8 = ~RANK_8;
 	constexpr Bitboard NOT_RANK_12 = ~(RANK_1 & RANK_2);
@@ -49,6 +52,8 @@ namespace Board {
 	constexpr Bitboard DARK_SQUARES = 0xaa55aa55aa55aa55;
 	constexpr Bitboard LIGHT_SQUARES = 0x55aa55aa55aa55aa;
 
+	constexpr Bitboard BOARD = 0xffffffffffffffff;
+
 
 	// ------------------------------
 	// Precalculated board properties
@@ -59,6 +64,15 @@ namespace Board {
 	extern Bitboard AdjacentFiles[SQUARE_RANGE];
 	extern Bitboard AdjacentRankSquares[EXTENDED_SQUARE_RANGE];
 	extern Bitboard CentralFilePaths[SQUARE_RANGE];
+
+	// A front span is an area composed of 3 adjacent files in front of given square, where direction is defined by given side (WHITE = NORTH, BLACK = SOUTH).
+	// It's being used mainly for pawn structure geometry calculations.
+	//	  ...
+	//	|x|x|x|
+	//	|x|x|x|		- an example of a front span of square denoted as P
+	//	| |P| |
+
+	extern Bitboard FrontSpan[SQUARE_RANGE][COLOR_RANGE];
 
 
 	// -----------------------
@@ -77,9 +91,10 @@ namespace Board {
 		return Ranks[rank_of(sq)];
 	}
 
+	// Returns distance as 2-dimensional maximum metric value
 	inline int square_distance(Square sq1, Square sq2)
 	{
-		return std::abs(file_of(sq1) - file_of(sq2)) + std::abs(rank_of(sq1) - rank_of(sq2));
+		return std::max(std::abs(file_of(sq1) - file_of(sq2)), std::abs(rank_of(sq1) - rank_of(sq2)));
 	}
 
 	inline bool aligned(Square sq1, Square sq2)
@@ -91,6 +106,19 @@ namespace Board {
 	{
 		return Lines[sq1][sq2] & midd;
 	}
+
+	template <Color side>
+	inline Bitboard back_span(Square sq)						// A reverse of a front span of given square
+	{															//	| |P| |
+		constexpr Color enemy = ~side;							//	|x|x|x|
+		return FrontSpan[sq][enemy];							//	|x|x|x|
+	}															//	  ...
+
+	template <Color side>
+	inline Bitboard back_span_m(Square sq)						// A mild back span with addition of adjacent rank squares
+	{															//	|x|P|x|
+		return back_span<side>(sq) | AdjacentRankSquares[sq];	//	|x|x|x|
+	}															//	|x|x|x|
 
 	// TODO: Remove it
 	constexpr inline Bitboard squares_of_color(SquareColor color)

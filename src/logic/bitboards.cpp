@@ -19,7 +19,7 @@ namespace Bitboards {
 	{
 		std::ostringstream stream;
 		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
+			for (int j = 7; j >= 0; j--) {
 				int offset = i * 8 + j;
 				Bitboard shifted = bb >> (63 - offset);
 				stream << (shifted % 2) << " ";

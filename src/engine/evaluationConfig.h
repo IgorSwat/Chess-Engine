@@ -1,18 +1,43 @@
 #pragma once
 
+#include "../logic/types.h"
 #include <cinttypes>
 #include <functional>
 #include <cmath>
 
 
-using Value = std::int16_t;
+using Value = std::int32_t;
 
 namespace Evaluation {
 
-    struct Parameter
+    // ----------
+    // Game stage 
+    // ----------
+
+    enum GameStage : std::uint16_t {
+        OPENING = 200, MIDGAME = 128, ENDGAME = 0,
+
+        GAME_STAGE_MAX_VALUE = 256,
+    };
+
+    constexpr std::uint16_t PieceStageInfluence[PIECE_RANGE] = {
+        0, 0, 8, 8, 16, 64, 0, 0,
+        0, 0, 8, 8, 16, 64, 0, 0
+    };
+
+
+    // ---------------------
+    // Evaluation parameters
+    // ---------------------
+
+    struct EvalParameter
     {
+        EvalParameter() : opening(0), diff(0) {}
+        EvalParameter(Value opening, Value endgame) : opening(opening), diff(endgame - opening) {}
+
         Value opening;
-        Value endgame;
+        Value diff;
+        Value endgame() const { return opening + diff; }
     };
 
     enum EvalParameters {
@@ -21,30 +46,39 @@ namespace Evaluation {
         BISHOP_BASE_VALUE,
         ROOK_BASE_VALUE,
         QUEEN_BASE_VALUE,
-        KNIGHT_PAWNS_BONUS,
-        KNIGHT_DISTANT_PAWNS_PENALTY,
-        KNIGHT_OUTPOST_I_DEG_BONUS,
-        KNIGHT_OUTPOST_II_DEG_BONUS,
-        KNIGHT_OUTPOST_III_DEG_BONUS,
+
+        KNIGHT_DENSE_POSITION_MIN,
+        KNIGHT_DENSE_POSITION_MAX,
+        KNIGHT_PAWN_SPREAD_COMP,
         KNIGHT_MOBILITY_ZERO,
         KNIGHT_MOBILITY_FULL,
+        KNIGHT_OUTPOST_I_DEG,
+        KNIGHT_OUTPOST_II_DEG,
+        KNIGHT_OUTPOST_III_DEG,
+
         BISHOP_PAIR_BONUS,
-        BAD_BISHOP_PENALTY,
-        BISHOP_FIANCHETTO_BONUS,
-        BISHOP_COLOR_WEAKNESS_BONUS,
-        BISHOP_OUTPOST_I_DEG_BONUS,
-        BISHOP_OUTPOST_II_DEG_BONUS,
-        BISHOP_OUTPOST_III_DEG_BONUS,
+        BISHOP_OWN_PAWN_NO_BLOCKAGE,
+        BISHOP_OWN_PAWN_FULL_BLOCKAGE,
+        BISHOP_ENEMY_PAWN_NO_BLOCKAGE,
+        BISHOP_ENEMY_PAWN_FULL_BLOCKAGE,
+        BISHOP_ENEMY_PAWN_WEAKNESS,
         BISHOP_MOBILITY_ZERO,
         BISHOP_MOBILITY_FULL,
+        BISHOP_OUTPOST_I_DEG,
+        BISHOP_OUTPOST_II_DEG,
+        BISHOP_OUTPOST_III_DEG,
+
         ROOK_ON_SEMIOPEN_FILE_BONUS,
         ROOK_ON_OPEN_FILE_BONUS,
         ROOK_ON_78_RANK_BONUS,
-        ROOK_UNDEVELOPED_PENALTY,
+        ROOK_ENEMY_PAWN_WEAKNESS,
         ROOK_MOBILITY_ZERO,
         ROOK_MOBILITY_FULL,
+
+        QUEEN_ENEMY_PAWN_WEAKNESS,
         QUEEN_MOBILITY_ZERO,
         QUEEN_MOBILITY_FULL,
+
         ISOLATED_PAWN_BASE_PENALTY,
         ISOLATED_PAWN_ATTACKED_PENALTY,
         DOUBLED_PAWN_PENALTY,
@@ -53,6 +87,7 @@ namespace Evaluation {
         HANGING_PAWN_PENALTY,
         PASSED_PAWN_MAX_BONUS,
         CONNECTED_PASSER_BONUS,
+
         PAWN_SHIELD_STRONG_BONUS,
         PAWN_SHIELD_WEAKER_BONUS,
         PAWN_STORM_PENALTY,
@@ -62,11 +97,19 @@ namespace Evaluation {
         KING_AREA_ATTACKS_MAX_VALUE,
         KING_AREA_ATTACKS_MAX_POINTS,
         KING_PAWN_PROXIMITY_VALUE,
+
         SPACE_BONUS,
         UNCONTESTED_SPACE_BONUS,
 
-        EVAL_PARAMETERS_RANGE = 51
+        EVAL_PARAMETERS_RANGE = 54
     };
+
+    extern EvalParameter EvaluationConfig[EVAL_PARAMETERS_RANGE];
+
+
+    // ------------------------
+    // Other evaluation defines
+    // ------------------------
 
     enum OutpostType {
         I_DEG_OUTPOST = 0, II_DEG_OUTPOST, III_DEG_OUTPOST,
@@ -74,53 +117,4 @@ namespace Evaluation {
         OUTPOST_TYPE_RANGE = 3
     };
 
-
-    extern Parameter EVALUATION_CONFIG[EVAL_PARAMETERS_RANGE];
-
-    inline const Parameter& param(EvalParameters parameter)
-    {
-        return EVALUATION_CONFIG[parameter];
-    }
-
-
-
-    // m should be in range of [0, 1]
-    template <typename Functional>
-    inline Value interpolate(Value startValue, Value endValue, Functional func, float m)
-    {
-        return startValue + Value(func(m) * (endValue - startValue));
-    }
-
-    template <typename Functional>
-    inline Value interpolate(const Parameter& parameter, Functional func, float m)
-    {
-        // High values of m (close to 1.0) mean a lot of pieces and mark position as opening
-        return interpolate(parameter.endgame, parameter.opening, func, m);
-    }
-
-    class SigmoidalFunction
-    {
-    public:
-        SigmoidalFunction(std::function<float(float)> function)
-            : baseFunction(function) {}
-
-        float operator()(float x) const
-        {
-            return x < 0.5f ? baseFunction(x) : 1.f - baseFunction(1.f - x);
-        }
-
-    private:
-        std::function<float(float)> baseFunction;
-    };
-
-    constexpr auto linearFunction = [](float x){return x;};
-    constexpr auto quadraticFunction = [](float x){return x * x;};
-    constexpr auto highDegPolynomial = [](float x){return std::pow(x, 4);};
-    constexpr auto squareRootFunction = [](float x){return std::sqrt(x);};
-    const SigmoidalFunction sigmoidLowAbrupt = SigmoidalFunction([](float x){return 2.f * x * x;});
-    const SigmoidalFunction sigmoidMidAbrupt = SigmoidalFunction([](float x){return 4.f * x * x * x;});
-    const SigmoidalFunction sigmoidHighAbrupt = SigmoidalFunction([](float x){return 16.f * x * x * x * x * x;});
-    const SigmoidalFunction reversedSigmoidLowAbrupt = SigmoidalFunction([](float x){return std::sqrt(x / 2.f);});
-    const SigmoidalFunction reversedSigmoidMidAbrupt = SigmoidalFunction([](float x){return std::pow(x / 4.f, 1.f / 3.f);});
-    const SigmoidalFunction reversedSigmoidHighAbrupt = SigmoidalFunction([](float x){return std::pow(x / 16.f, 1.f / 5.f);});
 }
