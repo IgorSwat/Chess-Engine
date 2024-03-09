@@ -48,6 +48,7 @@ namespace Evaluation {
 
         // Helper methods
         template <Color side> void updateProximity(Square sq, int ourFactor, int enemyFactor);
+        template <Color side> void updateKingAreaSafety(Square sq, Bitboard attacks, int attackFactor);
 
         // Connected board
         BoardConfig* board;
@@ -78,6 +79,14 @@ namespace Evaluation {
         int proximityPoints[COLOR_RANGE] = { 0 };
         int proximityWages[COLOR_RANGE] = { 0 };
 
+        // King safety related
+        int safetyPoints[COLOR_RANGE] = { 0 };
+        int kingAreaAttackers[COLOR_RANGE] = { 0 };             // (Number of attackers) - (Number of defenders) difference
+        int kingAreaAttackPoints[COLOR_RANGE] = { 0 };          // Absolute weighted count of each attack on king area
+        Bitboard kingFrontSpans[COLOR_RANGE][2] = { 0 };        // First and second rank span areas in front of king
+        Bitboard kingArea[COLOR_RANGE] = { 0 };                 // King area consists of king position square and surrounding squares attacked by king
+        Bitboard weakKingSpan[COLOR_RANGE] = { 0 };             // An area consisting of king area and second front span, that is not defended twice by ally pawns
+
         // Other common properties
         int centralDensity = 0;
         int boardDensity = 0;
@@ -89,10 +98,25 @@ namespace Evaluation {
     inline void Evaluator::updateProximity(Square sq, int ourFactor, int enemyFactor)
     {
         constexpr Color enemy = ~side;
-        proximityPoints[side] += Board::square_distance(sq, board->kingPosition(side)) * ourFactor;
+        proximityPoints[side] += Board::SquareDistance[sq][board->kingPosition(side)] * ourFactor;
         proximityWages[side] += ourFactor;
-        proximityPoints[enemy] += Board::square_distance(sq, board->kingPosition(enemy)) * enemyFactor;
+        proximityPoints[enemy] += Board::SquareDistance[sq][board->kingPosition(enemy)] * enemyFactor;
         proximityWages[enemy] += enemyFactor;
+    }
+
+    template <Color side>
+    inline void Evaluator::updateKingAreaSafety(Square sq, Bitboard attacks, int attackFactor)
+    {
+        constexpr Color enemy = ~side;
+        Bitboard kingAreaAttacks = attacks & kingArea[enemy];
+        if (kingAreaAttacks) {                                      // Enemy king (offensive piece)
+            kingAreaAttackers[enemy]++;
+            kingAreaAttackPoints[enemy] += attackFactor * Bitboards::popcount(kingAreaAttacks);
+        }
+        else if (attacks & weakKingSpan[enemy])
+            kingAreaAttackers[enemy]++;
+        if (kingFrontSpans[side][0] & (attacks | sq))               // Our king (defensive piece)
+            kingAreaAttackers[side]--;
     }
 
 }

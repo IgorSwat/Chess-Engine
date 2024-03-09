@@ -519,8 +519,8 @@ int BoardConfig::see(Square from, PieceType attackingPiece, Square to, PieceType
 			break;
 		attackdef ^= fromSet;
 		if (fromSet & mayXray) {
-			Bitboard xRayAttackers = (Pieces::xRayBishopAttacks(to, occ, fromSet) & pieces(BISHOP, QUEEN)) |
-									 (Pieces::xRayRookAttacks(to, occ, fromSet) & pieces(ROOK, QUEEN));
+			Bitboard xRayAttackers = (Pieces::xray_attacks<BISHOP>(to, occ, fromSet) & pieces(BISHOP, QUEEN)) |
+									 (Pieces::xray_attacks<ROOK>(to, occ, fromSet) & pieces(ROOK, QUEEN));
 			attackdef |= xRayAttackers;
 		}
 		occ ^= fromSet;
@@ -536,8 +536,8 @@ void BoardConfig::updatePins(Color side)
 	Square kingSq = kingSquare[side];
 	Color enemy = ~side;
 	posInfo->pinned[side] = 0;
-	posInfo->pinners[side] = (Pieces::xRayRookAttacks(kingSq, pieces(), pieces(side)) & pieces(enemy, ROOK, QUEEN)) |
-		(Pieces::xRayBishopAttacks(kingSq, pieces(), pieces(side)) & pieces(enemy, BISHOP, QUEEN));
+	posInfo->pinners[side] = (Pieces::xray_attacks<ROOK>(kingSq, pieces(), pieces(side)) & pieces(enemy, ROOK, QUEEN)) |
+		(Pieces::xray_attacks<BISHOP>(kingSq, pieces(), pieces(side)) & pieces(enemy, BISHOP, QUEEN));
 	Bitboard pinnersTmp = posInfo->pinners[side];
 	while (pinnersTmp) {
 		Square sq = Bitboards::pop_lsb(pinnersTmp);

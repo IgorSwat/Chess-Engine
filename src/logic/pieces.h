@@ -129,23 +129,18 @@ namespace Pieces {
 	// X-Ray attacks
 	// -------------
 
-	inline Bitboard xRayRookAttacks(Square sq, Bitboard occ, Bitboard blockers)	// By default blockers = own pieces
+	template <PieceType type>
+	inline Bitboard xray_attacks(Square sq, Bitboard occ, Bitboard blockers)
 	{
-		Bitboard attacks = piece_attacks_s<ROOK>(sq, occ);
+		Bitboard attacks = piece_attacks_s<type>(sq, occ);
 		blockers &= attacks;
-		return attacks ^ piece_attacks_s<ROOK>(sq, occ ^ blockers);
+		return attacks ^ piece_attacks_s<type>(sq, occ ^ blockers);
 	}
 
-	inline Bitboard xRayBishopAttacks(Square sq, Bitboard occ, Bitboard blockers)
+	template <>
+	inline Bitboard xray_attacks<QUEEN>(Square sq, Bitboard occ, Bitboard blockers)
 	{
-		Bitboard attacks = piece_attacks_s<BISHOP>(sq, occ);
-		blockers &= attacks;
-		return attacks ^ piece_attacks_s<BISHOP>(sq, occ ^ blockers);
-	}
-
-	inline Bitboard xRayQueenAttacks(Square sq, Bitboard occ, Bitboard blockers)
-	{
-		return xRayBishopAttacks(sq, occ, blockers) | xRayRookAttacks(sq, occ, blockers);
+		return xray_attacks<BISHOP>(sq, occ, blockers) | xray_attacks<ROOK>(sq, occ, blockers);
 	}
 
 

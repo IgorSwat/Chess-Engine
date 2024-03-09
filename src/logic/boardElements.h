@@ -45,7 +45,7 @@ namespace Board {
 	constexpr Bitboard NOT_RANK_8 = ~RANK_8;
 	constexpr Bitboard NOT_RANK_12 = ~(RANK_1 & RANK_2);
 	constexpr Bitboard NOT_RANK_78 = ~(RANK_7 & RANK_8);
-
+	
 	constexpr Bitboard DIAG_A1H8 = 0x8040201008040201;
 	constexpr Bitboard DIAG_A8H1 = 0x0102040810204080;
 
@@ -59,11 +59,12 @@ namespace Board {
 	// Precalculated board properties
 	// ------------------------------
 
-	extern Bitboard Paths[SQUARE_RANGE][SQUARE_RANGE];		// Paths between each pair of squares mapped to bitboards
-	extern Bitboard Lines[SQUARE_RANGE][SQUARE_RANGE];				// Lines containing two given squares (superset of PATHS_BETWEEN)
+	extern int SquareDistance[SQUARE_RANGE][SQUARE_RANGE];			// Maximum metric between two squares file and rank distances
+
+	extern Bitboard Paths[SQUARE_RANGE][SQUARE_RANGE];				// Paths between each pair of squares mapped to bitboards
+	extern Bitboard Boxes[SQUARE_RANGE][SQUARE_RANGE];
 	extern Bitboard AdjacentFiles[SQUARE_RANGE];
 	extern Bitboard AdjacentRankSquares[EXTENDED_SQUARE_RANGE];
-	extern Bitboard CentralFilePaths[SQUARE_RANGE];
 
 	// A front span is an area composed of 3 adjacent files in front of given square, where direction is defined by given side (WHITE = NORTH, BLACK = SOUTH).
 	// It's being used mainly for pawn structure geometry calculations.
@@ -91,20 +92,15 @@ namespace Board {
 		return Ranks[rank_of(sq)];
 	}
 
-	// Returns distance as 2-dimensional maximum metric value
-	inline int square_distance(Square sq1, Square sq2)
-	{
-		return std::max(std::abs(file_of(sq1) - file_of(sq2)), std::abs(rank_of(sq1) - rank_of(sq2)));
-	}
-
 	inline bool aligned(Square sq1, Square sq2)
 	{
-		return Lines[sq1][sq2];
+		return Paths[sq1][sq2];
 	}
 
-	inline bool aligned(Square sq1, Square sq2, Square midd)
+	// Important note: we assume that from is the first square in line, that means either from < to1 < to2 or from < to1 < to2
+	inline bool aligned(Square from, Square to1, Square to2)
 	{
-		return Lines[sq1][sq2] & midd;
+		return (Paths[from][to2] & to1) || (Paths[from][to1] & to2);
 	}
 
 	template <Color side>

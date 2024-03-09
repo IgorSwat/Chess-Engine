@@ -72,9 +72,19 @@ namespace Bitboards {
 	// Bitboard fill
 	// -------------
 
-	template <Direction dir> constexpr inline Bitboard fill_v(Bitboard bb);
+	// Generic implementation for any direction
+	template <Direction dir> constexpr inline Bitboard fill(Bitboard bb)
+	{
+		Bitboard shifted = shift_s<dir>(bb);
+		while ((bb ^ shifted) & (~bb)) {
+			bb |= shifted;
+			shifted = shift_s<dir>(bb);
+		}
+		return bb;
+	}
 
-	template <> constexpr inline Bitboard fill_v<NORTH>(Bitboard bb)
+	// Specyfic, efficient implementations for vertical directions
+	template <> constexpr inline Bitboard fill<NORTH>(Bitboard bb)
 	{
 		bb |= (bb << 32);
 		bb |= (bb << 16);
@@ -82,7 +92,7 @@ namespace Bitboards {
 		return bb;
 	}
 
-	template <> constexpr inline Bitboard fill_v<SOUTH>(Bitboard bb)
+	template <> constexpr inline Bitboard fill<SOUTH>(Bitboard bb)
 	{
 		bb |= (bb >> 32);
 		bb |= (bb >> 16);
@@ -93,7 +103,7 @@ namespace Bitboards {
 	// Collapses all files bits into the one row to obtain small index
 	constexpr inline int clp_files_index(Bitboard bb)
 	{
-		return int(fill_v<SOUTH>(bb) & 0xff);
+		return int(fill<SOUTH>(bb) & 0xff);
 	}
 
 
