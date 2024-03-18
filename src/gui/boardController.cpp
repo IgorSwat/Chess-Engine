@@ -20,7 +20,7 @@ void runGUI()
 	BoardConfig config;
 	config.loadFromFen("4k3/8/8/3P4/4PP2/4K3/8/8 w - - 0 1");
 	// config.loadFromFen("3kb3/2p5/1p6/pP4p1/P5Pp/7P/1P2B3/2K5 w - - 0 1");
-	std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&config, Evaluation::EvaluationConfig);
+	std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&config);
 	BoardController controller = { &config, evaluator.get()};
 	controller.run();
 }
@@ -61,7 +61,7 @@ void BoardController::run()
 			if (event.type == sf::Event::Closed)
 				window->close();
 		}
-		window->clear(sf::Color(245, 220, 152, 0.5));
+		window->clear(sf::Color(245, 220, 152, 128));
 		update();
 		window->draw(*gui.get());
 		window->draw(*navbar.get());

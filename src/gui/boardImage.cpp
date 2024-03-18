@@ -109,7 +109,7 @@ void BoardImage::updatePieces(BoardConfig* board)
     else if (selectedPiece != nullptr && !isMousePressed) {
         sf::Vector2f lastPos = selectedPiece->getStablePosition();
         int rank = 7 - int(mousePos.y / TILE_SIZE);
-        int file = mousePos.x / TILE_SIZE;
+        int file = int(mousePos.x / TILE_SIZE);
         if (rank >= 0 && rank < 8 && file >= 0 && file < 8) {
             Square to = make_square(rank, file);
             Square from = make_square(7 - int(lastPos.y / TILE_SIZE), int(lastPos.x / TILE_SIZE));

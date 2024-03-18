@@ -57,12 +57,8 @@ public:
 	// Piece-centric operations
 	Bitboard pieces(PieceType ptype = ALL_PIECES) const;
 	Bitboard pieces(Color side) const;
-	template <typename... PieceTypes>
-	Bitboard pieces(PieceType ptype, PieceTypes... types) const;
-	template <typename... PieceTypes>
-	Bitboard pieces(Color side, PieceTypes... types) const;
-	template <typename... PieceTypes>
-	Bitboard pieces(Color side, SquareColor squareColor, PieceTypes... types) const;
+	template <typename... PieceTypes> Bitboard pieces(PieceType ptype, PieceTypes... types) const;
+	template <typename... PieceTypes> Bitboard pieces(Color side, PieceTypes... types) const;
 	Square kingPosition(Color side) const;
 
 	// Square-centric operations
@@ -149,12 +145,6 @@ template <typename... PieceTypes>
 inline Bitboard BoardConfig::pieces(Color side, PieceTypes... types) const
 {
 	return pieces(side) & pieces(types...);
-}
-
-template <typename... PieceTypes>
-inline Bitboard BoardConfig::pieces(Color side, SquareColor squareColor, PieceTypes... types) const
-{
-	return pieces(side, types...) & Board::squares_of_color(squareColor);
 }
 
 inline Square BoardConfig::kingPosition(Color side) const

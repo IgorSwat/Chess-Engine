@@ -11,13 +11,6 @@ namespace Evaluation {
     // Helper functions
     // ---------------- 
 
-    template <typename Functional>
-    inline void fill_params_table(EvalParameter* table, int size, EvalParameter start, EvalParameter end, Functional func)
-    {
-        for (int i = 0; i <= size; i++)
-            table[i] = Interpolation::interpolate(start, end, func, float(i) / size);
-    }
-
     template <Color side, bool show>
     inline void add_eval(Value& value, Value incr, const char* featureName)
     {
@@ -29,51 +22,45 @@ namespace Evaluation {
 
     // ---------------------
     // Main Evaluation class
-    // ---------------- ----
+    // ---------------------
 
     class Evaluator
     {
     public:
-        Evaluator(BoardConfig* board, EvalParameter* parameters) : board(board), parameters(parameters) { initEvalTables(); }
+        Evaluator(BoardConfig* board) : board(board) {}
 
         Value evaluate();
 
     private:
         // Evaluation components
-        void initEvalTables();
         template <Color side> void initCommonData();
-        template <Color side> Value evaluatePawns();
+        template <Color side> Value evaluatePawns1();   // First call, before evaluatePieces()
+        template <Color side> Value evaluatePawns2();   // Second call, after evaluatePieces()
         template <Color side> Value evaluatePieces();
         template <Color side> Value evaluateKing();
 
         // Helper methods
+        int countAttackers(Bitboard area, Color side, PieceType type) const;
+        template <typename... PieceTypes> int countAttackers(Bitboard area, Color side, PieceType type, PieceTypes... types) const;
+
         template <Color side> void updateProximity(Square sq, int ourFactor, int enemyFactor);
         template <Color side> void updateKingAreaSafety(Square sq, Bitboard attacks, int attackFactor);
 
         // Connected board
         BoardConfig* board;
-
-        // Evaluation parameters
-        EvalParameter* parameters;
-        EvalParameter KnightDensePosition[17] = { };
-        EvalParameter KnightPawnSpread[8] = { };
-        EvalParameter KnightMobility[9] = { };
-        EvalParameter BishopOwnPawnBlockage[7] = { };
-        EvalParameter BishopEnemyPawnBlockage[7] = { };
-        EvalParameter BishopMobility[14] = { };
-        EvalParameter RookMobility[15] = { };
-        EvalParameter QueenMobility[28] = { };
         
         // Common calculations shared among different evaluation methods
         std::uint16_t stage = GAME_STAGE_MAX_VALUE;
 
         // Piece-attack properties
         Bitboard attacks[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };
+        Bitboard multipleAttacks[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };
 
         // Pawn structure properties
         int pawnRankSpread = 0;         // Horizontal spread
         int mostAdvancedUnstopablePasser = 8;     // Distance to promotion of the most advanced passed pawn
         int structurePoints[COLOR_RANGE][SQUARE_COLOR_RANGE] = { 0 };
+        Bitboard weakPawns[COLOR_RANGE] = { 0 };
 
         // King proximity
         int proximityPoints[COLOR_RANGE] = { 0 };
@@ -92,6 +79,18 @@ namespace Evaluation {
         int boardDensity = 0;
 
     };
+
+
+    inline int Evaluator::countAttackers(Bitboard area, Color side, PieceType type) const
+    {
+        return multipleAttacks[side][type] & area ? 2 : bool(attacks[side][type] & area);
+    }
+
+    template <typename... PieceTypes>
+    inline int Evaluator::countAttackers(Bitboard area, Color side, PieceType type, PieceTypes... types) const
+    {
+        return countAttackers(area, side, type) + countAttackers(area, side, types...);
+    }
 
 
     template <Color side>

@@ -12,7 +12,7 @@ namespace Zobrist {
 
     int hammingDistance(U64 code1, U64 code2);
     float averageHammingDistance(const U64 codes[], int n);
-    float minimalHammingDistance(const U64 codes[], int n);
+    int minimalHammingDistance(const U64 codes[], int n);
 
     void initZobristHashing();
 

@@ -40,7 +40,7 @@ namespace Zobrist {
 		return (float)hammingDistanceSum / numOfPairs;
     }
 
-    float minimalHammingDistance(const U64 codes[], int n)
+    int minimalHammingDistance(const U64 codes[], int n)
     {
         int minHammingDistance = std::numeric_limits<int>::max();
 		for (int i = 0; i < n; i++)

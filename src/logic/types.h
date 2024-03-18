@@ -64,14 +64,32 @@ constexpr inline Bitboard operator&(Bitboard bb, Square sq)
 	return bb & square_to_bb(sq);
 }
 
+inline Bitboard operator&=(Bitboard& bb, Square sq)
+{
+	bb &= square_to_bb(sq);
+	return bb;
+}
+
 constexpr inline Bitboard operator|(Bitboard bb, Square sq)
 {
 	return bb | square_to_bb(sq);
 }
 
+inline Bitboard operator|=(Bitboard& bb, Square sq)
+{
+	bb |= square_to_bb(sq);
+	return bb;
+}
+
 constexpr inline Bitboard operator^(Bitboard bb, Square sq)
 {
 	return bb ^ square_to_bb(sq);
+}
+
+inline Bitboard operator^=(Bitboard& bb, Square sq)
+{
+	bb ^= square_to_bb(sq);
+	return bb;
 }
 
 

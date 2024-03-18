@@ -6,7 +6,7 @@
 
 namespace Interpolation {
 
-    using ::Evaluation::EvalParameter;
+    using ::Evaluation::IValue;
 
     // -------------------------------
     // Generic interpolation functions
@@ -19,11 +19,11 @@ namespace Interpolation {
     }
 
     template <typename Functional>
-    inline EvalParameter interpolate(const EvalParameter& startValue, const EvalParameter& endValue, Functional func, float m)
+    inline IValue interpolate(const IValue& startValue, const IValue& endValue, Functional func, float m)
     {
         Value opening = interpolate<Value, Functional>(startValue.opening, endValue.opening, func, m);
         Value endgame = interpolate<Value, Functional>(startValue.endgame(), endValue.endgame(), func, m);
-        return EvalParameter(opening, endgame);
+        return IValue(opening, endgame);
     }
 
 
@@ -32,7 +32,7 @@ namespace Interpolation {
     // -------------------------------------
 
     // Linear ( f(x) = 1 - x ) game-stage interpolation
-    inline Value interpolate_gs(const EvalParameter& parameter, std::uint16_t stage)
+    inline Value interpolate_gs(const IValue& parameter, std::uint16_t stage)
     {
         return parameter.opening + ((parameter.diff * (256 - stage)) >> 8);
     }

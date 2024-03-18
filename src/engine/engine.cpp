@@ -12,7 +12,7 @@ namespace {
 
 
 Engine::Engine(BoardConfig* board)
-    : realBoard(board), virtualBoard(), evaluator(&virtualBoard, Evaluation::EvaluationConfig)
+    : realBoard(board), virtualBoard(), evaluator(&virtualBoard)
 {
 }
 
