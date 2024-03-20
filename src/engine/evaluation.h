@@ -60,7 +60,9 @@ namespace Evaluation {
         int pawnRankSpread = 0;         // Horizontal spread
         int mostAdvancedUnstopablePasser = 8;     // Distance to promotion of the most advanced passed pawn
         int structurePoints[COLOR_RANGE][SQUARE_COLOR_RANGE] = { 0 };
+        int passerPoints[SQUARE_RANGE] = { 0 };
         Bitboard weakPawns[COLOR_RANGE] = { 0 };
+        Bitboard passedPawns[COLOR_RANGE] = { 0 };
 
         // King proximity
         int proximityPoints[COLOR_RANGE] = { 0 };

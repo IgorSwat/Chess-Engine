@@ -13,7 +13,7 @@ Or just a chess bot if that's what you want to call it.<br><br>
   + Piece activity&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
   + Pawn structure&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
   + King safety&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-  + Passed pawns&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
+  + Passed pawns&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
   + Space&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
   + Evaluation descent&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
 + Basic search algorithms&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">

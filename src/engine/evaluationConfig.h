@@ -69,9 +69,9 @@ namespace Evaluation {
     constexpr IValue BISHOP_ENEMY_PAWN_BLOCKAGE[7] = { {42, -20}, {18, -11}, {6, -8}, {-6, -6}, {-14, -4}, {-22, -2}, {-28, 0} };
 
     // Rook-specyfic evaluation
-    constexpr IValue ROOK_ON_SEMIOPEN_FILE = { 15, 30 };
-    constexpr IValue ROOK_ON_OPEN_FILE = { 20, 40 };
-    constexpr IValue ROOK_ON_78_RANK = { 25, 50 };
+    constexpr IValue ROOK_ON_SEMIOPEN_FILE = { 15, 3 };
+    constexpr IValue ROOK_ON_OPEN_FILE = { 20, 5 };
+    constexpr IValue ROOK_ON_78_RANK = { 25, 40 };
     constexpr IValue ROOK_ENEMY_PAWN_WEAKNESS = { 10, 64 };
 
     // Queen-specyfic evaluation
@@ -92,7 +92,7 @@ namespace Evaluation {
     };
     constexpr IValue QUEEN_MOBILITY[28] = {
         {-6, -31}, {-4, -24}, {-2, -17}, {-1, -11}, {0, -3}, {1, 6}, {3, 24}, {5, 40},
-        {6, 50}, {8, 67}, {11, 85}, {17, 102}, {24, 127}, {30, 139}, {35, 146}, {40, 151},
+        {7, 50}, {9, 69}, {13, 86}, {17, 98}, {24, 124}, {30, 136}, {35, 145}, {40, 150},
         {44, 155}, {47, 159}, {49, 161}, {50, 163}, {51, 166}, {51, 168}, {52, 170}, {52, 173},
         {53, 175}, {53, 176}, {53, 177}, {54, 179}
     };
@@ -139,6 +139,31 @@ namespace Evaluation {
     constexpr IValue DOUBLED_PAWN_PENALTY = { -5, -30 };
     constexpr Value DOUBLED_PAWN_MAX_PENALTY = -70;
     constexpr IValue WEAK_PAWN_ATTACKED = { -8, -16 };
+
+    // Passed pawns
+    constexpr int PASSED_PAWN_POINTS[7][32] = {
+        // Estra distance level for boundary safety
+        {152, 152, 152, 152, 152, 152, 152, 152, 152, 152, 155, 162, 170, 198, 227, 272, 360 /*Base*/, 396, 412, 420, 425, 425, 425, 425, 425, 425, 425, 425, 425, 425, 425, 425},
+
+        // One square away from promotion
+        {72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 72, 74, 78, 86, 100, 132, 176 /*Base*/, 192, 204, 208, 208, 208, 208, 208, 208, 208, 208, 208, 208, 208, 208, 208},
+
+        {40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 41, 43, 48, 58, 74, 98 /*Base*/, 108, 113, 116, 118, 118, 118, 118, 118, 118, 118, 118, 118, 118, 118, 118},
+
+        {28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 29, 31, 34, 39, 48, 64 /*Base*/, 70, 73, 75, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76},
+
+        {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21, 24, 30, 40 /*Base*/, 45, 48, 50, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52, 52},
+
+        {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21, 24 /*Base*/, 27, 29, 30, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31},
+
+        // On a starting square
+        {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20 /*Base*/, 23, 25, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26}
+    };
+    constexpr int BLOCKED_PASSER_PENALTY_SIZE = -2; // Less = more severe penalty (based on PASSED_PAWN_POINTS table)
+    constexpr int HEAVY_PIECE_BEHIND_PASSER[7] = { 50, 38, 24, 18, 10, 4, 4 };
+    constexpr int CONNECTED_PASSERS_FACTOR = 20;    // To balance division by 1024 (2^10)
+
+    constexpr IValue PASSED_PAWNS_VALUE = { 64, 64 };    // How much do 64 passer points worth (easier scaling)
 
     // Proximity factors
     constexpr int OUR_PAWN_PROXIMITY_FACTOR = 2;
@@ -189,7 +214,7 @@ namespace Evaluation {
         0
     };
 
-    constexpr IValue KING_SAFETY_VALUE = { 64, 64 };    // KING_SAFETY_VALUE - How much do 64 safety points worth (easier scaling)
+    constexpr IValue KING_SAFETY_VALUE = { 64, 20 };    // How much do 64 safety points worth (easier scaling)
 
 
 }

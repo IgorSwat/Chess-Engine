@@ -90,6 +90,7 @@ namespace Evaluation {
         Bitboard enemyKingFront = Board::FrontSpan[board->kingPosition(enemy)][enemy];
 
         weakPawns[side] = 0;
+        passedPawns[side] = 0;
 
         add_eval<side, test>(result, PAWN_BASE_VALUE.opening * Bitboards::popcount(ourPawns), "Pawns material value");
         while (pawns) {
@@ -134,10 +135,8 @@ namespace Evaluation {
                 updateProximity<side>(sq, OUR_PASSER_PROXIMITY_FACTOR, ENEMY_PASSER_PROXIMITY_FACTOR);
                 if (!stage && Board::SquareDistance[board->kingPosition(enemy)][make_square(promotionRank, file_of(sq))] - (board->movingSide() == enemy) > promotionDistance)
                     mostAdvancedUnstopablePasser = std::min(promotionDistance, mostAdvancedUnstopablePasser);
-                else {
-                    // Other passers calculations
-                    // .......
-                }
+                else
+                    passedPawns[side] |= sq;
             }
             else if (!isDefendedByPawns)
                 updateProximity<side>(sq, OUR_PAWN_PROXIMITY_FACTOR, ENEMY_PAWN_PROXIMITY_FACTOR);
@@ -170,17 +169,68 @@ namespace Evaluation {
     Value Evaluator::evaluatePawns2()
     {
         Value result = 0;
-        constexpr bool test = false;
+        constexpr bool test = true;
 
         constexpr Color enemy = ~side;
+        constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
         Bitboard weak = weakPawns[side] & attacks[enemy][ALL_PIECES];
+        Bitboard passed = passedPawns[side];
 
         // Weak pawns
         while (weak) {
             Bitboard sqBB = square_to_bb(Bitboards::pop_lsb(weak));
             Value penalty = Interpolation::interpolate_gs(WEAK_PAWN_ATTACKED, stage) * countAttackers(sqBB, enemy, KNIGHT, BISHOP, ROOK, QUEEN, KING);
-            add_eval<side, true>(result, penalty, "Weak pawn attacked");
+            add_eval<side, test>(result, penalty, "Weak pawn attacked");
         }
+
+        // Passed pawns
+        int points = 0;
+        Bitboard processedPassers = 0;
+        while (passed) {
+            Square sq = Bitboards::pop_lsb(passed);
+            int promotionDistance = (side == WHITE ? 7 - rank_of(sq) : rank_of(sq));
+            Bitboard promotionPath = Board::FrontSpan[sq][side] & Board::file_bb_of(sq);
+            Bitboard behindPawn = Board::back_span<side>(sq) & Pieces::piece_attacks_s<ROOK>(sq, board->pieces());
+            Bitboard connectedPassers = Board::AdjacentFiles[sq] & processedPassers;
+
+            // Protected passer
+            if (!(Board::AdjacentFiles[sq] & passedPawns[side]) && (attacks[side][PAWN] & sq))
+                promotionDistance--;
+
+            // Promotion path control
+            int control = -countAttackers(promotionPath, enemy, KNIGHT, BISHOP, ROOK, QUEEN, KING);
+            control -= Bitboards::popcount(promotionPath & board->pieces(enemy, KNIGHT, BISHOP));
+            if (promotionPath & attacks[side][ALL_PIECES])
+                control += countAttackers(promotionPath, side, KNIGHT, BISHOP, ROOK, QUEEN, KING);
+            if (board->pieces(enemy) & square_to_bb(sq + forwardDir))
+                control += BLOCKED_PASSER_PENALTY_SIZE;
+
+
+            // Heavy pieces behind passed pawns
+            if (board->pieces(side, ROOK, QUEEN) & behindPawn) {
+                control++;
+                passerPoints[sq] = PASSED_PAWN_POINTS[promotionDistance][16 + control] + HEAVY_PIECE_BEHIND_PASSER[promotionDistance];
+            }
+            else if (board->pieces(enemy, ROOK, QUEEN) & behindPawn) {
+                control--;
+                passerPoints[sq] = PASSED_PAWN_POINTS[promotionDistance][16 + control] - HEAVY_PIECE_BEHIND_PASSER[promotionDistance];
+            }
+            else
+                passerPoints[sq] = PASSED_PAWN_POINTS[promotionDistance][16 + control];
+
+            // Connected passer
+            while (connectedPassers) {
+                Square supporterSq = Bitboards::pop_lsb(connectedPassers);
+                points += (passerPoints[sq] * passerPoints[supporterSq] * CONNECTED_PASSERS_FACTOR) >> 10;
+            }
+
+            // Mark as processed
+            processedPassers = passedPawns[side] ^ passed;
+            points += passerPoints[sq];
+        }
+
+        // Point to eval scaling
+        add_eval<side, true>(result, (points * Interpolation::interpolate_gs(PASSED_PAWNS_VALUE, stage)) >> 6, "Passed pawns");
 
         return result;
     }
