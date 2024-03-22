@@ -19,6 +19,7 @@ Or just a chess bot if that's what you want to call it.<br><br>
 + Basic search algorithms&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Transposition table, zobrist hash&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Selectivity heuristics&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
++ Multi-threaded search&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
 + Evaluation parameters tuning (data collection and data processing environment)&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
 + Endgame tablebase connection&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
 + Time management&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">

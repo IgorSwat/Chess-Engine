@@ -37,7 +37,7 @@ namespace Evaluation {
         template <Color side> Value evaluatePawns1();   // First call, before evaluatePieces()
         template <Color side> Value evaluatePawns2();   // Second call, after evaluatePieces()
         template <Color side> Value evaluatePieces();
-        template <Color side> Value evaluateKing();
+        template <Color side> Value evaluateKingAndMisc();
 
         // Helper methods
         int countAttackers(Bitboard area, Color side, PieceType type) const;

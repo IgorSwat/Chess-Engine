@@ -19,15 +19,10 @@ namespace Evaluation {
         initCommonData<WHITE>();
         initCommonData<BLACK>();
 
-        Value result = 0;
-        result += evaluatePawns1<WHITE>();
-        result -= evaluatePawns1<BLACK>();
-        result += evaluatePieces<WHITE>();
-        result -= evaluatePieces<BLACK>();
-        result += evaluatePawns2<WHITE>();
-        result -= evaluatePawns2<BLACK>();
-        result += evaluateKing<WHITE>();
-        result -= evaluateKing<BLACK>();
+        Value result = evaluatePawns1<WHITE>() - evaluatePawns1<BLACK>() +
+                       evaluatePieces<WHITE>() - evaluatePieces<BLACK>() +
+                       evaluatePawns2<WHITE>() - evaluatePawns2<BLACK>() +
+                       evaluateKingAndMisc<WHITE>() - evaluateKingAndMisc<BLACK>();
 
         return result;
     }
@@ -230,7 +225,8 @@ namespace Evaluation {
         }
 
         // Point to eval scaling
-        add_eval<side, true>(result, (points * Interpolation::interpolate_gs(PASSED_PAWNS_VALUE, stage)) >> 6, "Passed pawns");
+        if (points)
+            add_eval<side, true>(result, (points * Interpolation::interpolate_gs(PASSED_PAWNS_VALUE, stage)) >> 6, "Passed pawns");
 
         return result;
     }
@@ -438,28 +434,34 @@ namespace Evaluation {
 
 
     template <Color side>
-    Value Evaluator::evaluateKing()
+    Value Evaluator::evaluateKingAndMisc()
     {
         Value result = 0;
-        constexpr bool test = false;
+        constexpr bool kingTest = false;
+        constexpr bool miscTest = false;
 
         constexpr Color enemy = ~side;
         constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
+        constexpr Direction backwardDir = ~forwardDir;
         constexpr Direction forwardLeftDir = (side == WHITE ? NORTH_WEST : SOUTH_WEST);
         constexpr Bitboard shieldedArea1 = (side == WHITE ? 0x00ffffffffffffff : 0xffffffffffffff00);
         constexpr Bitboard shieldedArea2 = (side == WHITE ? 0x0000ffffffffffff : 0xffffffffffff0000);
+        constexpr Bitboard rank1 = (side == WHITE ? Board::RANK_1 : Board::RANK_8);
+        constexpr Bitboard ranks234 = (side == WHITE ? Board::RANK_2 | Board::RANK_3 | Board::RANK_4 : Board::RANK_7 | Board::RANK_6 | Board::RANK_5);
+        constexpr Bitboard center = Board::CENTRAL_FILES;
+        constexpr Bitboard outside = Board::BOARD ^ center;
         constexpr int shieldShift1 = DIRECTION_SHIFTS[forwardLeftDir];
-        constexpr int shielfShift2 = DIRECTION_SHIFTS[forwardLeftDir] + DIRECTION_SHIFTS[forwardDir] - 3;
+        constexpr int shieldShift2 = DIRECTION_SHIFTS[forwardLeftDir] + DIRECTION_SHIFTS[forwardDir] - 3;
         Square kingSq = board->kingPosition(side);
 
         // King - pawns proximity (as a weighted average)
         Value proximityValue = Interpolation::interpolate_gs(KING_PAWN_PROXIMITY_VALUE, stage) * (proximityPoints[side] - proximityWages[side]) / proximityWages[side];
-        add_eval<side, test>(result, proximityValue, "King and pawns proximity");
+        add_eval<side, kingTest>(result, proximityValue, "King and pawns proximity");
 
         // Pawn shield
         Bitboard ourPawns = board->pieces(side, PAWN);
         Bitboard firstShieldId = (shieldedArea1 & kingSq) ? (ourPawns & kingFrontSpans[side][0]) >> (kingSq + shieldShift1) : 0;
-        Bitboard secondShield = (shieldedArea2 & kingSq) ? (ourPawns & kingFrontSpans[side][1]) >> (kingSq + shielfShift2) : 0;
+        Bitboard secondShield = (shieldedArea2 & kingSq) ? (ourPawns & kingFrontSpans[side][1]) >> (kingSq + shieldShift2) : 0;
         Bitboard shieldId = firstShieldId | secondShield;
         if (file_of(kingSq) == 0)
             shieldId |= 0x1;
@@ -473,12 +475,29 @@ namespace Evaluation {
         safetyPoints[side] += attackPoints;
 
         // Global king safety
-        add_eval<side, test>(result, (safetyPoints[side] * Interpolation::interpolate_gs(KING_SAFETY_VALUE, stage)) >> 6, "King safety");
+        add_eval<side, kingTest>(result, (safetyPoints[side] * Interpolation::interpolate_gs(KING_SAFETY_VALUE, stage)) >> 6, "King safety");
+
+
+        // Other evaluation features (compressed here for efficiency reasons)
+
+        // Space
+        Bitboard space = (Bitboards::fill<backwardDir>(ourPawns) ^ ourPawns);
+        Bitboard effectiveSpace = space & ranks234;
+        Bitboard uncontestedPawnSpace = effectiveSpace & ~attacks[enemy][ALL_PIECES];
+        Bitboard contestedPawnSpace = effectiveSpace & (attacks[enemy][ALL_PIECES] ^ attacks[enemy][PAWN]);
+        Bitboard pawnlessSpace = Bitboards::fill<forwardDir>(rank1 ^ (space & rank1)) & ranks234 & attacks[side][ALL_PIECES] & ~attacks[enemy][ALL_PIECES];
+
+        int spaceTypeI = Bitboards::popcount(contestedPawnSpace & center) * CENTRAL_SPACE_POINTS + Bitboards::popcount(contestedPawnSpace & outside) * OTHER_SPACE_POINTS +
+                         Bitboards::popcount(pawnlessSpace & center) * CENTRAL_SPACE_POINTS + Bitboards::popcount(pawnlessSpace & outside) * OTHER_SPACE_POINTS;
+        int spaceTypeII = Bitboards::popcount(uncontestedPawnSpace & center) * CENTRAL_SPACE_POINTS + Bitboards::popcount(uncontestedPawnSpace & outside) * OTHER_SPACE_POINTS;
+        add_eval<side, miscTest>(result, (spaceTypeI * Interpolation::interpolate_gs(SPACE_TYPE_I, stage)) >> 6, "Space type I");
+        add_eval<side, miscTest>(result, (spaceTypeII * Interpolation::interpolate_gs(SPACE_TYPE_II, stage)) >> 6, "Space type II");
+
 
         return result;
     }
 
-    template Value Evaluator::evaluateKing<WHITE>();
-    template Value Evaluator::evaluateKing<BLACK>();
+    template Value Evaluator::evaluateKingAndMisc<WHITE>();
+    template Value Evaluator::evaluateKingAndMisc<BLACK>();
 
 }

@@ -71,7 +71,7 @@ namespace Evaluation {
     // Rook-specyfic evaluation
     constexpr IValue ROOK_ON_SEMIOPEN_FILE = { 15, 3 };
     constexpr IValue ROOK_ON_OPEN_FILE = { 20, 5 };
-    constexpr IValue ROOK_ON_78_RANK = { 25, 40 };
+    constexpr IValue ROOK_ON_78_RANK = { 25, 35 };
     constexpr IValue ROOK_ENEMY_PAWN_WEAKNESS = { 10, 64 };
 
     // Queen-specyfic evaluation
@@ -215,6 +215,13 @@ namespace Evaluation {
     };
 
     constexpr IValue KING_SAFETY_VALUE = { 64, 20 };    // How much do 64 safety points worth (easier scaling)
+
+    // Space
+    constexpr int CENTRAL_SPACE_POINTS = 64;
+    constexpr int OTHER_SPACE_POINTS = 38;
+
+    constexpr IValue SPACE_TYPE_I = { 5, 1 };       // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_II = { 9, 2 };      // Per 64 space points (easier scaling)
 
 
 }
