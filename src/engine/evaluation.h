@@ -29,7 +29,11 @@ namespace Evaluation {
     public:
         Evaluator(BoardConfig* board) : board(board) {}
 
+        // Main evaluation function
         Value evaluate();
+
+        // Position info obtained after evaluation
+        int threats(Color side) const;
 
     private:
         // Evaluation components
@@ -48,7 +52,7 @@ namespace Evaluation {
 
         // Connected board
         BoardConfig* board;
-        
+
         // Common calculations shared among different evaluation methods
         std::uint16_t stage = GAME_STAGE_MAX_VALUE;
 
@@ -76,12 +80,20 @@ namespace Evaluation {
         Bitboard kingArea[COLOR_RANGE] = { 0 };                 // King area consists of king position square and surrounding squares attacked by king
         Bitboard weakKingSpan[COLOR_RANGE] = { 0 };             // An area consisting of king area and second front span, that is not defended twice by ally pawns
 
+        // Threats
+        int threatCount[COLOR_RANGE] = { 0 };                   // Threats for side X means threats that side Y generates against X
+
         // Other common properties
         int centralDensity = 0;
         int boardDensity = 0;
 
     };
 
+
+    inline int Evaluator::threats(Color side) const
+    {
+        return threatCount[side];
+    }
 
     inline int Evaluator::countAttackers(Bitboard area, Color side, PieceType type) const
     {

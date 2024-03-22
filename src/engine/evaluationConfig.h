@@ -220,8 +220,17 @@ namespace Evaluation {
     constexpr int CENTRAL_SPACE_POINTS = 64;
     constexpr int OTHER_SPACE_POINTS = 38;
 
-    constexpr IValue SPACE_TYPE_I = { 5, 1 };       // Per 64 space points (easier scaling)
-    constexpr IValue SPACE_TYPE_II = { 9, 2 };      // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_I = { 5, 1 };           // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_II = { 9, 2 };          // Per 64 space points (easier scaling)
 
+    // Threats
+    constexpr bool EVALUATE_HNGING_PAWN_THREATS = true;
 
+    constexpr int PAWN_EXCHANGE_THREAT_POINTS = 27;
+    constexpr int MINOR_PIECE_EXCHANGE_THREAT_POINTS = 21;
+    constexpr int ROOK_EXCHANGE_THREAT_POINTS = 30;
+    constexpr int UNDEFENDED_PIECE_THREAT_POINTS = 13;
+    constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 8;
+
+    constexpr IValue THREAT_VALUE = { -64, -64 };         // Per 64 space points (easier scaling)
 }
