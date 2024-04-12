@@ -18,7 +18,11 @@ void runGUI()
 {
 	BoardTextures::loadTextures();
 	BoardConfig config;
-	config.loadFromFen("1r6/3kpp2/8/7p/1P6/6PP/2RK4/8 w - - 0 1");
+
+	//config.loadFromFen("4k3/2r1p2p/6p1/8/8/6PP/1R2PPK1/8 w - - 0 1");		// Rook & 4 pawns vs rook & 3 pawns drawish endgame (+0.5)
+	//config.loadFromFen("8/3k2p1/3p3p/8/8/B7/4KPP1/8 w - - 0 1");		// Bishop vs pawn endgame (+3.5)
+	//config.loadFromFen("4k3/5pp1/4n3/8/8/4P3/R2K2P1/8 w - - 0 1");		// Rook vs Knight endgame (+2.2)
+	config.loadFromFen("8/4pkp1/3p4/8/8/8/4NK2/8 w - - 0 1");		// Knight vs 3 pawn drawish endgam (-0.5)
 	// config.loadFromFen("3kb3/2p5/1p6/pP4p1/P5Pp/7P/1P2B3/2K5 w - - 0 1");
 	std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&config);
 	BoardController controller = { &config, evaluator.get()};

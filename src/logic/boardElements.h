@@ -52,6 +52,9 @@ namespace Board {
 	constexpr Bitboard DARK_SQUARES = 0xaa55aa55aa55aa55;
 	constexpr Bitboard LIGHT_SQUARES = 0x55aa55aa55aa55aa;
 
+	constexpr Bitboard QUEENSIDE = FILE_A | FILE_B | FILE_C | FILE_D;
+	constexpr Bitboard KINGSIDE = FILE_E | FILE_F | FILE_G | FILE_H;
+
 	constexpr Bitboard BOARD = 0xffffffffffffffff;
 
 

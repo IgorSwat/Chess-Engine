@@ -61,6 +61,9 @@ public:
 	template <typename... PieceTypes> Bitboard pieces(Color side, PieceTypes... types) const;
 	Square kingPosition(Color side) const;
 
+	// Piece combinations
+	bool oppositeColorBishops() const;
+
 	// Square-centric operations
 	Piece onSquare(Square sq) const;
 	Bitboard attackersToSquare(Square sq, Bitboard occ) const;
@@ -150,6 +153,12 @@ inline Bitboard BoardConfig::pieces(Color side, PieceTypes... types) const
 inline Square BoardConfig::kingPosition(Color side) const
 {
 	return kingSquare[side];
+}
+
+inline bool BoardConfig::oppositeColorBishops() const
+{
+	return ((pieces(WHITE, BISHOP) & Board::LIGHT_SQUARES) && (pieces(BLACK, BISHOP) & Board::DARK_SQUARES)) ||
+		   ((pieces(WHITE, BISHOP) & Board::DARK_SQUARES) && (pieces(BLACK, BISHOP) & Board::LIGHT_SQUARES));
 }
 
 inline Piece BoardConfig::onSquare(Square sq) const

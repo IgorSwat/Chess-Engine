@@ -17,12 +17,22 @@ namespace Evaluation {
     enum GameStage : std::uint16_t {
         OPENING = 200, MIDGAME = 128, ENDGAME = 0,
 
+        PAWN_ENDGAME = 0,
+        SINGLE_MINOR_ENDGAME = 9,
+        SINGLE_ROOK_ENDGAME = 14,
+        SINGLE_MINOR_VS_MINOR_ENDGAME = 18,
+        SINGLE_ROOK_VS_ROOK_ENDGAME = 28,
+        DOUBLE_MINOR_VS_MINOR_ENDGAME = 36,
+        DOUBLE_ROOK_VS_ROOK_ENDGAME = 56,
+        ROOK_VS_MINOR_ENDGAME = 23,
+        QUEEN_VS_ROOK_ENDGAME = 78,
+
         GAME_STAGE_MAX_VALUE = 256,
     };
 
     constexpr std::uint16_t PieceStageInfluence[PIECE_RANGE] = {
-        0, 0, 8, 8, 16, 64, 0, 0,
-        0, 0, 8, 8, 16, 64, 0, 0
+        0, 0, 9, 9, 14, 64, 0, 0,
+        0, 0, 9, 9, 14, 64, 0, 0
     };
 
 
@@ -46,11 +56,11 @@ namespace Evaluation {
     // ---------------------
 
     // Piece base values
-    constexpr IValue PAWN_BASE_VALUE = { 100, 100 };
-    constexpr IValue KNIGHT_BASE_VALUE = { 350, 350 };
-    constexpr IValue BISHOP_BASE_VALUE = { 350, 350 };
-    constexpr IValue ROOK_BASE_VALUE = { 450, 560 };
-    constexpr IValue QUEEN_BASE_VALUE = { 1000, 1000 };
+    constexpr IValue PAWN_BASE_VALUE = { 100, 150 };
+    constexpr IValue KNIGHT_BASE_VALUE = { 350, 525 };
+    constexpr IValue BISHOP_BASE_VALUE = { 350, 525 };
+    constexpr IValue ROOK_BASE_VALUE = { 450, 788 };
+    constexpr IValue QUEEN_BASE_VALUE = { 1000, 1600 };
 
     // Knight-specyfic evaluation
     constexpr int MAX_CENTRAL_DENSITY = 16;
@@ -233,4 +243,21 @@ namespace Evaluation {
     constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 8;
 
     constexpr IValue THREAT_VALUE = { -64, -64 };         // Per 64 space points (easier scaling)
+
+    // Evaluation descent
+    constexpr int PAWN_COMPLEXITY_POINTS = 25;
+    constexpr int PASSED_PAWN_COMPLEXITY_POINTS = 35;
+    constexpr int PIECE_COMPLEXITY_POINTS = 85;
+    constexpr int INFILTRATION_COMPLEXITY_POINTS = 64;
+    constexpr int PAWNS_ON_BOTH_SIDES_COMPLEXITY_POINTS = 58;
+
+    constexpr int COMPLEXITY_THRESHOLD = 750;
+    constexpr int PAWN_ENDGAME_COMPLEXITY_THRESHOLD = 120;
+
+    constexpr int PieceImbalancePoints[PIECE_TYPE_RANGE] = { 0, 0, 60, 60, 114, 269, 0, 0 };
+
+    // Special case evaluation adjustment
+    constexpr Value OPPOSITE_COLOR_BISHOPS_PAWN_ADJUSTMENT = 70;    // Negative adjustment
+    constexpr Value DRAWISH_ROOK_ENDGAME_ADJUSTMENT = 55;
+    constexpr Value UP_A_PIECE_ENDGAME_ADJUSTMENT = 0;
 }

@@ -7,6 +7,7 @@ namespace Evaluation {
     // Helper functions and defines
     // ----------------------------
 
+    constexpr Bitboard BoardHalves[COLOR_RANGE] = { 0x00000000ffffffff, 0xffffffff00000000 };
     constexpr Bitboard FianchettoMap[COLOR_RANGE] = { 0x0000000000244281, 0x8142240000000000 };
 
     
@@ -24,7 +25,7 @@ namespace Evaluation {
                        evaluatePawns2<WHITE>() - evaluatePawns2<BLACK>() +
                        evaluateKingAndMisc<WHITE>() - evaluateKingAndMisc<BLACK>();
 
-        return result;
+        return adjustEval(result);
     }
 
     template <Color side>
@@ -33,6 +34,9 @@ namespace Evaluation {
         constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
 
         stage = board->gameStage();
+
+        // Piece imbalance
+        pieceCount[side][ALL_PIECES] = Bitboards::popcount(board->pieces(side)) - 1;
 
         // Piece-attack properties
         Bitboard pawns = board->pieces(side, PAWN);
@@ -87,7 +91,8 @@ namespace Evaluation {
         weakPawns[side] = 0;
         passedPawns[side] = 0;
 
-        add_eval<side, test>(result, PAWN_BASE_VALUE.opening * Bitboards::popcount(ourPawns), "Pawns material value");
+        pieceCount[side][PAWN] = Bitboards::popcount(ourPawns);
+        add_eval<side, test>(result, Interpolation::interpolate_gs(PAWN_BASE_VALUE, stage) * pieceCount[side][PAWN], "Pawns material value");
         while (pawns) {
             Square sq = Bitboards::pop_lsb(pawns);
             Square front = sq + forwardDir;
@@ -238,8 +243,7 @@ namespace Evaluation {
     template <Color side>
     Value Evaluator::evaluatePieces()
     {
-        Value material = 0;
-        Value activity = 0;
+        Value result = 0;
         constexpr bool test = false;
 
         constexpr Color enemy = ~side;
@@ -254,13 +258,13 @@ namespace Evaluation {
 
         // Knights
         Bitboard knights = board->pieces(side, KNIGHT);
-        int noKnights = Bitboards::popcount(knights);
 
+        pieceCount[side][KNIGHT] = Bitboards::popcount(knights);
         attacks[side][KNIGHT] = multipleAttacks[side][KNIGHT] = 0;
 
-        add_eval<side, test>(material, KNIGHT_BASE_VALUE.opening * noKnights, "Knights material value");
-        add_eval<side, test>(activity, KNIGHT_POSITION_DENSITY[centralDensity] * noKnights, "Knights board density value");
-        add_eval<side, test>(activity, Interpolation::interpolate_gs(KNIGHT_PAWN_SPREAD[pawnRankSpread], stage) * noKnights, "Knights pawn spread compensation");
+        add_eval<side, test>(result, Interpolation::interpolate_gs(KNIGHT_BASE_VALUE, stage) * pieceCount[side][KNIGHT], "Knights material value");
+        add_eval<side, test>(result, KNIGHT_POSITION_DENSITY[centralDensity] * pieceCount[side][KNIGHT], "Knights board density value");
+        add_eval<side, test>(result, Interpolation::interpolate_gs(KNIGHT_PAWN_SPREAD[pawnRankSpread], stage) * pieceCount[side][KNIGHT], "Knights pawn spread compensation");
         while (knights) {
             Square sq = Bitboards::pop_lsb(knights);
             Bitboard safetyBB = safeSquares & sq;
@@ -271,19 +275,19 @@ namespace Evaluation {
             attacks[side][ALL_PIECES] |= att;
 
             int mobility = Bitboards::popcount(att & safeSquares);
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(KNIGHT_MOBILITY[mobility], stage), "Knight mobility");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(KNIGHT_MOBILITY[mobility], stage), "Knight mobility");
 
             // Outposts
             if (attacks[side][PAWN] & safeSquares) {
                 // Possibility to attack outpost with pawn, II deg outpost
                 if (enemyPawns & Board::FrontSpan[sq][side] & Board::AdjacentFiles[sq])
-                    add_eval<side, test>(activity, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_II_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight II deg outpost");
+                    add_eval<side, test>(result, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_II_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight II deg outpost");
                 // Uncontested, III deg outpost
                 else
-                    add_eval<side, test>(activity, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_III_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight III deg outpost");
+                    add_eval<side, test>(result, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_III_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight III deg outpost");
             }
             else if (attacks[side][ALL_PIECES] & safeSquares)
-                add_eval<side, test>(activity, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_I_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight I deg outpost");
+                add_eval<side, test>(result, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_I_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight I deg outpost");
 
             // King tropism
             int tropismDistance = (Board::SquareDistance[sq][enemyKingPos] - 1) >> 1;
@@ -297,11 +301,12 @@ namespace Evaluation {
         // Bishops
         Bitboard bishops = board->pieces(side, BISHOP);
 
+        pieceCount[side][BISHOP] = Bitboards::popcount(bishops);
         attacks[side][BISHOP] = multipleAttacks[side][BISHOP] = 0;
 
-        add_eval<side, test>(material, BISHOP_BASE_VALUE.opening * Bitboards::popcount(bishops), "Bishops material value");
+        add_eval<side, test>(result, Interpolation::interpolate_gs(BISHOP_BASE_VALUE, stage) * pieceCount[side][BISHOP], "Bishops material value");
         if ((bishops & Board::LIGHT_SQUARES) && (bishops & Board::DARK_SQUARES))
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(BISHOP_PAIR_VALUE, stage), "Bishop pair bonus");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(BISHOP_PAIR_VALUE, stage), "Bishop pair bonus");
         while (bishops) {
             Square sq = Bitboards::pop_lsb(bishops);
             SquareColor color = color_of(sq);
@@ -315,32 +320,32 @@ namespace Evaluation {
 
             // Our pawn blockage
             int ourBlockage = std::min(Bitboards::popcount(board->pieces(side, PAWN) & colorMap), 6);
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(BISHOP_OWN_PAWN_BLOCKAGE[ourBlockage], stage), "Own pawn placement (bishop)");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(BISHOP_OWN_PAWN_BLOCKAGE[ourBlockage], stage), "Own pawn placement (bishop)");
 
             // Enemy pawn blockage
             int enemyBlockage = std::min(Bitboards::popcount(enemyPawns & colorMap), 6);
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(BISHOP_ENEMY_PAWN_BLOCKAGE[enemyBlockage], stage), "Enemy pawn placement (bishop)");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(BISHOP_ENEMY_PAWN_BLOCKAGE[enemyBlockage], stage), "Enemy pawn placement (bishop)");
 
             // Enemy structure weakness
             Value structureWeaknessEval = (Interpolation::interpolate_gs(BISHOP_ENEMY_PAWN_WEAKNESS, stage) * structurePoints[enemy][color]) >> 4;
-            add_eval<side, test>(activity, structureWeaknessEval, "Enemy pawn structure weakness (bishop)");
+            add_eval<side, test>(result, structureWeaknessEval, "Enemy pawn structure weakness (bishop)");
 
             // Mobility and fianchetto
             Bitboard occ = (FianchettoMap[side] & sq) ? board->pieces() ^ ourPieces : board->pieces();
             int mobility = Bitboards::popcount(Pieces::piece_attacks_s<BISHOP>(sq, occ) & safeSquares);
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(BISHOP_MOBILITY[mobility], stage), "Bishop mobility");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(BISHOP_MOBILITY[mobility], stage), "Bishop mobility");
 
             // Outposts
             if (attacks[side][PAWN] & sq) {
                 // Possibility to attack outpost with pawn, II deg outpost
                 if (enemyPawns & Board::FrontSpan[sq][side] & Board::AdjacentFiles[sq])
-                    add_eval<side, test>(activity, (Interpolation::interpolate_gs(BISHOP_OUTPOST_II_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Bishop II deg outpost");
+                    add_eval<side, test>(result, (Interpolation::interpolate_gs(BISHOP_OUTPOST_II_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Bishop II deg outpost");
                 // Uncontested, III deg outpost
                 else
-                    add_eval<side, test>(activity, (Interpolation::interpolate_gs(BISHOP_OUTPOST_III_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Bishop III deg outpost");
+                    add_eval<side, test>(result, (Interpolation::interpolate_gs(BISHOP_OUTPOST_III_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Bishop III deg outpost");
             }
             else if (attacks[side][ALL_PIECES] & sq)
-                add_eval<side, test>(activity, (Interpolation::interpolate_gs(BISHOP_OUTPOST_I_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Bishop I deg outpost");
+                add_eval<side, test>(result, (Interpolation::interpolate_gs(BISHOP_OUTPOST_I_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Bishop I deg outpost");
 
             // King tropism
             int blockers = Bitboards::popcount(Board::Boxes[sq][enemyKingPos] & ourPiecesExcluded);
@@ -353,13 +358,13 @@ namespace Evaluation {
 
         // Rooks
         Bitboard rooks = board->pieces(side, ROOK);
-        int noRooks = Bitboards::popcount(rooks);
         int structureWeakness = structurePoints[enemy][LIGHT_SQUARE] + structurePoints[enemy][DARK_SQUARE];
 
+        pieceCount[side][ROOK] = Bitboards::popcount(rooks);
         attacks[side][ROOK] = multipleAttacks[side][ROOK] = 0;
 
-        add_eval<side, test>(material, Interpolation::interpolate_gs(ROOK_BASE_VALUE, stage) * noRooks, "Rooks material value");
-        add_eval<side, test>(activity, (Interpolation::interpolate_gs(ROOK_ENEMY_PAWN_WEAKNESS, stage) * noRooks * structureWeakness) >> 5, "Enemy pawn structure weakness (rook)");
+        add_eval<side, test>(result, Interpolation::interpolate_gs(ROOK_BASE_VALUE, stage) * pieceCount[side][ROOK], "Rooks material value");
+        add_eval<side, test>(result, (Interpolation::interpolate_gs(ROOK_ENEMY_PAWN_WEAKNESS, stage) * pieceCount[side][ROOK] * structureWeakness) >> 5, "Enemy pawn structure weakness (rook)");
         while (rooks) {
             Square sq = Bitboards::pop_lsb(rooks);
             Bitboard fileBB = Board::file_bb_of(sq);
@@ -372,15 +377,15 @@ namespace Evaluation {
 
             // Placement bonuses
             if (rank_78 & sq)
-                add_eval<side, test>(activity, Interpolation::interpolate_gs(ROOK_ON_78_RANK, stage), "Rook on 7-8 rank");
+                add_eval<side, test>(result, Interpolation::interpolate_gs(ROOK_ON_78_RANK, stage), "Rook on 7-8 rank");
             else if (!(fileBB & board->pieces(PAWN)))
-                add_eval<side, test>(activity, Interpolation::interpolate_gs(ROOK_ON_OPEN_FILE, stage), "Rook on open file");
+                add_eval<side, test>(result, Interpolation::interpolate_gs(ROOK_ON_OPEN_FILE, stage), "Rook on open file");
             else if (!(fileBB & ourPawns))
-                add_eval<side, test>(activity, Interpolation::interpolate_gs(ROOK_ON_SEMIOPEN_FILE, stage), "Rook on semiopen file");
+                add_eval<side, test>(result, Interpolation::interpolate_gs(ROOK_ON_SEMIOPEN_FILE, stage), "Rook on semiopen file");
 
             // Mobility
             int mobility = Bitboards::popcount(att & safeSquares);
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(ROOK_MOBILITY[mobility], stage), "Rook mobility");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(ROOK_MOBILITY[mobility], stage), "Rook mobility");
 
             // King tropism
             int blockers = Bitboards::popcount(Board::Boxes[sq][enemyKingPos] & ourPiecesExcluded);
@@ -393,12 +398,12 @@ namespace Evaluation {
 
         // Queens
         Bitboard queens = board->pieces(side, QUEEN);
-        int noQueens = Bitboards::popcount(queens);
 
+        pieceCount[side][QUEEN] = Bitboards::popcount(queens);
         attacks[side][QUEEN] = multipleAttacks[side][QUEEN] = 0;
 
-        add_eval<side, test>(material, QUEEN_BASE_VALUE.opening * noQueens, "Queens material value");
-        add_eval<side, test>(activity, (Interpolation::interpolate_gs(QUEEN_ENEMY_PAWN_WEAKNESS, stage) * noQueens * structureWeakness) >> 5, "Enemy pawn structure weakness (queen)");
+        add_eval<side, test>(result, Interpolation::interpolate_gs(QUEEN_BASE_VALUE, stage) * pieceCount[side][QUEEN], "Queens material value");
+        add_eval<side, test>(result, (Interpolation::interpolate_gs(QUEEN_ENEMY_PAWN_WEAKNESS, stage) * pieceCount[side][QUEEN] * structureWeakness) >> 5, "Enemy pawn structure weakness (queen)");
         while (queens) {
             Square sq = Bitboards::pop_lsb(queens);
             Bitboard att = Pieces::piece_attacks_s<QUEEN>(sq, board->pieces());
@@ -410,7 +415,7 @@ namespace Evaluation {
 
             // Mobility
             int mobility = Bitboards::popcount(att & safeSquares);
-            add_eval<side, test>(activity, Interpolation::interpolate_gs(QUEEN_MOBILITY[mobility], stage), "Queen mobility");
+            add_eval<side, test>(result, Interpolation::interpolate_gs(QUEEN_MOBILITY[mobility], stage), "Queen mobility");
 
             // King tropism
             Bitboard betweenArea = Board::aligned(sq, enemyKingPos) ? Board::Paths[sq][enemyKingPos] : Board::Boxes[sq][enemyKingPos];
@@ -426,7 +431,7 @@ namespace Evaluation {
         if (Pieces::piece_attacks_s<KING>(board->kingPosition(side)) & kingArea[enemy])
             kingAreaAttackers[enemy]++;
 
-        return material + activity;
+        return result;
     }
 
     template Value Evaluator::evaluatePieces<WHITE>();
@@ -455,7 +460,7 @@ namespace Evaluation {
         Square kingSq = board->kingPosition(side);
 
         // King - pawns proximity (as a weighted average)
-        Value proximityValue = Interpolation::interpolate_gs(KING_PAWN_PROXIMITY_VALUE, stage) * (proximityPoints[side] - proximityWages[side]) / proximityWages[side];
+        Value proximityValue = proximityWages[side] ? Interpolation::interpolate_gs(KING_PAWN_PROXIMITY_VALUE, stage) * (proximityPoints[side] - proximityWages[side]) / proximityWages[side] : 0;
         add_eval<side, kingTest>(result, proximityValue, "King and pawns proximity");
 
         // Pawn shield
@@ -524,7 +529,7 @@ namespace Evaluation {
         // Mate threats
         // ???
 
-        add_eval<side, true>(result, (threatCount[side] * threatPoints * Interpolation::interpolate_gs(THREAT_VALUE, stage)) >> 6, "Threats");
+        add_eval<side, miscTest>(result, (threatCount[side] * threatPoints * Interpolation::interpolate_gs(THREAT_VALUE, stage)) >> 6, "Threats");
 
 
         return result;
@@ -532,5 +537,79 @@ namespace Evaluation {
 
     template Value Evaluator::evaluateKingAndMisc<WHITE>();
     template Value Evaluator::evaluateKingAndMisc<BLACK>();
+
+
+    Value Evaluator::adjustEval(Value eval) const
+    {
+        constexpr bool test = true;
+
+        int noPawns = pieceCount[WHITE][PAWN] + pieceCount[BLACK][PAWN];
+        int noPassedPawns = Bitboards::popcount(passedPawns[WHITE] | passedPawns[BLACK]);
+        int noPieces = pieceCount[WHITE][ALL_PIECES] + pieceCount[BLACK][ALL_PIECES] - noPawns;
+        int pieceImbalance = std::abs(pieceCount[WHITE][KNIGHT] - pieceCount[BLACK][KNIGHT]) * PieceImbalancePoints[KNIGHT] +
+                             std::abs(pieceCount[WHITE][BISHOP] - pieceCount[BLACK][BISHOP]) * PieceImbalancePoints[BISHOP] +
+                             std::abs(pieceCount[WHITE][ROOK] - pieceCount[BLACK][ROOK]) * PieceImbalancePoints[ROOK] +
+                             std::abs(pieceCount[WHITE][QUEEN] - pieceCount[BLACK][QUEEN]) * PieceImbalancePoints[QUEEN];
+
+        bool pawnsOnBothSides = (Board::QUEENSIDE & board->pieces(PAWN)) &&
+                                (Board::KINGSIDE & board->pieces(PAWN));
+
+        bool kingInfiltration = (BoardHalves[BLACK] & board->kingPosition(WHITE)) ||
+                                (BoardHalves[WHITE] & board->kingPosition(BLACK));
+
+        int threshold = COMPLEXITY_THRESHOLD;
+
+
+        // Special endgames
+        // Opposite color bishops endgame
+        if (stage == SINGLE_MINOR_VS_MINOR_ENDGAME && board->oppositeColorBishops()) {
+            // In the case of such endgame we decrease the 
+            Value adjustment = (pieceCount[WHITE][PAWN] - pieceCount[BLACK][PAWN]) * OPPOSITE_COLOR_BISHOPS_PAWN_ADJUSTMENT;
+            eval -= adjustment;
+        }
+        // Drawish rook endgame
+        else if (stage == SINGLE_ROOK_VS_ROOK_ENDGAME && !pawnsOnBothSides && !noPassedPawns) {
+            Value adjustment = (pieceCount[WHITE][PAWN] - pieceCount[BLACK][PAWN]) * DRAWISH_ROOK_ENDGAME_ADJUSTMENT;
+            eval -= adjustment;
+        }
+        // Up a piece endgames
+        else if (stage == SINGLE_MINOR_ENDGAME) {
+            Color sideWithPiece = board->pieces(WHITE, KNIGHT, BISHOP) ? WHITE : BLACK;
+            // If winning side has pawns, we increase the eval
+            if (sideWithPiece == WHITE && !pieceCount[WHITE][PAWN])
+                eval = std::min(eval, 0);
+            else if (sideWithPiece == WHITE)
+                eval += UP_A_PIECE_ENDGAME_ADJUSTMENT;
+            else if (sideWithPiece == BLACK && !pieceCount[BLACK][PAWN])
+                eval = std::max(eval, 0);
+            else
+                eval -= UP_A_PIECE_ENDGAME_ADJUSTMENT;
+        }
+        else if (stage == SINGLE_ROOK_ENDGAME) {
+            eval += board->pieces(WHITE, ROOK) ? UP_A_PIECE_ENDGAME_ADJUSTMENT : -UP_A_PIECE_ENDGAME_ADJUSTMENT;
+        }
+        // Adjust threshold when no pieces are on the board
+        else if (stage == PAWN_ENDGAME) {
+            threshold = PAWN_ENDGAME_COMPLEXITY_THRESHOLD;
+        }
+
+
+        int points = noPawns * PAWN_COMPLEXITY_POINTS +
+                     noPassedPawns * PASSED_PAWN_COMPLEXITY_POINTS +
+                     noPieces * PIECE_COMPLEXITY_POINTS +
+                     kingInfiltration * INFILTRATION_COMPLEXITY_POINTS +
+                     pawnsOnBothSides * PAWNS_ON_BOTH_SIDES_COMPLEXITY_POINTS +
+                     pieceImbalance;
+
+        if constexpr (test)
+            std::cout << "Winning chances adjustment: " << points << "/" << threshold << std::endl;
+
+        Value finalScore = eval * std::min(points, threshold) / threshold;
+
+        // Shuffling (no progress) adjustment
+        finalScore = finalScore * (100 - board->halfmovesClocked()) / 100;
+
+        return finalScore;
+    }
 
 }

@@ -9,13 +9,7 @@ Or just a chess bot if that's what you want to call it.<br><br>
 + Sliding piece attacks, magic bitboards&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Full game rules implementation - enpassant, pins, checks and promotions&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Move generation algorithms&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-+ Hand crafted, heuristic evaluation function (HCE):&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
-  + Piece activity&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-  + Pawn structure&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-  + King safety&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-  + Passed pawns&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-  + Space&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-  + Evaluation descent&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
++ Hand crafted, heuristic evaluation function (HCE):&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Basic search algorithms&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Transposition table, zobrist hash&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Selectivity heuristics&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">

@@ -42,6 +42,7 @@ namespace Evaluation {
         template <Color side> Value evaluatePawns2();   // Second call, after evaluatePieces()
         template <Color side> Value evaluatePieces();
         template <Color side> Value evaluateKingAndMisc();
+        Value adjustEval(Value eval) const;
 
         // Helper methods
         int countAttackers(Bitboard area, Color side, PieceType type) const;
@@ -55,6 +56,9 @@ namespace Evaluation {
 
         // Common calculations shared among different evaluation methods
         std::uint16_t stage = GAME_STAGE_MAX_VALUE;
+
+        // Piece imabalance
+        int pieceCount[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };  // Count all the pieces except for the kings
 
         // Piece-attack properties
         Bitboard attacks[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };
