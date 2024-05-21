@@ -9,26 +9,26 @@ namespace Testing {
 	template <bool trace>
 	MoveCounters perftFull(BoardConfig& board, int depth, std::ostream& output, std::vector<Move>* moveTrace)
 	{
-		MoveList moves;
+		MoveList generatedMoves;
 		MoveCounters moveCounters = { 0, 0, 0, 0, 0 };
 
-		MoveGeneration::generateMoves<LEGAL>(moves, board);
+		MoveGeneration::generateMoves<MoveGeneration::LEGAL>(generatedMoves, board);
 		if (depth == 1) {
 			if constexpr (trace) {
 				output << "Path to the node:\n";
 				for (const Move& move : *moveTrace)
 					output << move << std::endl;
 				output << " Leaves from node:\n";
-				output << moves << std::endl;
+				output << generatedMoves << std::endl;
 			}
-			moveCounters.noMoves = moves.size();
-			moveCounters.noCaptures = std::count_if(moves.begin(), moves.end(), [](const Move& move) {return move.isCapture(); });
-			moveCounters.noEnpassants = std::count_if(moves.begin(), moves.end(), [](const Move& move) {return move.isEnpassant(); });
-			moveCounters.noCastles = std::count_if(moves.begin(), moves.end(), [](const Move& move) {return move.isCastle(); });
-			moveCounters.noPromotions = std::count_if(moves.begin(), moves.end(), [](const Move& move) {return move.isPromotion(); });
+			moveCounters.noMoves = generatedMoves.size();
+			moveCounters.noCaptures = std::count_if(generatedMoves.begin(), generatedMoves.end(), [](const Move& move) {return move.isCapture(); });
+			moveCounters.noEnpassants = std::count_if(generatedMoves.begin(), generatedMoves.end(), [](const Move& move) {return move.isEnpassant(); });
+			moveCounters.noCastles = std::count_if(generatedMoves.begin(), generatedMoves.end(), [](const Move& move) {return move.isCastle(); });
+			moveCounters.noPromotions = std::count_if(generatedMoves.begin(), generatedMoves.end(), [](const Move& move) {return move.isPromotion(); });
 		}
 		else {
-			for (const Move& move : moves) {
+			for (const Move& move : generatedMoves) {
 				if constexpr (trace)
 					moveTrace->push_back(move);
 				board.makeMove(move);
@@ -47,11 +47,11 @@ namespace Testing {
 	{
 		if (depth == 0) return 1;
 
-		MoveList moves;
+		MoveList generatedMoves;
 		uint64_t noMoves = 0;
 
-		MoveGeneration::generateMoves<LEGAL>(moves, board);
-		for (const Move& move : moves) {
+		MoveGeneration::generateMoves<MoveGeneration::LEGAL>(generatedMoves, board);
+		for (const Move& move : generatedMoves) {
 			board.makeMove(move);
 			noMoves += perftLight(board, depth - 1);
 			board.undoLastMove();

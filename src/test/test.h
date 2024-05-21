@@ -1,4 +1,5 @@
 #pragma once
+
 #include "../logic/boardConfig.h"
 #include "../logic/pieces.h"
 #include "../logic/zobrist.h"
@@ -87,4 +88,7 @@ namespace Testing {
 
 	// Universal PGN tests
 	void testZobrist();
+
+	// SEE tests
+	void testSEE();
 }

@@ -5,42 +5,63 @@
 #include "transpositionTable.h"
 
 
+
+constexpr int MAX_THREADS = 4;
+constexpr Depth MAX_REACHABLE_DEPTH = 100;
+
+
+
 class Engine
 {
 public:
     Engine(BoardConfig* board);
 
-    void reset();
+    void reset(const std::string& fen);
+    void reset(const BoardConfig* realBoard);
 
     // Search
     Value evaluate(Depth depth);
 
-    static constexpr Depth MAX_REACHABLE_DEPTH = 10;
-
 private:
+    // Basic engine actions
     Value search(Value alpha, Value beta, Depth depth);
     Value evaluate();
-    void generateMoves(MoveList* lists);
 
-    BoardConfig* realBoard;
+    // Other helper functions
+    Value relative(Value eval) const;
+
+    // Virtual board to perform search
     BoardConfig virtualBoard;
-
-    MoveList moveLists[MAX_REACHABLE_DEPTH][MAX_USED_CATEGORIES];
+    // Real board info
+    Age currentPositionAge;
+    // Move generation containers
+    MoveList generatedMoves[MAX_THREADS][MAX_REACHABLE_DEPTH];
+    // Evaluation aspects
     Evaluation::Evaluator evaluator;
+    // Transposition table
     TranspositionTable transpositionTable;
-
-    int movegenRange = 0;
-    std::uint64_t nodes = 0;
 };
 
 
-inline void Engine::reset()
+inline void Engine::reset(const std::string& fen)
+{
+    virtualBoard.loadFromFen(fen);
+    currentPositionAge = virtualBoard.halfmovesPlain();
+}
+
+inline void Engine::reset(const BoardConfig* realBoard)
 {
     virtualBoard.loadFromConfig(*realBoard);
+    currentPositionAge = virtualBoard.halfmovesPlain();
+}
+
+inline Value Engine::relative(Value eval) const
+{
+    return virtualBoard.movingSide() == WHITE ? eval : -eval;
 }
 
 inline Value Engine::evaluate()
 {
     // Returns a relative evaluation to fit in the NegaMax architecture
-    return virtualBoard.movingSide() == WHITE ? evaluator.evaluate() : -evaluator.evaluate();
+    return relative(evaluator.evaluate());
 }

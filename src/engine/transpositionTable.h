@@ -2,80 +2,77 @@
 
 #include "evaluation.h"
 #include <cinttypes>
+#include <cmath>
 
 
 using Depth = std::uint8_t;
 using Age = std::uint16_t;
-
 enum NodeType : std::uint8_t { PV_NODE = 0, CUT_NODE, ALL_NODE, INVALID_NODE };
+
+inline Age metric(Age age, Age rootAge)
+{
+    return age > rootAge ? age - rootAge : rootAge - age;
+}
 
 
 // Adjustable hyperparameters
-constexpr int mbSize = 32;
-constexpr int maskLength = 20;
+constexpr int MB_SIZE = 32;             // Total size of the transposition table in MB
+constexpr int MASK_LENGTH = 20;         // For Entry of size 32 B
+
 
 class TranspositionTable
 {
 public:
+
     struct Entry
     {
         Entry() : key(0ULL), pieces(0xffffffffffffffff), depth(0), score(0), bestMove(), typeOfNode(INVALID_NODE), age(0) {}
         Entry(std::uint64_t key, Bitboard pieces, Depth depth, Value score, const Move& bestMove, NodeType type, Age age)
             : key(key), pieces(pieces), depth(depth), score(score), bestMove(bestMove), typeOfNode(type), age(age) {}
 
+        bool matches(std::uint64_t key, Bitboard pieces) const
+        {
+            return this->key == key && this->pieces == pieces;
+        }
+
         std::uint64_t key;      // Zobrist hash
         Bitboard pieces;        // For better collisions detection
-        Depth depth;
-        Value score;
-        Move bestMove;
-        NodeType typeOfNode;
+        Depth depth;            // Search depth used to obtain the score
+        Value score;            // Evaluation of the position
+        Move bestMove;          // Best move for side being on move
+        NodeType typeOfNode;    // Alpha-beta specyfic
         Age age;                // Counted in halfmoves from starting position
     };
 
-    TranspositionTable() : mask(0xffffffffffffffff >> (64 - maskLength)) {}
-
-    void set(Entry&& entry, Age rootAge);
+    void set(const Entry& entry, Age rootAge);
     const Entry* probe(std::uint64_t key, Bitboard pieces) const;
 
 private:
     std::uint64_t index(std::uint64_t key) const;
-    Age ageMetric(Age age, Age rootAge) const;
-    bool matches(const Entry& entry, std::uint64_t key, Bitboard pieces) const;
 
-    Entry entries[32 * 1024 * mbSize];
-    std::uint64_t mask;
+    Entry entries[1024 * 1024 * MB_SIZE / sizeof(Entry)];
+    std::uint64_t mask = 0xffffffffffffffff >> (64 - MASK_LENGTH);
 };
 
 
-inline void TranspositionTable::set(Entry&& entry, Age rootAge)
+inline void TranspositionTable::set(const Entry& entry, Age rootAge)
 {
     Entry* oldEntry = &entries[index(entry.key)];
-    if (matches(*oldEntry, entry.key, entry.pieces)) {
+    if (oldEntry->matches(entry.key, entry.pieces)) {
         if (oldEntry->depth < entry.depth)      // Deeper search is usualy more reliable
-            (*oldEntry) = std::move(entry);
+            (*oldEntry) = entry;
     }
-    else if (Bitboards::popcount(oldEntry->pieces) > Bitboards::popcount(entry.pieces) || 
-        ageMetric(oldEntry->age, rootAge) >= ageMetric(entry.age, rootAge))
-        (*oldEntry) = std::move(entry);
+    else if (Bitboards::popcount(oldEntry->pieces) > Bitboards::popcount(entry.pieces) || metric(oldEntry->age, rootAge) >= metric(entry.age, rootAge))
+        (*oldEntry) = entry;
 }
 
 inline const TranspositionTable::Entry* TranspositionTable::probe(std::uint64_t key, Bitboard pieces) const
 {
     const Entry* entry = &entries[index(key)];
-    return matches(*entry, key, pieces) ? entry : nullptr;
+    return entry->matches(key, pieces) ? entry : nullptr;
 }
 
 inline std::uint64_t TranspositionTable::index(std::uint64_t key) const
 {
     return key & mask;
-}
-
-inline Age TranspositionTable::ageMetric(Age age, Age rootAge) const
-{
-    return age > rootAge ? age - rootAge : rootAge - age;
-}
-
-inline bool TranspositionTable::matches(const Entry& entry, std::uint64_t key, Bitboard pieces) const
-{
-    return entry.key == key && entry.pieces == pieces;
 }

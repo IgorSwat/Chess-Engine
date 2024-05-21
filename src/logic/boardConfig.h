@@ -65,6 +65,7 @@ public:
 	bool oppositeColorBishops() const;
 
 	// Square-centric operations
+	bool isFree(Square sq) const;
 	Piece onSquare(Square sq) const;
 	Bitboard attackersToSquare(Square sq, Bitboard occ) const;
 	Bitboard attackersToSquare(Square sq, Color side, Bitboard occ) const;
@@ -85,15 +86,12 @@ public:
 	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator
 	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source
 
-	// Static exchange evaluation
-	int see(Square from, PieceType attackingPiece, Square to, PieceType attackedPiece) const;
-
 	// Move-counting issues & others
 	Color movingSide() const;
 	std::uint16_t gameStage() const;
 	std::uint16_t halfmovesPlain() const;
 	std::uint16_t halfmovesClocked() const;
-	std::uint16_t moves() const;
+	std::uint16_t generatedMoves() const;
 	std::uint64_t hash() const;
 
 	friend std::ostream& operator<<(std::ostream& os, const BoardConfig& board);
@@ -108,8 +106,6 @@ private:
 	// Checks & pins handlers
 	void updateChecks(Color checkedSide);
 	void updatePins(Color side);
-	// Static exchange evaluation
-	Bitboard lvp(Color side, Bitboard area, PieceType& piece) const;	// Least valuable piece
 
 	Color sideOnMove = WHITE;
 
@@ -125,7 +121,6 @@ private:
 
 	Zobrist::ZobristHash zobrist;
 };
-
 
 
 inline Bitboard BoardConfig::pieces(PieceType ptype) const
@@ -159,6 +154,11 @@ inline bool BoardConfig::oppositeColorBishops() const
 {
 	return ((pieces(WHITE, BISHOP) & Board::LIGHT_SQUARES) && (pieces(BLACK, BISHOP) & Board::DARK_SQUARES)) ||
 		   ((pieces(WHITE, BISHOP) & Board::DARK_SQUARES) && (pieces(BLACK, BISHOP) & Board::LIGHT_SQUARES));
+}
+
+inline bool BoardConfig::isFree(Square sq) const
+{
+	return board[sq] == NO_PIECE;
 }
 
 inline Piece BoardConfig::onSquare(Square sq) const
@@ -226,7 +226,7 @@ inline std::uint16_t BoardConfig::halfmovesClocked() const
 	return posInfo->halfmoveClock;
 }
 
-inline std::uint16_t BoardConfig::moves() const
+inline std::uint16_t BoardConfig::generatedMoves() const
 {
 	return (halfmoveCount + 2 - sideOnMove) >> 1;
 }

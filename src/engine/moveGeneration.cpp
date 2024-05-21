@@ -12,6 +12,7 @@ std::ostream& operator<<(std::ostream& os, const MoveList& moveList)
 
 
 namespace MoveGeneration {
+
 	template <Color side, MoveGenType gen>
 	void generatePawnMoves(MoveList& moveList, const BoardConfig& board, Bitboard target)
 	{
@@ -212,6 +213,6 @@ namespace MoveGeneration {
 			generateMoves<PSEUDO_LEGAL>(moveList, board);
 		Move* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
 										 [&board](const Move& move) {return board.legalityCheckLight(move);});
-		moveList.setEndOfList(legalsEnd);
+		moveList.setEnd(legalsEnd);
 	}
 }

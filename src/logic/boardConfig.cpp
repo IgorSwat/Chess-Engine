@@ -398,28 +398,6 @@ void BoardConfig::undoLastMove()
 	zobrist.restoreHash(posInfo->hash);
 }
 
-void BoardConfig::clear()
-{
-	posInfo = rootState;
-
-	for (int i = 0; i < PIECE_TYPE_RANGE; i++)
-		piecesByType[i] = 0;
-	for (int i = 0; i < COLOR_RANGE; i++)
-		piecesByColor[i] = 0;
-	for (int i = 0; i < SQUARE_RANGE; i++)
-		board[i] = NO_PIECE;
-	kingSquare[WHITE] = kingSquare[BLACK] = INVALID_SQUARE;
-
-	posInfo->castlingRights = NO_CASTLING;
-	posInfo->enpassantSquare = INVALID_SQUARE;
-
-	posInfo->checkers = 0;
-
-	halfmoveCount = 0;
-	posInfo->halfmoveClock = 0;
-	posInfo->gameStageValue = 0;
-}
-
 Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
 {
 	return ((Pieces::pawn_attacks(WHITE, sq) | Pieces::pawn_attacks(BLACK, sq)) & pieces(PAWN)) |
@@ -503,32 +481,26 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 	return !(between & pieces()) && (!(pinnedPieces(side) & from) || Board::aligned(kingSq, to, from));
 }
 
-int BoardConfig::see(Square from, PieceType attackingPiece, Square to, PieceType attackedPiece) const
+void BoardConfig::clear()
 {
-	int gain[33], depth = sideOnMove;
-	Bitboard mayXray = pieces() ^ pieces(KNIGHT) ^ pieces(KING);
-	Bitboard occ = pieces();
-	Bitboard fromSet = square_to_bb(from);
-	Bitboard attackdef = attackersToSquare(to, occ);
+	posInfo = rootState;
 
-	gain[depth] = PieceExchangeValue[attackedPiece];
-	do {
-		depth++;
-		gain[depth] = PieceExchangeValue[attackingPiece] - gain[depth - 1];
-		if (std::max(-gain[depth - 1], gain[depth]) < 0)
-			break;
-		attackdef ^= fromSet;
-		if (fromSet & mayXray) {
-			Bitboard xRayAttackers = (Pieces::xray_attacks<BISHOP>(to, occ, fromSet) & pieces(BISHOP, QUEEN)) |
-									 (Pieces::xray_attacks<ROOK>(to, occ, fromSet) & pieces(ROOK, QUEEN));
-			attackdef |= xRayAttackers;
-		}
-		occ ^= fromSet;
-		fromSet = lvp(Color(depth & 0x1), attackdef, attackingPiece);
-	} while (fromSet);
-	while (--depth)
-		gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
-	return gain[sideOnMove];
+	for (int i = 0; i < PIECE_TYPE_RANGE; i++)
+		piecesByType[i] = 0;
+	for (int i = 0; i < COLOR_RANGE; i++)
+		piecesByColor[i] = 0;
+	for (int i = 0; i < SQUARE_RANGE; i++)
+		board[i] = NO_PIECE;
+	kingSquare[WHITE] = kingSquare[BLACK] = INVALID_SQUARE;
+
+	posInfo->castlingRights = NO_CASTLING;
+	posInfo->enpassantSquare = INVALID_SQUARE;
+
+	posInfo->checkers = 0;
+
+	halfmoveCount = 0;
+	posInfo->halfmoveClock = 0;
+	posInfo->gameStageValue = 0;
 }
 
 void BoardConfig::updatePins(Color side)
@@ -544,16 +516,6 @@ void BoardConfig::updatePins(Color side)
 		posInfo->pinned[side] |= (Board::Paths[kingSq][sq] & pieces(side));
 	}
 	posInfo->pinned[side] &= ~kingSq;	// Only if PATHS[sq1][sq2] contains sq1 and sq2
-}
-
-Bitboard BoardConfig::lvp(Color side, Bitboard area, PieceType& piece) const
-{
-	for (piece = PAWN; piece <= KING; piece = PieceType(piece + 1)) {
-		Bitboard subset = area & pieces(side, piece);
-		if (subset)
-			return square_to_bb(Bitboards::lsb(subset));
-	}
-	return 0;
 }
 
 std::ostream& operator<<(std::ostream& os, const BoardConfig& board)
