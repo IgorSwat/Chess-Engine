@@ -71,11 +71,13 @@ namespace MoveGeneration {
 			}
 
 			// En passant
-			if (gen != CHECK_EVASION || (target & board.enpassantSquare())) {
-				Bitboard enpassantPawns = pawnsNotOn7 & Board::AdjacentRankSquares[board.enpassantSquare()];
-				Square to = board.enpassantSquare() + forwardDir;
-				while (enpassantPawns)
-					moveList.push_back(Move(Bitboards::pop_lsb(enpassantPawns), to, ENPASSANT_FLAG));
+			if constexpr (gen != CHECK_EVASION) {
+				if (target & board.enpassantSquare()) {
+					Bitboard enpassantPawns = pawnsNotOn7 & Board::AdjacentRankSquares[board.enpassantSquare()];
+					Square to = board.enpassantSquare() + forwardDir;
+					while (enpassantPawns)
+						moveList.push_back(Move(Bitboards::pop_lsb(enpassantPawns), to, ENPASSANT_FLAG));
+				}
 			}
 		}
 
@@ -100,6 +102,7 @@ namespace MoveGeneration {
 		}
 	}
 
+
 	template <Color side, PieceType pieceType, MoveGenType gen>
 	void generatePieceMoves(MoveList& moveList, const BoardConfig& board, Bitboard target)
 	{
@@ -123,6 +126,7 @@ namespace MoveGeneration {
 			}
 		}
 	}
+
 
 	template <Color side, MoveGenType gen>
 	void generateKingMoves(MoveList& moveList, const BoardConfig& board, Bitboard target)
@@ -154,6 +158,7 @@ namespace MoveGeneration {
 		}
 	}
 
+
 	template <Color side, MoveGenType gen>
 	void generateSideMoves(MoveList& moveList, const BoardConfig& board)
 	{
@@ -178,16 +183,18 @@ namespace MoveGeneration {
 			}
 			else
 				generateKingMoves<side, CHECK_EVASION>(moveList, board, target);
-			return;
 		}
 
-		generatePawnMoves<side, gen>(moveList, board, target);
-		generatePieceMoves<side, KNIGHT, gen>(moveList, board, target);
-		generatePieceMoves<side, BISHOP, gen>(moveList, board, target);
-		generatePieceMoves<side, ROOK, gen>(moveList, board, target);
-		generatePieceMoves<side, QUEEN, gen>(moveList, board, target);
-		generateKingMoves<side, gen>(moveList, board, target);
+		if constexpr (gen != CHECK_EVASION) {
+			generatePawnMoves<side, gen>(moveList, board, target);
+			generatePieceMoves<side, KNIGHT, gen>(moveList, board, target);
+			generatePieceMoves<side, BISHOP, gen>(moveList, board, target);
+			generatePieceMoves<side, ROOK, gen>(moveList, board, target);
+			generatePieceMoves<side, QUEEN, gen>(moveList, board, target);
+			generateKingMoves<side, gen>(moveList, board, target);
+		}
 	}
+
 
 	template <MoveGenType gen>
 	void generateMoves(MoveList& moveList, const BoardConfig& board)

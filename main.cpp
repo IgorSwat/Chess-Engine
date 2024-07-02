@@ -1,16 +1,24 @@
-#include "src/logic/boardConfig.h"
+#include "src/test/test.h"
+//#include "src/gui/boardController.h"
+#include "src/logic/zobrist.h"
+//#include "src/engine/engine.h"
 #include <iostream>
 #include <iomanip>
-#include <SFML/Graphics.hpp>
-using namespace std;
+#include <memory>
+#include <chrono>
+
+using namespace Testing;
 	
+
 int main()
 {
-	BoardConfig config;
-	config.makeMove(Move(SQ_E2, SQ_E4, DOULBLE_PAWN_PUSH_FLAG));
-	config.makeMove(Move(SQ_E7, SQ_E5, DOULBLE_PAWN_PUSH_FLAG));
-	config.makeMove(Move(SQ_E1, SQ_E2, QUIET_MOVE));
-	cout << config << endl;
+	Tester tester;
+	tester.initEnvironment();
+	
+	tester.test(Testing::pgnParsingTest);
+	//tester.test(Testing::perftMovegenTestMidgamePos1);
+
+	//runGUI();
 
 	return 0;
 }

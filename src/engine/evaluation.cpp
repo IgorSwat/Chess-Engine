@@ -267,7 +267,6 @@ namespace Evaluation {
         add_eval<side, test>(result, Interpolation::interpolate_gs(KNIGHT_PAWN_SPREAD[pawnRankSpread], stage) * pieceCount[side][KNIGHT], "Knights pawn spread compensation");
         while (knights) {
             Square sq = Bitboards::pop_lsb(knights);
-            Bitboard safetyBB = safeSquares & sq;
             Bitboard att = Pieces::piece_attacks_s<KNIGHT>(sq);
 
             multipleAttacks[side][KNIGHT] |= attacks[side][KNIGHT] & att;

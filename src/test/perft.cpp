@@ -1,10 +1,38 @@
 #include "test.h"
+#include "../logic/boardConfig.h"
+#include "../engine/moveGeneration.h"
 #include <iterator>
 #include <algorithm>
 #include <fstream>
 #include <chrono>
 
 namespace Testing {
+
+	struct MoveCounters
+	{
+		uint64_t noMoves = 0;
+		uint64_t noCaptures = 0;
+		uint64_t noEnpassants = 0;
+		uint64_t noCastles = 0;
+		uint64_t noPromotions = 0;
+
+		void operator+=(const MoveCounters &other)
+		{
+			noMoves += other.noMoves;
+			noCaptures += other.noCaptures;
+			noEnpassants += other.noEnpassants;
+			noCastles += other.noCastles;
+			noPromotions += other.noPromotions;
+		}
+	};
+
+	struct PerftData
+	{
+		std::string fen;
+		int depth;
+		MoveCounters moveCounters;
+	};
+
 	// Full perft function to check in details correctness of generated moves
 	template <bool trace>
 	MoveCounters perftFull(BoardConfig& board, int depth, std::ostream& output, std::vector<Move>* moveTrace)

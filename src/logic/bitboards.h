@@ -3,6 +3,7 @@
 #include "boardElements.h"
 #include <string>
 #include <cassert>
+#include <nmmintrin.h>
 
 
 namespace Bitboards {

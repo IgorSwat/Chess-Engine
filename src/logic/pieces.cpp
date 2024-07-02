@@ -115,7 +115,6 @@ namespace Pieces {
 		int size = 0;
 
 		for (int sq = SQ_A1; sq <= SQ_H8; ++sq) {
-			Bitboard squareBB = square_to_bb(Square(sq));
 			Bitboard edges = ((Board::RANK_1 | Board::RANK_8) & ~Board::rank_bb_of(Square(sq))) | ((Board::FILE_A | Board::FILE_H) & ~Board::file_bb_of(Square(sq)));
 			Bitboard mask = attacksCalc(Square(sq), 0) & ~edges;
 			Magic& m = magics[sq];

@@ -54,7 +54,7 @@ namespace {
 
 	Piece pieceFromChar(char c)
 	{
-		char lowerC = std::tolower(c);
+		char lowerC = static_cast<char>(std::tolower(c));
 		Piece piece = lowerC == 'p' ? W_PAWN :
 			lowerC == 'n' ? W_KNIGHT :
 			lowerC == 'b' ? W_BISHOP :
@@ -117,7 +117,7 @@ void BoardConfig::loadFromFen(const std::string& fen)
 	int i = 0, j = 0;
 	char c;
 	// Parsing the pieces distribution
-	while (!stream.eof() && (c = stream.get()) != ' ') {
+	while (!stream.eof() && (c = static_cast<char>(stream.get())) != ' ') {
 		if (c == '/') {
 			i++;
 			j = 0;
@@ -134,11 +134,11 @@ void BoardConfig::loadFromFen(const std::string& fen)
 	}
 	sideOnMove = stream.get() == 'w' ? WHITE : BLACK;
 	stream.get();
-	while (!stream.eof() && (c = stream.get()) != ' ') {
+	while (!stream.eof() && (c = static_cast<char>(stream.get())) != ' ') {
 		if (c != '-')
 			posInfo->castlingRights |= castlingRightsFromChar(c);
 	}
-	if (!stream.eof() && (c = stream.get()) != '-') {
+	if (!stream.eof() && (c = static_cast<char>(stream.get())) != '-') {
 		int epRank = sideOnMove == WHITE ? 4 : 3;
 		int epFile = static_cast<int>(c - 'a');
 		posInfo->enpassantSquare = make_square(epRank, epFile);

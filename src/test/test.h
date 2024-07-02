@@ -1,74 +1,59 @@
 #pragma once
 
-#include "../logic/boardConfig.h"
-#include "../logic/pieces.h"
-#include "../logic/zobrist.h"
-#include "../engine/moveGeneration.h"
+#include <iostream>
 #include <functional>
+#include <cassert>
+#include <tuple>
+#include <initializer_list>
 
 
 using TestingFunction = std::function<void(void)>;
 
-struct MoveCounters
-{
-	uint64_t noMoves = 0;
-	uint64_t noCaptures = 0;
-	uint64_t noEnpassants = 0;
-	uint64_t noCastles = 0;
-	uint64_t noPromotions = 0;
 
-	void operator+=(const MoveCounters& other)
-	{
-		noMoves += other.noMoves;
-		noCaptures += other.noCaptures;
-		noEnpassants += other.noEnpassants;
-		noCastles += other.noCastles;
-		noPromotions += other.noPromotions;
-	}
-};
-
-struct PerftData
-{
-	std::string fen;
-	int depth;
-	MoveCounters moveCounters;
-};
-
-
+// -----------------
+// Testing framework
+// -----------------
 
 class Tester
 {
 public:
-	Tester()
-	{
-		Pieces::initAttackTables();
-		Board::initBoardElements();
-		Zobrist::initZobristHashing();
-	}
+	Tester() {}
 
-	void test(TestingFunction testingFunction)
-	{
-		testingFunction();
-	}
+	void initEnvironment() const;
+
+	void test(TestingFunction testingFunction) const { testingFunction(); }
 
 	template <typename... TestingFunctions>
-	void test(TestingFunction testingFunction, TestingFunctions... otherTests)
+	void test(TestingFunction testingFunction, TestingFunctions... otherTests) const
 	{
-		test(testingFunction);
-		test(otherTests...);
+		if (environmentReady) {
+			test(testingFunction);
+			test(otherTests...);
+		}
+		else
+			std::cerr << "[Tester]: Environment not initialized\n";
 	}
+
+private:
+	static bool environmentReady;
 };
 
 
+// ------------------------------
+// Declarations of test functions
+// ------------------------------
 
 namespace Testing {
-	// Global chess logic tests
-	void testMagics();
-	void testXRayAttacks();
+	// General purpose testing function
+	// ...
+
+	// Magic bitboard tests
+	void magicsTest();
+	void xRayAttacksTest();
 
 	// BoardConfig tests
 	void staticLoadingTest();
-	void pinsAndChecksBoardconfigTestRuySteinitz();
+	void pinsAndChecksTest();
 	void castlingRightsAndEnPassantTest();
 
 	// Move generation tests
@@ -87,8 +72,11 @@ namespace Testing {
 	void perftSpeedTestEndgamePos();
 
 	// Universal PGN tests
-	void testZobrist();
+	void zobristTest();
 
 	// SEE tests
-	void testSEE();
+	void seeTest();
+
+	// PGN parsing tests
+	void pgnParsingTest();
 }

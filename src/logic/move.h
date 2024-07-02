@@ -5,6 +5,10 @@
 #include <iomanip>
 
 
+// -------------
+// Bitwise flags
+// -------------
+
 using Movemask = uint16_t;
 constexpr int MOVEMASK_SIZE = 16;
 
@@ -26,6 +30,9 @@ constexpr Movemask ROOK_PROMOTION_FLAG = 0xa;
 constexpr Movemask QUEEN_PROMOTION_FLAG = 0xb;
 
 
+// ---------------
+// Main move types
+// ---------------
 
 enum MoveType
 {
@@ -38,9 +45,11 @@ constexpr MoveType MOVES_BY_FLAG[16]{
 };
 
 
+// ----------
+// Move class
+// ----------
 
-// WARNING! 
-// Move class makes an assumption, that any Square ever given to it's methods will not be equal to INVALID_SQUARE.
+// WARNING! Move class makes an assumption, that any Square ever given to it's methods will not be equal to INVALID_SQUARE.
 
 class Move
 {
@@ -72,10 +81,6 @@ public:
 private:
 	Movemask m_move = 0;
 };
-
-const Move NULL_MOVE = Move(SQ_A1, SQ_A1, 0);
-
-
 
 inline Move::Move() 
 {
@@ -177,3 +182,10 @@ inline std::ostream& operator<<(std::ostream& os, const Move& move)
 	os << "flags: " << std::hex << move.flags();
 	return os;
 }
+
+
+// ------------------------
+// Special move definitions
+// ------------------------
+
+const Move NULL_MOVE = Move(SQ_A1, SQ_A1, 0);

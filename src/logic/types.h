@@ -7,9 +7,9 @@
 using Bitboard = uint64_t;
 
 
-// ----------------------------------------
+// -----------------
 // Squares and files
-// ----------------------------------------
+// -----------------
 
 enum File : int {
 	A_FILE = 0, B_FILE, C_FILE, D_FILE, E_FILE, F_FILE, G_FILE, H_FILE,
@@ -93,9 +93,9 @@ inline Bitboard operator^=(Bitboard& bb, Square sq)
 }
 
 
-// ----------------------------------------
+// -------------
 // Square colors
-// ----------------------------------------
+// -------------
 
 enum SquareColor : int {
 	DARK_SQUARE = 0, LIGHT_SQUARE,
@@ -114,9 +114,9 @@ constexpr inline SquareColor color_of(Square s)
 }
 
 
-// ----------------------------------------
+// ----------
 // Directions
-// ----------------------------------------
+// ----------
 
 enum Direction : int {
 	WEST = 0, SOUTH_WEST, SOUTH, SOUTH_EAST, EAST, NORTH_EAST, NORTH, NORTH_WEST,
@@ -126,14 +126,12 @@ enum Direction : int {
 	DIRECTION_RANGE = 8
 };
 
+constexpr int DIRECTION_SHIFTS[DIRECTION_RANGE] = { -1, -9, -8, -7, 1, 9, 8, 7 };
+
 constexpr inline Direction operator~(Direction dir)
 {
 	return Direction((int(dir) + 4) & 0x7);
 }
-
-constexpr int DIRECTION_SHIFTS[DIRECTION_RANGE] = {
-	-1, -9, -8, -7, 1, 9, 8, 7
-};
 
 constexpr inline Square operator+(Square sq, Direction dir)
 {
@@ -146,9 +144,9 @@ constexpr inline Square operator-(Square sq, Direction dir)
 }
 
 
-// ----------------------------------------
+// -------------
 // Playing sides
-// ----------------------------------------
+// -------------
 
 enum Color : int {
 	WHITE = 0, BLACK,
@@ -162,9 +160,9 @@ constexpr inline Color operator~(Color side)
 }
 
 
-// ----------------------------------------
+// ------
 // Pieces
-// ----------------------------------------
+// ------
 
 enum PieceType : int {
 	INVALID_PIECE_TYPE = 0,
@@ -207,9 +205,9 @@ constexpr inline Piece make_piece(Color color, PieceType type)
 }
 
 
-// ----------------------------------------
+// --------
 // Castling
-// ----------------------------------------
+// --------
 
 enum CastlingRights : int {
 	NO_CASTLING = 0,
