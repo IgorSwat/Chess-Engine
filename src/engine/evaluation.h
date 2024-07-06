@@ -47,6 +47,7 @@ namespace Evaluation {
         // Helper methods
         int countAttackers(Bitboard area, Color side, PieceType type) const;
         template <typename... PieceTypes> int countAttackers(Bitboard area, Color side, PieceType type, PieceTypes... types) const;
+        bool detectOppositeColorBishops() const;
 
         template <Color side> void updateProximity(Square sq, int ourFactor, int enemyFactor);
         template <Color side> void updateKingAreaSafety(Square sq, Bitboard attacks, int attackFactor);
@@ -108,6 +109,12 @@ namespace Evaluation {
     inline int Evaluator::countAttackers(Bitboard area, Color side, PieceType type, PieceTypes... types) const
     {
         return countAttackers(area, side, type) + countAttackers(area, side, types...);
+    }
+
+    inline bool Evaluator::detectOppositeColorBishops() const
+    {
+        return ((board->pieces(WHITE, BISHOP) & Board::LIGHT_SQUARES) && (board->pieces(BLACK, BISHOP) & Board::DARK_SQUARES) ||
+                (board->pieces(WHITE, BISHOP) & Board::DARK_SQUARES) && (board->pieces(BLACK, BISHOP) & Board::LIGHT_SQUARES));
     }
 
 

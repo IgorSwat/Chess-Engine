@@ -8,6 +8,10 @@
 #include <string>
 
 
+// ------------------
+// Position properties
+// -------------------
+
 // Extracts the common data used to quickly undo the last move
 struct PositionInfo
 {
@@ -35,6 +39,9 @@ struct PositionInfo
 };
 
 
+// -------------------------------
+// Main board representation class
+// -------------------------------
 
 class BoardConfig
 {
@@ -43,15 +50,11 @@ public:
 	~BoardConfig();
 
 	// Static position setup
-	void loadFromFen(const std::string& FEN);		// General static loading method
-	void loadFromConfig(const BoardConfig& other);	// Used for a quick static loading of some other position with given BoardConfig
+	void loadPosition(const std::string& FEN);		// General static loading method
+	void loadPosition(const BoardConfig& other);	// Used for a quick static loading of some other position with given BoardConfig
 
 	// Move makers
 	void makeMove(const Move& move);
-	void normalMove(const Move& move);
-	void promotion(const Move& move);
-	void castle(const Move& move);
-	void enpassant(const Move& move);
 	void undoLastMove();
 
 	// Piece-centric operations
@@ -83,8 +86,8 @@ public:
 	Bitboard pinningPieces(Color side) const;	// Returns the pieces of opposite color pinning pieces of given color.
 
 	// Move attributes checks
-	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator
-	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source
+	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator, should be used ONLY for moves generated with movegen
+	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source, should be used for external moves
 
 	// Move-counting issues & others
 	Color movingSide() const;
@@ -97,31 +100,47 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const BoardConfig& board);
 
 private:
+	// Global board state handlers
 	void clear();
 	void pushStateList(const Move& lastMove);
+	void updateChecks(Color checkedSide);
+	void updatePins(Color side);
+
+	// Helper move-makers
+	void normalMove(const Move& move);
+	void promotion(const Move& move);
+	void castle(const Move& move);
+	void enpassant(const Move& move);
+
 	// Piece coordination handlers
 	void placePiece(Piece piece, Square square);
 	void removePiece(Square square);
 	void movePiece(Square from, Square to);
-	// Checks & pins handlers
-	void updateChecks(Color checkedSide);
-	void updatePins(Color side);
+
+	// Other helper functions
+	static Square getRookFromCastlingSquare(Square kingTo);
+	static Square getRookToCastlingSquare(Square kingTo);
 
 	Color sideOnMove = WHITE;
-
+	// Piece-placement properties
 	Piece board[SQUARE_RANGE];
 	Bitboard piecesByType[PIECE_TYPE_RANGE];	// Grouping all pieces of given type
 	Bitboard piecesByColor[COLOR_RANGE];		// Grouping all of side's pieces
 	Square kingSquare[COLOR_RANGE];
-
+	// Position info linked-list
 	PositionInfo* posInfo;
 	PositionInfo* rootState;
-
+	// Move counting
 	std::uint16_t halfmoveCount = 0;	// Counts the total number of moves for each side. To retrieve no. move: (halfmoveCount + 2 - sideOnMove) / 2
-
+	
+	// Zobrist subobject
 	Zobrist::ZobristHash zobrist;
 };
 
+
+// ------------------------
+// Piece-centric operations
+// ------------------------
 
 inline Bitboard BoardConfig::pieces(PieceType ptype) const
 {
@@ -150,11 +169,10 @@ inline Square BoardConfig::kingPosition(Color side) const
 	return kingSquare[side];
 }
 
-inline bool BoardConfig::oppositeColorBishops() const
-{
-	return ((pieces(WHITE, BISHOP) & Board::LIGHT_SQUARES) && (pieces(BLACK, BISHOP) & Board::DARK_SQUARES)) ||
-		   ((pieces(WHITE, BISHOP) & Board::DARK_SQUARES) && (pieces(BLACK, BISHOP) & Board::LIGHT_SQUARES));
-}
+
+// -------------------------
+// Square-centric operations
+// -------------------------
 
 inline bool BoardConfig::isFree(Square sq) const
 {
@@ -165,6 +183,11 @@ inline Piece BoardConfig::onSquare(Square sq) const
 {
 	return board[sq];
 }
+
+
+// --------------------
+// Castling & enpassant
+// --------------------
 
 inline Square BoardConfig::enpassantSquare() const
 {
@@ -186,6 +209,11 @@ inline bool BoardConfig::isCastlingPathClear(CastleType castle) const
 	return !(pieces() & Pieces::castle_path(castle));
 }
 
+
+// -------------
+// Checks & pins
+// -------------
+
 inline bool BoardConfig::isInCheck(Color side) const
 {
 	return side == sideOnMove && posInfo->checkers != 0;
@@ -205,6 +233,11 @@ inline Bitboard BoardConfig::pinningPieces(Color side) const
 {
 	return posInfo->pinners[side];
 }
+
+
+// -------------
+// Other getters
+// -------------
 
 inline Color BoardConfig::movingSide() const
 {
@@ -236,6 +269,11 @@ inline std::uint64_t BoardConfig::hash() const
 	return zobrist.getHash();
 }
 
+
+// --------------------
+// Board state handlers
+// --------------------
+
 inline void BoardConfig::pushStateList(const Move& lastMove)
 {
 	if (posInfo->next == nullptr) {
@@ -245,6 +283,16 @@ inline void BoardConfig::pushStateList(const Move& lastMove)
 	posInfo = posInfo->next;
 	posInfo->lastMove = lastMove;
 }
+
+inline void BoardConfig::updateChecks(Color checkedSide)
+{
+	posInfo->checkers = attackersToSquare(kingSquare[checkedSide], ~checkedSide, pieces());	// TODO: It's not needed to check king attacks in order to detect checks
+}
+
+
+// ------------------------
+// Piece placement handlers
+// ------------------------
 
 inline void BoardConfig::placePiece(Piece piece, Square square)
 {
@@ -283,7 +331,18 @@ inline void BoardConfig::movePiece(Square from, Square to)
 	if (type == KING) kingSquare[side] = to;
 }
 
-inline void BoardConfig::updateChecks(Color checkedSide)
+
+// ----------------
+// Helper functions
+// ----------------
+
+// Returns rook's starting square during castling (where castling type is indicated by king target square)
+inline Square BoardConfig::getRookFromCastlingSquare(Square kingTo)
 {
-	posInfo->checkers = attackersToSquare(kingSquare[checkedSide], ~checkedSide, pieces());	// TO DO: It's not needed to check king attacks in order to detect checks
+	return file_of(kingTo) == G_FILE ? kingTo + EAST : kingTo + WEST + WEST;
+}
+
+inline Square BoardConfig::getRookToCastlingSquare(Square kingTo)
+{
+	return file_of(kingTo) == G_FILE ? kingTo + WEST : kingTo + EAST;
 }

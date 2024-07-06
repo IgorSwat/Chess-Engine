@@ -561,7 +561,7 @@ namespace Evaluation {
 
         // Special endgames
         // Opposite color bishops endgame
-        if (stage == SINGLE_MINOR_VS_MINOR_ENDGAME && board->oppositeColorBishops()) {
+        if (stage == SINGLE_MINOR_VS_MINOR_ENDGAME && detectOppositeColorBishops()) {
             // In the case of such endgame we decrease the 
             Value adjustment = (pieceCount[WHITE][PAWN] - pieceCount[BLACK][PAWN]) * OPPOSITE_COLOR_BISHOPS_PAWN_ADJUSTMENT;
             eval -= adjustment;

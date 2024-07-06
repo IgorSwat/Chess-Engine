@@ -13,7 +13,7 @@ namespace Testing {
 								 std::make_tuple("1k1r3q/1ppn3p/p4b2/4p3/8/P2N2P1/1PP1R1BP/2K1Q3 w - -", Move(SQ_D3, SQ_E5, CAPTURE_FLAG), -225) };
 
 		for (const auto& testCase : testCases) {
-			board.loadFromFen(std::get<0>(testCase));
+			board.loadPosition(std::get<0>(testCase));
 			int eval = evaluator.evaluate(std::get<1>(testCase));
 			assert(eval == std::get<2>(testCase));
 		}

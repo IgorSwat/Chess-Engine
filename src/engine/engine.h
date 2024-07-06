@@ -45,13 +45,13 @@ private:
 
 inline void Engine::reset(const std::string& fen)
 {
-    virtualBoard.loadFromFen(fen);
+    virtualBoard.loadPosition(fen);
     currentPositionAge = virtualBoard.halfmovesPlain();
 }
 
 inline void Engine::reset(const BoardConfig* realBoard)
 {
-    virtualBoard.loadFromConfig(*realBoard);
+    virtualBoard.loadPosition(*realBoard);
     currentPositionAge = virtualBoard.halfmovesPlain();
 }
 

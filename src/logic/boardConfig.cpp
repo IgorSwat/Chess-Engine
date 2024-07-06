@@ -6,11 +6,15 @@
 #include <cctype>
 #include <sstream>
 #include <bitset>
+#include <algorithm>
+
 
 namespace {
 
 	const std::string STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+	// Defines the possibly remaining casle rights after a piece moves from given square
+	// It effectively works only during first moves of king and rooks
 	constexpr CastlingRights castlingRightsLoss[SQUARE_RANGE] = {
 		NO_WHITE_OOO, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, BLACK_BOTH, ALL_RIGHTS, ALL_RIGHTS, NO_WHITE_OO,
 		ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS,
@@ -22,58 +26,12 @@ namespace {
 		NO_BLACK_OOO, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, WHITE_BOTH, ALL_RIGHTS, ALL_RIGHTS, NO_BLACK_OO,
 	};
 
-	// Requires providing a kingTo square
-	constexpr Square rookCastlingFromSquares[SQUARE_RANGE] = {
-		SQ_A1, SQ_A1, SQ_A1, SQ_A1, INVALID_SQUARE, SQ_H1, SQ_H1, SQ_H1,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		SQ_A8, SQ_A8, SQ_A8, SQ_A8, INVALID_SQUARE, SQ_H8, SQ_H8, SQ_H8,
-	};
-
-	constexpr Square rookCastlingToSquares[SQUARE_RANGE] = {
-		SQ_D1, SQ_D1, SQ_D1, SQ_D1, INVALID_SQUARE, SQ_F1, SQ_F1, SQ_F1,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE, INVALID_SQUARE,
-		SQ_D8, SQ_D8, SQ_D8, SQ_D8, INVALID_SQUARE, SQ_F8, SQ_F8, SQ_F8,
-	};
-
-	constexpr int PieceExchangeValue[PIECE_TYPE_RANGE] = {0, 1, 3, 3, 5, 9, 1000, 0};
-
-
-	// ----------------
-	// Helper functions
-	// ----------------
-
-	Piece pieceFromChar(char c)
-	{
-		char lowerC = static_cast<char>(std::tolower(c));
-		Piece piece = lowerC == 'p' ? W_PAWN :
-			lowerC == 'n' ? W_KNIGHT :
-			lowerC == 'b' ? W_BISHOP :
-			lowerC == 'r' ? W_ROOK :
-			lowerC == 'q' ? W_QUEEN :
-			lowerC == 'k' ? W_KING : NO_PIECE;
-		return (piece == NO_PIECE || std::isupper(c)) ? piece : Piece(piece | BLACK_PIECE);
-	}
-
-	CastlingRights castlingRightsFromChar(char c)
-	{
-		return c == 'K' ? WHITE_OO :
-			c == 'Q' ? WHITE_OOO :
-			c == 'k' ? BLACK_OO :
-			c == 'q' ? BLACK_OOO : NO_CASTLING;
-	}
 }
 
 
+// ------------------
+// Position properties
+// -------------------
 
 PositionInfo& PositionInfo::operator=(const PositionInfo& other)
 {
@@ -81,10 +39,8 @@ PositionInfo& PositionInfo::operator=(const PositionInfo& other)
 	castlingRights = other.castlingRights;
 	enpassantSquare = other.enpassantSquare;
 	checkers = other.checkers;
-	pinned[WHITE] = other.pinned[WHITE];
-	pinned[BLACK] = other.pinned[BLACK];
-	pinners[WHITE] = other.pinners[WHITE];
-	pinners[BLACK] = other.pinners[BLACK];
+	std::copy(other.pinned, other.pinned + COLOR_RANGE, this->pinned);
+	std::copy(other.pinners, other.pinners + COLOR_RANGE, this->pinners);
 	capturedPiece = other.capturedPiece;
 	halfmoveClock = other.halfmoveClock;
 	hash = other.hash;
@@ -92,12 +48,16 @@ PositionInfo& PositionInfo::operator=(const PositionInfo& other)
 }
 
 
+// ----------------------------------------
+// Initialization & static position loading
+// ----------------------------------------
+
 
 BoardConfig::BoardConfig()
 {
 	rootState = new PositionInfo();
 	posInfo = rootState;
-	loadFromFen(STARTING_POS);
+	loadPosition(STARTING_POS);
 }
 
 BoardConfig::~BoardConfig()
@@ -109,44 +69,66 @@ BoardConfig::~BoardConfig()
 	}
 }
 
-void BoardConfig::loadFromFen(const std::string& fen)
+void BoardConfig::loadPosition(const std::string& fen)
 {
 	clear();
 
+	std::string part;
 	std::istringstream stream(fen);
-	int i = 0, j = 0;
-	char c;
-	// Parsing the pieces distribution
-	while (!stream.eof() && (c = static_cast<char>(stream.get())) != ' ') {
-		if (c == '/') {
-			i++;
-			j = 0;
+
+	// Part 1 - piece placement
+	stream >> part;
+	int rank = 7, file = 0;		// In FEN we start from upper side of a board
+	for (char symbol : part) {
+		if (symbol == '/') {
+			rank--;		// Go to another rank
+			file = 0;   // Reset file id
 		}
-		else if (std::isdigit(c))
-			j += static_cast<int>(c - '0');
+		else if (std::isdigit(symbol))
+			file += static_cast<int>(symbol - '0');
 		else {
-			Square square = Square((7 - i) * 8 + j);
-			Piece piece = pieceFromChar(c);
-			placePiece(piece, square);
-			posInfo->gameStageValue += Evaluation::PieceStageInfluence[piece];
-			j++;
+			Square square = make_square(rank, file);
+			Color color = std::isupper(symbol) ? WHITE : BLACK;
+			PieceType type = std::tolower(symbol) == 'p' ? PAWN :
+							 std::tolower(symbol) == 'n' ? KNIGHT :
+							 std::tolower(symbol) == 'b' ? BISHOP :
+							 std::tolower(symbol) == 'r' ? ROOK :
+							 std::tolower(symbol) == 'q' ? QUEEN : KING;
+			placePiece(make_piece(color, type), square);
+			posInfo->gameStageValue += Evaluation::PieceStageInfluence[make_piece(color, type)];
+			file++;
 		}
 	}
-	sideOnMove = stream.get() == 'w' ? WHITE : BLACK;
-	stream.get();
-	while (!stream.eof() && (c = static_cast<char>(stream.get())) != ' ') {
-		if (c != '-')
-			posInfo->castlingRights |= castlingRightsFromChar(c);
-	}
-	if (!stream.eof() && (c = static_cast<char>(stream.get())) != '-') {
+
+	// Part 2 - side on move
+	stream >> part;
+	sideOnMove = part == "w" ? WHITE : BLACK;
+
+	// Part 3 - castling rights
+	stream >> part;
+	if (part.find('K') != std::string::npos)
+		posInfo->castlingRights |= WHITE_OO;
+	if (part.find('Q') != std::string::npos)
+		posInfo->castlingRights |= WHITE_OOO;
+	if (part.find('k') != std::string::npos)
+		posInfo->castlingRights |= BLACK_OO;
+	if (part.find('q') != std::string::npos)
+		posInfo->castlingRights |= BLACK_OOO;
+	
+	// Part 4 - enpassant
+	stream >> part;
+	if (part != "-") {
 		int epRank = sideOnMove == WHITE ? 4 : 3;
-		int epFile = static_cast<int>(c - 'a');
+		int epFile = static_cast<int>(part.front() - 'a');
 		posInfo->enpassantSquare = make_square(epRank, epFile);
 	}
+
+	// Part 5 - move counters
 	stream >> posInfo->halfmoveClock;
 	stream >> halfmoveCount;
 	halfmoveCount = halfmoveCount * 2 + sideOnMove - 2;
 
+	// State updates
 	updateChecks(sideOnMove);
 	updatePins(WHITE);
 	updatePins(BLACK);
@@ -155,21 +137,25 @@ void BoardConfig::loadFromFen(const std::string& fen)
 	posInfo->hash = zobrist.getHash();
 }
 
-void BoardConfig::loadFromConfig(const BoardConfig& other)
+void BoardConfig::loadPosition(const BoardConfig& other)
 {
 	posInfo = rootState;
+	*posInfo = *other.posInfo;
 
 	sideOnMove = other.sideOnMove;
-	for (int i = 0; i < SQUARE_RANGE; i++) board[i] = other.board[i];
-	for (int i = 0; i < PIECE_TYPE_RANGE; i++) piecesByType[i] = other.piecesByType[i];
-	for (int i = 0; i < COLOR_RANGE; i++) { piecesByColor[i] = other.piecesByColor[i]; kingSquare[i] = other.kingSquare[i]; }
+	std::copy(other.board, other.board + SQUARE_RANGE, this->board);
+	std::copy(other.piecesByType, other.piecesByType + PIECE_TYPE_RANGE, this->piecesByType);
+	std::copy(other.piecesByColor, other.piecesByColor + COLOR_RANGE, this->piecesByColor);
 	posInfo->gameStageValue = other.posInfo->gameStageValue;
 	halfmoveCount = other.halfmoveCount;
 
-	*posInfo = *other.posInfo;
-
 	zobrist.restoreHash(posInfo->hash);
 }
+
+
+// -----------
+// Move-makers
+// -----------
 
 void BoardConfig::makeMove(const Move& move)
 {
@@ -286,8 +272,8 @@ void BoardConfig::castle(const Move& move)
 {
 	Square kingFrom = move.from();
 	Square kingTo = move.to();
-	Square rookFrom = rookCastlingFromSquares[kingTo];
-	Square rookTo = rookCastlingToSquares[kingTo];
+	Square rookFrom = getRookFromCastlingSquare(kingTo);
+	Square rookTo = getRookToCastlingSquare(kingTo);
 
 	pushStateList(move);
 
@@ -383,7 +369,7 @@ void BoardConfig::undoLastMove()
 		break;
 	case CASTLE:
 		movePiece(to, from);	// King
-		movePiece(rookCastlingToSquares[to], rookCastlingFromSquares[to]);	// Rook
+		movePiece(getRookToCastlingSquare(to), getRookFromCastlingSquare(to));	// Rook
 		break;
 	case ENPASSANT:
 		movePiece(to, from);
@@ -398,6 +384,11 @@ void BoardConfig::undoLastMove()
 	zobrist.restoreHash(posInfo->hash);
 }
 
+
+// -------------------------
+// Square-centric operations
+// -------------------------
+
 Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
 {
 	return ((Pieces::pawn_attacks(WHITE, sq) | Pieces::pawn_attacks(BLACK, sq)) & pieces(PAWN)) |
@@ -409,13 +400,18 @@ Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
 
 Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) const
 {
-	Bitboard result = (Pieces::pawn_attacks(~side, sq) & pieces(PAWN)) |
+	Bitboard attackdef = (Pieces::pawn_attacks(~side, sq) & pieces(PAWN)) |
 		(Pieces::piece_attacks_s<KNIGHT>(sq) & pieces(KNIGHT)) |
 		(Pieces::piece_attacks_s<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN)) |
 		(Pieces::piece_attacks_s<ROOK>(sq, occ) & pieces(ROOK, QUEEN)) |
 		(Pieces::piece_attacks_s<KING>(sq) & pieces(KING));
-	return result & pieces(side);
+	return attackdef & pieces(side);
 }
+
+
+// ---------------
+// Legality checks
+// ---------------
 
 bool BoardConfig::legalityCheckLight(const Move& move) const
 {
@@ -481,21 +477,22 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 	return !(between & pieces()) && (!(pinnedPieces(side) & from) || Board::aligned(kingSq, to, from));
 }
 
+
+// --------------------
+// Board state handlers
+// ---------------------
+
 void BoardConfig::clear()
 {
 	posInfo = rootState;
 
-	for (int i = 0; i < PIECE_TYPE_RANGE; i++)
-		piecesByType[i] = 0;
-	for (int i = 0; i < COLOR_RANGE; i++)
-		piecesByColor[i] = 0;
-	for (int i = 0; i < SQUARE_RANGE; i++)
-		board[i] = NO_PIECE;
+	std::fill(piecesByType, piecesByType + PIECE_TYPE_RANGE, 0);
+	std::fill(piecesByColor, piecesByColor + COLOR_RANGE, 0);
+	std::fill(board, board + SQUARE_RANGE, NO_PIECE);
 	kingSquare[WHITE] = kingSquare[BLACK] = INVALID_SQUARE;
 
 	posInfo->castlingRights = NO_CASTLING;
 	posInfo->enpassantSquare = INVALID_SQUARE;
-
 	posInfo->checkers = 0;
 
 	halfmoveCount = 0;
@@ -517,6 +514,11 @@ void BoardConfig::updatePins(Color side)
 	}
 	posInfo->pinned[side] &= ~kingSq;	// Only if PATHS[sq1][sq2] contains sq1 and sq2
 }
+
+
+// -------------
+// Miscellaneous
+// -------------
 
 std::ostream& operator<<(std::ostream& os, const BoardConfig& board)
 {

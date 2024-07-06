@@ -90,7 +90,7 @@ namespace Testing {
 	void perftMovegenTest(const PerftData& data, bool trace = false)
 	{
 		BoardConfig board;
-		board.loadFromFen(data.fen);
+		board.loadPosition(data.fen);
 		MoveCounters results;
 		if (trace) {
 			std::ofstream output("perftDebug.txt");
@@ -112,7 +112,7 @@ namespace Testing {
 	void perftSpeedTest(const PerftData& data)
 	{
 		BoardConfig board;
-		board.loadFromFen(data.fen);
+		board.loadPosition(data.fen);
 
 		auto startTime = std::chrono::steady_clock::now();
 		uint64_t result = perftLight(board, data.depth);

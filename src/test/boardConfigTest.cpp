@@ -15,7 +15,7 @@ namespace Testing {
 		assert(board.pieces(WHITE) == 0x000000000000ffff);
 		assert(board.pieces(BLACK) == 0xffff000000000000);
 
-		board.loadFromFen("rnbqkb1r/1p2pp1p/2p2n2/1B1P2p1/pP6/7N/P1PPQPPP/RNB1KR2 b Qkq b3 0 7");
+		board.loadPosition("rnbqkb1r/1p2pp1p/2p2n2/1B1P2p1/pP6/7N/P1PPQPPP/RNB1KR2 b Qkq b3 0 7");
 		assert(board.pinnedPieces(WHITE) == 0);
 		assert(board.pinnedPieces(BLACK) == 0x0010040000000000);
 		assert(board.pinningPieces(BLACK) == 0x0000000200001000);
@@ -27,7 +27,7 @@ namespace Testing {
 		assert(board.pieces(BLACK) == 0xbfb2244001000000);
 
 		BoardConfig board2;
-		board2.loadFromConfig(board);
+		board2.loadPosition(board);
 		assert(board2.pinnedPieces(WHITE) == 0);
 		assert(board2.pinnedPieces(BLACK) == 0x0010040000000000);
 		assert(board2.pinningPieces(BLACK) == 0x0000000200001000);
