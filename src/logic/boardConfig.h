@@ -24,9 +24,11 @@ struct PositionInfo
 	int castlingRights = ALL_RIGHTS;
 	Square enpassantSquare = INVALID_SQUARE;
 
-	Bitboard checkers = 0ULL;
-	Bitboard pinned[COLOR_RANGE] = { 0ULL };
-	Bitboard pinners[COLOR_RANGE] = { 0ULL };
+	Bitboard checkers = 0ULL;							// Bitboard map of current checkers (pieces that check the king of sideToMove)
+	Bitboard checkArea[PIECE_TYPE_RANGE] = { 0ULL };	// Squares from which pieces of sideToMove can check enemy king
+	Bitboard discoveries[COLOR_RANGE] = { 0ULL };		// Squares occupied by pieces which could cause a discovered check against enemy king if moved
+	Bitboard pinned[COLOR_RANGE] = { 0ULL };			// Pinned pieces of given side
+	Bitboard pinners[COLOR_RANGE] = { 0ULL };			// Pinners of given side (pieces that pins some enemy pieces)
 
 	Piece capturedPiece = NO_PIECE;
 	std::uint16_t halfmoveClock = 0;
@@ -64,9 +66,6 @@ public:
 	template <typename... PieceTypes> Bitboard pieces(Color side, PieceTypes... types) const;
 	Square kingPosition(Color side) const;
 
-	// Piece combinations
-	bool oppositeColorBishops() const;
-
 	// Square-centric operations
 	bool isFree(Square sq) const;
 	Piece onSquare(Square sq) const;
@@ -82,12 +81,14 @@ public:
 	// Checks & pins
 	bool isInCheck(Color side) const;
 	Bitboard checkingPieces() const;
+	Bitboard possibleChecks(PieceType ptype) const;	// Returns bitboard map of squares, from which piece of given type can deliver check to ~sideOnMove
 	Bitboard pinnedPieces(Color side) const;	// Returns the pinned pieces of given color.
 	Bitboard pinningPieces(Color side) const;	// Returns the pieces of opposite color pinning pieces of given color.
 
-	// Move attributes checks
+	// Move attribute checks
 	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator, should be used ONLY for moves generated with movegen
 	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source, should be used for external moves
+	bool isCheck(const Move& move) const;
 
 	// Move-counting issues & others
 	Color movingSide() const;
@@ -224,6 +225,11 @@ inline Bitboard BoardConfig::checkingPieces() const
 	return posInfo->checkers;
 }
 
+inline Bitboard BoardConfig::possibleChecks(PieceType ptype) const
+{
+	return posInfo->checkArea[ptype];
+}
+
 inline Bitboard BoardConfig::pinnedPieces(Color side) const
 {
 	return posInfo->pinned[side];
@@ -232,6 +238,19 @@ inline Bitboard BoardConfig::pinnedPieces(Color side) const
 inline Bitboard BoardConfig::pinningPieces(Color side) const
 {
 	return posInfo->pinners[side];
+}
+
+
+// ---------------------
+// Move attribute checks
+// ---------------------
+
+inline bool BoardConfig::isCheck(const Move& move) const
+{
+	Square from = move.from();
+	Square to = move.to();
+	return (posInfo->checkArea[type_of(board[from])] & to) ||
+		   ((posInfo->discoveries[sideOnMove] & from) && !Board::aligned(kingSquare[~sideOnMove], to, from));
 }
 
 
@@ -284,9 +303,16 @@ inline void BoardConfig::pushStateList(const Move& lastMove)
 	posInfo->lastMove = lastMove;
 }
 
-inline void BoardConfig::updateChecks(Color checkedSide)
+inline void BoardConfig::updateChecks(Color checkedSide)	// checkedSide = sideOnMove
 {
-	posInfo->checkers = attackersToSquare(kingSquare[checkedSide], ~checkedSide, pieces());	// TODO: It's not needed to check king attacks in order to detect checks
+	posInfo->checkers = attackersToSquare(kingSquare[checkedSide], ~checkedSide, pieces());	// TODO: It's not needed to consider king attacks in order to detect checks
+
+	Square enemyKingPos = kingSquare[~checkedSide];
+	posInfo->checkArea[PAWN] = Pieces::pawn_attacks(~checkedSide, enemyKingPos);
+	posInfo->checkArea[KNIGHT] = Pieces::piece_attacks_s<KNIGHT>(enemyKingPos, pieces());
+	posInfo->checkArea[BISHOP] = Pieces::piece_attacks_s<BISHOP>(enemyKingPos, pieces());
+	posInfo->checkArea[ROOK] = Pieces::piece_attacks_s<ROOK>(enemyKingPos, pieces());
+	posInfo->checkArea[QUEEN] = posInfo->checkArea[BISHOP] | posInfo->checkArea[ROOK];
 }
 
 

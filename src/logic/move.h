@@ -5,9 +5,9 @@
 #include <iomanip>
 
 
-// -------------
-// Bitwise flags
-// -------------
+// -------------------------
+// Bitwise flags and defines
+// -------------------------
 
 using Movemask = uint16_t;
 constexpr int MOVEMASK_SIZE = 16;
@@ -30,9 +30,9 @@ constexpr Movemask ROOK_PROMOTION_FLAG = 0xa;
 constexpr Movemask QUEEN_PROMOTION_FLAG = 0xb;
 
 
-// ---------------
-// Main move types
-// ---------------
+// ----------
+// Move types
+// ----------
 
 enum MoveType
 {
@@ -82,6 +82,11 @@ private:
 	Movemask m_move = 0;
 };
 
+
+// --------------
+// Initialization
+// --------------
+
 inline Move::Move() 
 {
 }
@@ -95,6 +100,11 @@ inline void Move::operator=(const Move& other)
 {
 	m_move = other.m_move;
 }
+
+
+// -------
+// Getters
+// -------
 
 inline Square Move::from() const
 {
@@ -121,6 +131,11 @@ inline PieceType Move::promotionType() const
 	return PieceType((flags() & 0x3) + 2);
 }
 
+
+// --------------
+// Common setters
+// --------------
+
 inline void Move::setFromSquare(Square from)
 {
 	m_move &= ~0x3f;
@@ -132,6 +147,11 @@ inline void Move::setToSquare(Square to)
 	m_move &= ~0xfc0;
 	m_move |= (static_cast<Movemask>(to) << 6);
 }
+
+
+// ------------------
+// Move type checking
+// ------------------
 
 inline MoveType Move::type() const
 {
@@ -163,6 +183,11 @@ inline bool Move::isCastle() const
 	Movemask mask = flags();
 	return mask == KINGSIDE_CASTLE_FLAG || mask == QUEENSIDE_CASTLE_FLAG;
 }
+
+
+// -------------
+// Miscellaneous
+// -------------
 
 inline bool operator==(const Move & m1, const Move & m2)
 {

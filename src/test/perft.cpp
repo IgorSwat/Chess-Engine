@@ -40,7 +40,7 @@ namespace Testing {
 		MoveList generatedMoves;
 		MoveCounters moveCounters = { 0, 0, 0, 0, 0 };
 
-		MoveGeneration::generateMoves<MoveGeneration::LEGAL>(generatedMoves, board);
+		MoveGeneration::generate_moves<MoveGeneration::LEGAL>(board, generatedMoves);
 		if (depth == 1) {
 			if constexpr (trace) {
 				output << "Path to the node:\n";
@@ -78,7 +78,7 @@ namespace Testing {
 		MoveList generatedMoves;
 		uint64_t noMoves = 0;
 
-		MoveGeneration::generateMoves<MoveGeneration::LEGAL>(generatedMoves, board);
+		MoveGeneration::generate_moves<MoveGeneration::LEGAL>(board, generatedMoves);
 		for (const Move& move : generatedMoves) {
 			board.makeMove(move);
 			noMoves += perftLight(board, depth - 1);

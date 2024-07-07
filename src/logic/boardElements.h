@@ -64,7 +64,7 @@ namespace Board {
 
 	extern int SquareDistance[SQUARE_RANGE][SQUARE_RANGE];			// Maximum metric between two squares file and rank distances
 
-	extern Bitboard Paths[SQUARE_RANGE][SQUARE_RANGE];				// Paths between each pair of squares mapped to bitboards
+	extern Bitboard Paths[SQUARE_RANGE][SQUARE_RANGE];				// Paths between each pair of squares mapped to bitboards (including both end squares)
 	extern Bitboard Boxes[SQUARE_RANGE][SQUARE_RANGE];
 	extern Bitboard AdjacentFiles[SQUARE_RANGE];
 	extern Bitboard AdjacentRankSquares[EXTENDED_SQUARE_RANGE];
@@ -78,22 +78,12 @@ namespace Board {
 
 	extern Bitboard FrontSpan[SQUARE_RANGE][COLOR_RANGE];
 
-
-	// -----------------------
-	// Board-related functions
-	// -----------------------
-
 	void initBoardElements();
 
-	constexpr inline Bitboard file_bb_of(Square sq)
-	{
-		return Files[file_of(sq)];
-	}
 
-	constexpr inline Bitboard rank_bb_of(Square sq)
-	{
-		return Ranks[rank_of(sq)];
-	}
+	// ----------------------
+	// Board geometry helpers
+	// ----------------------
 
 	inline bool aligned(Square sq1, Square sq2)
 	{
@@ -105,6 +95,11 @@ namespace Board {
 	{
 		return (Paths[from][to2] & to1) || (Paths[from][to1] & to2);
 	}
+
+
+	// ---------------------------
+	// Board advanced form getters
+	// ---------------------------
 
 	template <Color side>
 	inline Bitboard back_span(Square sq)						// A reverse of a front span of given square
@@ -118,11 +113,5 @@ namespace Board {
 	{															//	|x|P|x|
 		return back_span<side>(sq) | AdjacentRankSquares[sq];	//	|x|x|x|
 	}															//	|x|x|x|
-
-	// TODO: Remove it
-	constexpr inline Bitboard squares_of_color(SquareColor color)
-	{
-		return color == DARK_SQUARE ? DARK_SQUARES : LIGHT_SQUARES;
-	}
 
 }

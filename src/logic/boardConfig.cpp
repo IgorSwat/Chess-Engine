@@ -13,7 +13,7 @@ namespace {
 
 	const std::string STARTING_POS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-	// Defines the possibly remaining casle rights after a piece moves from given square
+	// Defines the possibly remaining castle rights after a piece moves from given square
 	// It effectively works only during first moves of king and rooks
 	constexpr CastlingRights castlingRightsLoss[SQUARE_RANGE] = {
 		NO_WHITE_OOO, ALL_RIGHTS, ALL_RIGHTS, ALL_RIGHTS, BLACK_BOTH, ALL_RIGHTS, ALL_RIGHTS, NO_WHITE_OO,
@@ -39,11 +39,14 @@ PositionInfo& PositionInfo::operator=(const PositionInfo& other)
 	castlingRights = other.castlingRights;
 	enpassantSquare = other.enpassantSquare;
 	checkers = other.checkers;
+	std::copy(other.checkArea, other.checkArea + PIECE_TYPE_RANGE, this->checkArea);
+	std::copy(other.discoveries, other.discoveries + COLOR_RANGE, this->discoveries);
 	std::copy(other.pinned, other.pinned + COLOR_RANGE, this->pinned);
 	std::copy(other.pinners, other.pinners + COLOR_RANGE, this->pinners);
 	capturedPiece = other.capturedPiece;
 	halfmoveClock = other.halfmoveClock;
 	hash = other.hash;
+
 	return *this;
 }
 
@@ -389,6 +392,7 @@ void BoardConfig::undoLastMove()
 // Square-centric operations
 // -------------------------
 
+// Attacks from both sides
 Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
 {
 	return ((Pieces::pawn_attacks(WHITE, sq) | Pieces::pawn_attacks(BLACK, sq)) & pieces(PAWN)) |
@@ -398,6 +402,7 @@ Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
 		(Pieces::piece_attacks_s<KING>(sq) & pieces(KING));
 }
 
+// Attacks from given side
 Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) const
 {
 	Bitboard attackdef = (Pieces::pawn_attacks(~side, sq) & pieces(PAWN)) |
@@ -502,17 +507,25 @@ void BoardConfig::clear()
 
 void BoardConfig::updatePins(Color side)
 {
-	Square kingSq = kingSquare[side];
 	Color enemy = ~side;
-	posInfo->pinned[side] = 0;
-	posInfo->pinners[side] = (Pieces::xray_attacks<ROOK>(kingSq, pieces(), pieces(side)) & pieces(enemy, ROOK, QUEEN)) |
-		(Pieces::xray_attacks<BISHOP>(kingSq, pieces(), pieces(side)) & pieces(enemy, BISHOP, QUEEN));
-	Bitboard pinnersTmp = posInfo->pinners[side];
-	while (pinnersTmp) {
-		Square sq = Bitboards::pop_lsb(pinnersTmp);
-		posInfo->pinned[side] |= (Board::Paths[kingSq][sq] & pieces(side));
+	posInfo->pinned[side] = posInfo->pinners[enemy] = posInfo->discoveries[enemy] = 0;
+
+	// Consider all xray attackers, regardless of whether they are attacking through our piece (pin) or their piece (potential discovery)
+	Bitboard xrayAttackers = (Pieces::xray_attacks<ROOK>(kingSquare[side], pieces(), pieces()) & pieces(enemy, ROOK, QUEEN)) |
+							 (Pieces::xray_attacks<BISHOP>(kingSquare[side], pieces(), pieces()) & pieces(enemy, BISHOP, QUEEN));
+	while (xrayAttackers) {
+		Square sq = Bitboards::pop_lsb(xrayAttackers);
+		Bitboard discovery = (Board::Paths[kingSquare[side]][sq] & pieces(enemy)) ^ sq;
+		// Potential discovery
+		if (discovery)
+			posInfo->discoveries[enemy] |= discovery;
+		// Pin
+		else {
+			posInfo->pinned[side] |= Board::Paths[kingSquare[side]][sq] & pieces(side);
+			posInfo->pinners[enemy] |= sq;
+		}
 	}
-	posInfo->pinned[side] &= ~kingSq;	// Only if PATHS[sq1][sq2] contains sq1 and sq2
+	posInfo->pinned[side] &= ~kingSquare[side];
 }
 
 

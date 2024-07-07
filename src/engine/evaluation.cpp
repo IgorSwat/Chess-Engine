@@ -99,7 +99,7 @@ namespace Evaluation {
 
             bool isDefendedByPawns = attacks[side][PAWN] & sq;
             bool isBlocked = board->pieces(PAWN) & front;
-            int pawnsInFront = Bitboards::popcount(Board::FrontSpan[sq][side] & Board::file_bb_of(sq) & ourPawns);
+            int pawnsInFront = Bitboards::popcount(Board::FrontSpan[sq][side] & Board::Files[file_of(sq)] & ourPawns);
 
             // Pawn structure-wise strength
             if (isDefendedByPawns) {
@@ -189,7 +189,7 @@ namespace Evaluation {
         while (passed) {
             Square sq = Bitboards::pop_lsb(passed);
             int promotionDistance = (side == WHITE ? 7 - rank_of(sq) : rank_of(sq));
-            Bitboard promotionPath = Board::FrontSpan[sq][side] & Board::file_bb_of(sq);
+            Bitboard promotionPath = Board::FrontSpan[sq][side] & Board::Files[file_of(sq)];
             Bitboard behindPawn = Board::back_span<side>(sq) & Pieces::piece_attacks_s<ROOK>(sq, board->pieces());
             Bitboard connectedPassers = Board::AdjacentFiles[sq] & processedPassers;
 
@@ -366,7 +366,7 @@ namespace Evaluation {
         add_eval<side, test>(result, (Interpolation::interpolate_gs(ROOK_ENEMY_PAWN_WEAKNESS, stage) * pieceCount[side][ROOK] * structureWeakness) >> 5, "Enemy pawn structure weakness (rook)");
         while (rooks) {
             Square sq = Bitboards::pop_lsb(rooks);
-            Bitboard fileBB = Board::file_bb_of(sq);
+            Bitboard fileBB = Board::Files[file_of(sq)];
             Bitboard att = Pieces::piece_attacks_s<ROOK>(sq, board->pieces());
             Bitboard attAndXray = att | Pieces::xray_attacks<ROOK>(sq, board->pieces(), board->pieces(side, ROOK, QUEEN));
 
