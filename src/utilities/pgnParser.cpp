@@ -32,7 +32,7 @@ bool PgnParser::processNext()
     std::string notation = parseMove();
 
     Move move = moveFromNotation(notation);
-    if (move == NULL_MOVE)
+    if (move == Move::null())
         return false;
     
     board->makeMove(move);
@@ -148,7 +148,7 @@ Move PgnParser::moveFromNotation(const std::string& notation) const
     }
     // Invalid notation
     else
-        return NULL_MOVE;
+        return Move::null();
 
     return Move(from, to, mask);
 }

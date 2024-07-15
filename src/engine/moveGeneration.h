@@ -102,12 +102,14 @@ inline std::size_t MoveList::size() const
 namespace MoveGeneration {
 
 	enum MoveGenType {
-		QUIET = 0,		// Not a capture/promotion, and not a direct check (but could be a quiet discovered check)
+		QUIET = 1,		// Not a capture/promotion, and not a direct check (but could be a quiet discovered check)
 		QUIET_CHECK,	// Not a capture/promotion, but a direct check instead
 		CAPTURE,		// A capture or pawn promotion, since both affect the general material balance
 		CHECK_EVASION,
 		LEGAL, 			// Collective generation of legal moves for testing purposes
-		PSEUDO_LEGAL	// Collective generation of pseudo legal moves for either testing or search
+		PSEUDO_LEGAL,	// Collective generation of pseudo legal moves for either testing or search
+
+		NONE = 0
 	};
 
 

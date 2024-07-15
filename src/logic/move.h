@@ -54,8 +54,9 @@ constexpr MoveType MOVES_BY_FLAG[16]{
 class Move
 {
 public:
-	Move();
+	constexpr Move() = default;
 	Move(Square from, Square to, Movemask flags);
+	Move(const Move& other);
 	void operator=(const Move& other);
 
 	Square from() const;
@@ -74,6 +75,7 @@ public:
 	bool isEnpassant() const;
 	bool isCastle() const;
 
+	static constexpr Move null();
 	friend bool operator==(const Move& m1, const Move& m2);
 	friend bool operator!=(const Move& m1, const Move& m2);
 	friend std::ostream& operator<<(std::ostream& os, const Move& move);
@@ -87,13 +89,14 @@ private:
 // Initialization
 // --------------
 
-inline Move::Move() 
-{
-}
-
 inline Move::Move(Square from, Square to, Movemask flags) 
 {
 	m_move = ((flags & 0xf) << 12) | (static_cast<Movemask>(from) | (static_cast<Movemask>(to) << 6));
+}
+
+inline Move::Move(const Move& other)
+{
+	m_move = other.m_move;
 }
 
 inline void Move::operator=(const Move& other)
@@ -189,6 +192,11 @@ inline bool Move::isCastle() const
 // Miscellaneous
 // -------------
 
+constexpr inline Move Move::null()
+{
+	return Move();
+}
+
 inline bool operator==(const Move & m1, const Move & m2)
 {
 	return m1.m_move == m2.m_move;
@@ -207,10 +215,3 @@ inline std::ostream& operator<<(std::ostream& os, const Move& move)
 	os << "flags: " << std::hex << move.flags();
 	return os;
 }
-
-
-// ------------------------
-// Special move definitions
-// ------------------------
-
-const Move NULL_MOVE = Move(SQ_A1, SQ_A1, 0);

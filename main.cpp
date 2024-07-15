@@ -1,7 +1,7 @@
 #include "src/test/test.h"
 //#include "src/gui/boardController.h"
 #include "src/logic/zobrist.h"
-//#include "src/engine/engine.h"
+#include "src/engine/moveSelection.h"
 #include <iostream>
 #include <iomanip>
 #include <memory>
@@ -15,8 +15,8 @@ int main()
 	Tester tester;
 	tester.initEnvironment();
 	
-	tester.test(Testing::pgnParsingTest);
-	//tester.test(Testing::perftMovegenTestMidgamePos1);
+	//tester.test(Testing::perftMovegenTestEndgamePos, Testing::perftMovegenTestMidgamePos2, Testing::pinsAndChecksTest);
+	tester.test(Testing::moveSelectionTest);
 
 	//runGUI();
 

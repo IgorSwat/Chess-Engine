@@ -226,7 +226,8 @@ namespace MoveGeneration {
 			generate_piece_moves<gen, side, BISHOP>(board, target, moveList);
 			generate_piece_moves<gen, side, ROOK>(board, target, moveList);
 			generate_piece_moves<gen, side, QUEEN>(board, target, moveList);
-			generate_king_moves<gen, side>(board, target, moveList);
+			if constexpr (gen != QUIET_CHECK)
+				generate_king_moves<gen, side>(board, target, moveList);
 		}
 	}
 

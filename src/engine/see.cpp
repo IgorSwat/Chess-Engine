@@ -8,8 +8,11 @@ namespace {
 }
 
 
+// -----------
+// SEE methods
+// -----------
 
-int SEE::evaluate(Square from, Square to)
+int SEE::evaluate(Square from, Square to, PieceType promotionType)
 {
 	// Check whether a real exchange happens (Possible to also check the color of both pieces)
 	if (board->isFree(from) || board->isFree(to))
@@ -23,7 +26,7 @@ int SEE::evaluate(Square from, Square to)
 	PieceType attackedPiece = type_of(board->onSquare(to));
 	PieceType attackingPiece = type_of(board->onSquare(from));
 
-	gain[depth] = PieceExchangeValue[attackedPiece];
+	gain[depth] = PieceExchangeValue[attackedPiece] + PieceExchangeValue[promotionType] - PieceExchangeValue[PAWN];
 	do {
 		depth++;
 		gain[depth] = PieceExchangeValue[attackingPiece] - gain[depth - 1];

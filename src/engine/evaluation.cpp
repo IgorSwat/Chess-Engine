@@ -15,19 +15,6 @@ namespace Evaluation {
     // Main Evaluation class
     // ---------------- ----
 
-    Value Evaluator::evaluate()
-    {
-        initCommonData<WHITE>();
-        initCommonData<BLACK>();
-
-        Value result = evaluatePawns1<WHITE>() - evaluatePawns1<BLACK>() +
-                       evaluatePieces<WHITE>() - evaluatePieces<BLACK>() +
-                       evaluatePawns2<WHITE>() - evaluatePawns2<BLACK>() +
-                       evaluateKingAndMisc<WHITE>() - evaluateKingAndMisc<BLACK>();
-
-        return adjustEval(result);
-    }
-
     template <Color side>
     void Evaluator::initCommonData()
     {
@@ -69,9 +56,6 @@ namespace Evaluation {
         centralDensity = std::min(Bitboards::popcount(Board::CENTRAL_RANKS & board->pieces()), MAX_CENTRAL_DENSITY);
         boardDensity = Bitboards::popcount(board->pieces());
     }
-
-    template void Evaluator::initCommonData<WHITE>();
-    template void Evaluator::initCommonData<BLACK>();
 
 
     template <Color side>
@@ -161,9 +145,6 @@ namespace Evaluation {
         return result;
     }
 
-    template Value Evaluator::evaluatePawns1<WHITE>();
-    template Value Evaluator::evaluatePawns1<BLACK>();
-
 
     template <Color side>
     Value Evaluator::evaluatePawns2()
@@ -235,9 +216,6 @@ namespace Evaluation {
 
         return result;
     }
-
-    template Value Evaluator::evaluatePawns2<WHITE>();
-    template Value Evaluator::evaluatePawns2<BLACK>();
 
 
     template <Color side>
@@ -433,9 +411,6 @@ namespace Evaluation {
         return result;
     }
 
-    template Value Evaluator::evaluatePieces<WHITE>();
-    template Value Evaluator::evaluatePieces<BLACK>();
-
 
     template <Color side>
     Value Evaluator::evaluateKingAndMisc()
@@ -534,9 +509,6 @@ namespace Evaluation {
         return result;
     }
 
-    template Value Evaluator::evaluateKingAndMisc<WHITE>();
-    template Value Evaluator::evaluateKingAndMisc<BLACK>();
-
 
     Value Evaluator::adjustEval(Value eval) const
     {
@@ -609,6 +581,20 @@ namespace Evaluation {
         finalScore = finalScore * (100 - board->halfmovesClocked()) / 100;
 
         return finalScore;
+    }
+
+
+    Value Evaluator::evaluate()
+    {
+        initCommonData<WHITE>();
+        initCommonData<BLACK>();
+
+        Value result = evaluatePawns1<WHITE>() - evaluatePawns1<BLACK>() +
+                       evaluatePieces<WHITE>() - evaluatePieces<BLACK>() +
+                       evaluatePawns2<WHITE>() - evaluatePawns2<BLACK>() +
+                       evaluateKingAndMisc<WHITE>() - evaluateKingAndMisc<BLACK>();
+
+        return adjustEval(result);
     }
 
 }

@@ -79,4 +79,7 @@ namespace Testing {
 
 	// PGN parsing tests
 	void pgnParsingTest();
+
+	// Move selection tests
+	void moveSelectionTest();
 }

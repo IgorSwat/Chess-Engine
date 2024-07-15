@@ -15,7 +15,7 @@
 // Extracts the common data used to quickly undo the last move
 struct PositionInfo
 {
-	PositionInfo() : lastMove(NULL_MOVE) {}
+	PositionInfo() : lastMove(Move::null()) {}
 	PositionInfo(const Move& move) : lastMove(move) {}
 	PositionInfo& operator=(const PositionInfo& other);
 
