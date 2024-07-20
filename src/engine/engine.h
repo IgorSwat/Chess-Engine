@@ -1,67 +1,29 @@
 #pragma once
 
-#include "evaluation.h"
-#include "moveGeneration.h"
+#include "search.h"
 #include "transpositionTable.h"
 
 
+// ------------
+// Engine class
+// ------------
 
-constexpr int MAX_THREADS = 4;
-constexpr Depth MAX_REACHABLE_DEPTH = 100;
-
-
-
+// A top class organizing the entire position assessment process
 class Engine
 {
 public:
-    Engine(BoardConfig* board);
+    Engine() : tTable(), crawler(&this->tTable) {}
 
-    void reset(const std::string& fen);
-    void reset(const BoardConfig* realBoard);
+    // Setup
+    void setPosition(BoardConfig* board);
 
-    // Search
-    Value evaluate(Depth depth);
+    // Main functionalities
+    Value evaluate(Search::Depth depth);    // No iterative deepening as for now
 
 private:
-    // Basic engine actions
-    Value search(Value alpha, Value beta, Depth depth);
-    Value evaluate();
+    // Shared modules
+    TranspositionTable tTable;
 
-    // Other helper functions
-    Value relative(Value eval) const;
-
-    // Virtual board to perform search
-    BoardConfig virtualBoard;
-    // Real board info
-    Age currentPositionAge;
-    // Move generation containers
-    MoveList generatedMoves[MAX_THREADS][MAX_REACHABLE_DEPTH];
-    // Evaluation aspects
-    Evaluation::Evaluator evaluator;
-    // Transposition table
-    TranspositionTable transpositionTable;
+    // Search crawlers
+    Search::Crawler crawler;    // For now we use 1 crawler as we use only 1 thread on search
 };
-
-
-inline void Engine::reset(const std::string& fen)
-{
-    virtualBoard.loadPosition(fen);
-    currentPositionAge = virtualBoard.halfmovesPlain();
-}
-
-inline void Engine::reset(const BoardConfig* realBoard)
-{
-    virtualBoard.loadPosition(*realBoard);
-    currentPositionAge = virtualBoard.halfmovesPlain();
-}
-
-inline Value Engine::relative(Value eval) const
-{
-    return virtualBoard.movingSide() == WHITE ? eval : -eval;
-}
-
-inline Value Engine::evaluate()
-{
-    // Returns a relative evaluation to fit in the NegaMax architecture
-    return relative(evaluator.evaluate());
-}

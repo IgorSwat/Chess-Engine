@@ -43,7 +43,7 @@ Move MoveSelector::selectNext()
 
     // Good captures -> average captures -> bad captures
     if constexpr (selStrategy == SelectionStrategy::STANDARD_ORDERING) {
-        if (currGenType == MoveGeneration::CAPTURE) {
+        if (currGenType == MoveGeneration::CAPTURE || currGenType == MoveGeneration::CHECK_EVASION) {
             switch (stage) {
                 case 1:
                     move = selectMove<false>([this](const Move& move){return this->see.evaluate(move) > 0;});

@@ -42,6 +42,9 @@ public:
     Move selectNext();
     // Reset current move set to allow another loop
     void resetSelection();
+
+    // Change board
+    void setBoard(BoardConfig* board);
     
 private:
     // 'reselection' parameter decides whether we already checked some move (which means we do not need to check it's legality again)
@@ -74,13 +77,19 @@ inline void MoveSelector::generateMoves()
     MoveGeneration::generate_moves<gen>(*board, moves);
     currGenType = gen;
     resetSelection();
-    stage = 1;
 }
 
 inline void MoveSelector::resetSelection()
 {
     sectionBegin = moves.begin();
     sectionEnd = moves.end();
+    stage = 1;
+}
+
+inline void MoveSelector::setBoard(BoardConfig* board)
+{
+    this->board = board;
+    moves.clear();
 }
 
 inline void MoveSelector::nextSection()

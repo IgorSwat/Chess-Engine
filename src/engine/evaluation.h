@@ -35,6 +35,9 @@ namespace Evaluation {
         // Position info obtained after evaluation
         int threats(Color side) const;
 
+        // Change board
+        void setBoard(BoardConfig* board);
+
     private:
         // Evaluation components
         template <Color side> void initCommonData();
@@ -98,6 +101,11 @@ namespace Evaluation {
     inline int Evaluator::threats(Color side) const
     {
         return threatCount[side];
+    }
+
+    inline void Evaluator::setBoard(BoardConfig* board)
+    {
+        this->board = board;
     }
 
     inline int Evaluator::countAttackers(Bitboard area, Color side, PieceType type) const
