@@ -5,17 +5,16 @@
 
 namespace Search {
 
-    constexpr Value MAX_ALPHA = std::numeric_limits<Value>::max();
-    constexpr Value MIN_BETA = -MAX_ALPHA;
-
-
     // ---------------
     // Crawler methods
     // ---------------
 
     Value Crawler::search(Depth depth)
     {
-        return search(MAX_ALPHA, MIN_BETA, depth);
+        static constexpr Value MAX_BETA = std::numeric_limits<Value>::max();
+        static constexpr Value MIN_ALPHA = -MAX_BETA;
+
+        return search(MIN_ALPHA, MAX_BETA, depth);
     }
 
     Value Crawler::search(Value alpha, Value beta, Depth depth)
@@ -29,6 +28,7 @@ namespace Search {
         Move bestMove;
 
         // Initial move generation
+        MoveSelector moveSelector(&virtualBoard);
         if (virtualBoard.isInCheck(virtualBoard.movingSide()))
             moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
         else
@@ -63,6 +63,8 @@ namespace Search {
                 bestMove = move;
                 bestScore = score;
             }
+
+            move = moveSelector.selectNext<GenerationStrategy::CASCADE, SelectionStrategy::STANDARD_ORDERING>();
         }
 
         // Save search results in transposition table

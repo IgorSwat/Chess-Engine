@@ -512,7 +512,7 @@ namespace Evaluation {
 
     Value Evaluator::adjustEval(Value eval) const
     {
-        constexpr bool test = true;
+        constexpr bool test = false;
 
         int noPawns = pieceCount[WHITE][PAWN] + pieceCount[BLACK][PAWN];
         int noPassedPawns = Bitboards::popcount(passedPawns[WHITE] | passedPawns[BLACK]);

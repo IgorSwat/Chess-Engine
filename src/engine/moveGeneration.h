@@ -113,7 +113,13 @@ namespace MoveGeneration {
 	};
 
 
+	// Main move generator
 	template <MoveGenType gen>
 	void generate_moves(const BoardConfig& board, MoveList& moveList);
+
+	// Other generators for non-engine stuff (GUI, tests, etc)
+	// -------------------------------------------------------
+	// Creates a move that needs to be checked by legalityTestFull()
+	Move create_pseudo_move(const BoardConfig& board, Square from, Square to);
 
 }

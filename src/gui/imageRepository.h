@@ -1,0 +1,36 @@
+#pragma once
+
+#include "pieceImage.h"
+#include <array>
+#include <vector>
+#include <memory>
+
+
+namespace GUI {
+
+    // --------------------------
+	// PieceImageRepository class
+	// --------------------------
+
+    class PieceImageRepository
+    {
+    public:
+        // Helper class
+        struct ImageBank
+        {
+            std::vector< std::unique_ptr<PieceImage> > images;
+            int used = 0;
+        };
+
+        PieceImageRepository() = default;
+
+        // Repository handlers
+        PieceImage* takeImage(Piece piece);
+        void returnImage(Piece piece);
+        void returnAllImages(Piece piece);
+
+    private:
+        std::array<ImageBank, PIECE_RANGE> repository;
+    };
+
+}

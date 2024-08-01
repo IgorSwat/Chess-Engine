@@ -16,9 +16,13 @@ public:
 
     // Setup
     void setPosition(BoardConfig* board);
+    void setPosition(const std::string& fen);
 
     // Main functionalities
     Value evaluate(Search::Depth depth);    // No iterative deepening as for now
+
+    // Getters
+    const TranspositionTable* transpositionTable() const;
 
 private:
     // Shared modules

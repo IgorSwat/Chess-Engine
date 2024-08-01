@@ -10,9 +10,17 @@ void Engine::setPosition(BoardConfig* board)
     crawler.setPosition(board);
 }
 
-// Main search framework
+void Engine::setPosition(const std::string& fen)
+{
+    crawler.setPosition(fen);
+}
+
 Value Engine::evaluate(Search::Depth depth)
 {
-    // Temporary
     return crawler.search(depth);
+}
+
+const TranspositionTable* Engine::transpositionTable() const
+{
+    return &tTable;
 }

@@ -1,55 +1,107 @@
 #pragma once
 
-#include "roundedRectangle.h"
 #include "textures.h"
 
-enum class ButtonType {
-	BACK = 0, RESET,
-	NONE
-};
+
+namespace GUI {
+
+    // ------------
+	// Button types
+	// ------------
+
+    enum class ButtonType {
+        BACK = 1,
+        RESET,
+
+        NONE = 0,
+        BUTTON_TYPE_RANGE = 3
+    };
 
 
-class Button : public sf::Drawable
-{
-public:
-	Button(ButtonType btype, float size, const sf::Texture& contentTexture);
+    // -----------------------
+	// Rounded rectangle shape
+	// -----------------------
 
-	void setPosition(const sf::Vector2f& pos);
-	void setPosition(float xPos, float yPos);
+    class RoundedRectangle : public sf::Shape
+    {
+    public:
+        RoundedRectangle(float diameter, float round = 0.4f);
 
-	bool updateState();	// Updates button and returns true if button is clicked, and false otherwise
-	ButtonType type() const;
+        // Getters
+        float diameter() const { return radius * 2; }
 
-	void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+        // Shape methods
+        std::size_t getPointCount() const override;
+	    sf::Vector2f getPoint(std::size_t index) const override;
 
-private:
-	void centraliseContent();
-	void scaleContent(const sf::Texture& contentTexture);
+    private:
+        sf::Vector2f getRefPoint(std::size_t index) const;  // Obtains a full rectangle point (without curves)
 
-	// Graphical objects
-	RoundedRectangle background;
-	sf::Sprite content;
-
-	// Logic
-	ButtonType buttonType;
-	bool isMouseAbove = false;
-	bool isClicked = false;
-};
+        const float radius;
+        const float round;
+    };
 
 
+    // ----------------------------
+	// Interactive button interface
+	// ----------------------------
 
-inline void Button::setPosition(float xPos, float yPos) 
-{ 
-	setPosition(sf::Vector2f(xPos, yPos)); 
-}
+    // It changes appearence between default, appearence on hover and appearence on click
+    class InteractiveButton
+    {
+    public:
+        InteractiveButton() = default;
+        virtual ~InteractiveButton() = default;
 
-inline ButtonType Button::type() const
-{
-	return buttonType;
-}
+        // Main method to interact with user events
+        bool update(sf::Event::EventType eventType, bool onto = true);      // Returns true if button is clicked (for the first time after reset)
 
-inline void Button::draw(sf::RenderTarget& target, sf::RenderStates states) const
-{
-	target.draw(background, states);
-	target.draw(content, states);
+        // Behavior on different types of events
+        virtual void onDefault() = 0;
+        virtual void onHover() = 0;
+        virtual void onClick() = 0;
+    
+    protected:
+        // Button state
+        bool checked = false;
+        bool clicked = false;
+    };
+
+
+    // ------------
+	// Button class
+	// ------------
+
+    class RoundedButton : public sf::Drawable, public InteractiveButton
+    {
+    public:
+        RoundedButton(ButtonType bType, float size, float round = 0.4f);
+
+        // Position change
+        void setPosition(sf::Vector2f pos);
+
+        // Behavior on different types of events
+        void onDefault() override;
+        void onHover() override;
+        void onClick() override;
+
+        // Draw
+        void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+
+        // Getters
+        ButtonType type() const { return bType; }
+        sf::FloatRect getGlobalBounds() const {return background.getGlobalBounds();}
+
+    private:
+        void centralizeIcon();
+        void scaleIcon();
+        
+        // Graphic content
+        RoundedRectangle background;
+        sf::Sprite icon;
+
+        // Logic
+        ButtonType bType;
+    };
+
 }

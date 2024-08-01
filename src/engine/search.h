@@ -18,7 +18,7 @@ namespace Search {
     using Age = std::uint16_t;
 
     enum NodeType : std::uint8_t {
-        PV_NODE = 1,
+        PV_NODE = 1,    // Exact value
         CUT_NODE,
         ALL_NODE,
 
@@ -45,11 +45,11 @@ namespace Search {
     class Crawler
     {
     public:
-        Crawler(TranspositionTable* tTable) : virtualBoard(), 
-            moveSelector(&this->virtualBoard), evaluator(&this->virtualBoard), tTable(tTable) {}
+        Crawler(TranspositionTable* tTable) : virtualBoard(), evaluator(&this->virtualBoard), tTable(tTable) {}
 
         // Setup
         void setPosition(BoardConfig* board);
+        void setPosition(const std::string& fen);
 
         // Main search functions
         Value search(Depth depth);                              // Initial function
@@ -60,11 +60,11 @@ namespace Search {
         Value evaluate();                       // Stand pat evaluation = search on depth 0
 
     private:
+        // Virtual board and related properties
         BoardConfig virtualBoard;
         Age rootAge = 0;
 
-        // Search helpers
-        MoveSelector moveSelector;
+        // Evaluation helper
         Evaluation::Evaluator evaluator;
 
         // Transposition table lookup
@@ -79,6 +79,12 @@ namespace Search {
     inline void Crawler::setPosition(BoardConfig* board)
     {
         virtualBoard.loadPosition(*board);
+        rootAge = virtualBoard.halfmovesPlain();
+    }
+
+    inline void Crawler::setPosition(const std::string& fen)
+    {
+        virtualBoard.loadPosition(fen);
         rootAge = virtualBoard.halfmovesPlain();
     }
 

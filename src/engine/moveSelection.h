@@ -1,7 +1,6 @@
 #pragma once
 
 #include "moveGeneration.h"
-#include "see.h"
 
 
 // ------------------------
@@ -31,7 +30,7 @@ enum class SelectionStrategy {
 class MoveSelector
 {
 public:
-    MoveSelector(BoardConfig* board) : board(board), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()), see(board) {}
+    MoveSelector(BoardConfig* board) : board(board), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()) {}
 
     // Generating moves
     template <MoveGeneration::MoveGenType gen>
@@ -60,9 +59,6 @@ private:
     Move* sectionEnd;
     MoveGeneration::MoveGenType currGenType = MoveGeneration::NONE;
     int stage = 1;
-
-    // Other components
-    SEE see;
 };
 
 

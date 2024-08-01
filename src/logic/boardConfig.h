@@ -52,6 +52,7 @@ public:
 	~BoardConfig();
 
 	// Static position setup
+	void loadPosition();							// Load starting position
 	void loadPosition(const std::string& FEN);		// General static loading method
 	void loadPosition(const BoardConfig& other);	// Used for a quick static loading of some other position with given BoardConfig
 
@@ -85,13 +86,14 @@ public:
 	Bitboard pinnedPieces(Color side) const;	// Returns the pinned pieces of given color.
 	Bitboard pinningPieces(Color side) const;	// Returns the pieces of opposite color pinning pieces of given color.
 
-	// Move attribute checks
+	// Move property issues
 	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator, should be used ONLY for moves generated with movegen
 	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source, should be used for external moves
 	bool isCheck(const Move& move) const;
 
 	// Move-counting issues & others
 	Color movingSide() const;
+	Move lastMove() const;
 	std::uint16_t gameStage() const;
 	std::uint16_t halfmovesPlain() const;
 	std::uint16_t halfmovesClocked() const;
@@ -261,6 +263,11 @@ inline bool BoardConfig::isCheck(const Move& move) const
 inline Color BoardConfig::movingSide() const
 {
 	return sideOnMove;
+}
+
+inline Move BoardConfig::lastMove() const
+{
+	return posInfo->lastMove;
 }
 
 inline std::uint16_t BoardConfig::gameStage() const

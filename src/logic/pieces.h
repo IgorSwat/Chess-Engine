@@ -148,9 +148,19 @@ namespace Pieces {
 	// Other piece-attack issues
 	// -------------------------
 
+	// Check whether a non-pawn piece could move from sq1 to sq2
 	inline bool in_piece_range(PieceType type, Square sq1, Square sq2)
 	{
 		return pseudo_attacks(type, sq1) & sq2;
+	}
+
+	// Check whether a pawn could make a push from sq1 to sq2
+	inline bool in_pawn_range(Color side, Square from, Square to)
+	{
+		Direction forwardDir = side == WHITE ? NORTH : SOUTH;
+		Bitboard secondRank = side == WHITE ? 1 : 6;
+
+		return to == (from + forwardDir) || rank_of(from) == secondRank && to == (from + forwardDir + forwardDir);
 	}
 
 	constexpr inline Bitboard castle_path(CastleType castle)

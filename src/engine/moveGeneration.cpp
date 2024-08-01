@@ -232,9 +232,9 @@ namespace MoveGeneration {
 	}
 
 
-	// -----------------
-	// Global generators
-	// -----------------
+	// ---------------
+	// Main generators
+	// ---------------
 
 	template <MoveGenType gen>
 	void generate_moves(const BoardConfig& board, MoveList& moveList)
@@ -263,5 +263,42 @@ namespace MoveGeneration {
 		Move* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
 										 [&board](const Move& move) {return board.legalityCheckLight(move);});
 		moveList.setEnd(legalsEnd);
+	}
+
+
+	// ----------------
+	// Other generators
+	// ----------------
+
+	// Minimalistic move creator
+	Move create_pseudo_move(const BoardConfig& board, Square from, Square to)
+	{
+		Movemask mask = 0;
+
+		Piece piece = board.onSquare(from);
+		if (piece == NO_PIECE)
+			return Move::null();
+
+		// During creation of move, we make assumption that move is fully correct, to make minimum amount of checks for given flag.
+		// Obviously move might be completely illegal, so it needs to be checked with BoardConfig.legalityTestFull()
+		if (board.onSquare(to) != NO_PIECE && color_of(board.onSquare(to)) != color_of(piece))
+			mask |= CAPTURE_FLAG;
+		if (type_of(piece) == PAWN) {
+			if (file_of(from) != file_of(to) && board.onSquare(to) == NO_PIECE)
+				mask |= ENPASSANT_FLAG;
+			else if ((rank_of(to) - rank_of(from)) % 2 == 0)
+				mask |= DOUBLE_PAWN_PUSH_FLAG;
+			// Very important - we always detect promotion
+			else if (rank_of(to) == 0 || rank_of(to) == 7)
+				mask |= PROMOTION_FLAG;
+		}
+		if (type_of(piece) == KING && file_of(from) == E_FILE) {
+			if (to == (from + EAST + EAST))
+				mask |= KINGSIDE_CASTLE_FLAG;
+			else if (to == (from + WEST + WEST))
+				mask |= QUEENSIDE_CASTLE_FLAG;
+		}
+
+		return Move(from, to, mask);
 	}
 }

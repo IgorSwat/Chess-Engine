@@ -2,25 +2,33 @@
 
 #include "boardImage.h"
 #include "navbar.h"
+#include "../logic/boardConfig.h"
 #include <memory>
 
 
-namespace Evaluation { class Evaluator; }
+namespace GUI {
 
-void runGUI();
+	// ---------------------
+	// BoardController class
+	// ---------------------
 
+	// A middleware class between view (boardImage & navbar) and data (board & other stuff))
+	class BoardController
+	{
+	public:
+		BoardController();
 
-class BoardController
-{
-public:
-	BoardController(BoardConfig* board, Evaluation::Evaluator* evaluator);
-	~BoardController();
+		// GUI rendering and update
+		void run();
 
-	void run();
-	void update();	// Updates everything withing the gui
+	private:
+		// Logical board
+		BoardConfig board;
 
-private:
-	BoardConfig* config;
-	std::unique_ptr<BoardImage> gui;
-	std::unique_ptr<Navbar> navbar;
-};
+		// GUI elements
+		sf::RenderWindow window;
+		BoardImage boardImage;
+		Navbar navbar;
+	};
+
+}

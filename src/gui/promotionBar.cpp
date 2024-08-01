@@ -2,58 +2,98 @@
 #include "../logic/types.h"
 
 
-namespace {
-    constexpr float SPRITE_SCALE_FACTOR = 0.8f;
-    const sf::Color colorDefault = sf::Color(115, 119, 128);
-    const sf::Color colorOnCover = sf::Color(149, 151, 158);
-    const sf::Color colorOnClick = sf::Color(190, 202, 232);
+namespace GUI {
 
-    constexpr PieceType PROMOTION_TYPES[PROMOTION_CHOICE_RANGE] = {
-        QUEEN, ROOK, BISHOP, KNIGHT
-    };
-}
+    // Customizable parameters
+    constexpr float ICON_SCALE_FACTOR = 0.8f;
+
+    const sf::Color COLOR_DEFAULT = sf::Color(115, 119, 128);
+    const sf::Color COLOR_ON_HOVER = sf::Color(149, 151, 158);
+    const sf::Color COLOR_ON_CLICK = sf::Color(190, 202, 232);
 
 
-PromotionBar::PromotionBar(Color side, float tileSize)
-    : entrySize(tileSize)
-{
-    const float radius = tileSize / 2.f;
-    for (int i = 0; i < PROMOTION_CHOICE_RANGE; i++) {
-        entries.push_back({ sf::CircleShape(radius), sf::Sprite() });
-        entries[i].circle.setFillColor(colorDefault);
-        entries[i].sprite.setScale(SPRITE_SCALE_FACTOR, SPRITE_SCALE_FACTOR);
+    // ----------------------
+	// PromotionEntry methods
+	// ----------------------
 
-        Piece promotionPiece = make_piece(side, PROMOTION_TYPES[i]);
-        entries[i].sprite.setTexture(BoardTextures::pieceTexture(promotionPiece));
+    void PromotionBar::PromotionEntry::onDefault()
+    {
+        circle.setFillColor(COLOR_DEFAULT);
     }
-}
 
-PromotionChoice PromotionBar::update()
-{
-    PromotionChoice choice = PromotionChoice::NONE;
-    for (int i = 0; i < PROMOTION_CHOICE_RANGE; i++) {
-        sf::Vector2i mousePos = sf::Mouse::getPosition(*window);
-        sf::CircleShape& circle = entries[i].circle;
-        if (circle.getGlobalBounds().contains(sf::Vector2f(mousePos))) {
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-                circle.setFillColor(colorOnClick);
-                choice = PromotionChoice(i);
+    void PromotionBar::PromotionEntry::onHover()
+    {
+        circle.setFillColor(COLOR_ON_HOVER);
+    }
+
+    void PromotionBar::PromotionEntry::onClick()
+    {
+        circle.setFillColor(COLOR_ON_CLICK);
+    }
+
+
+    // --------------------
+	// PromotionBar methods
+	// --------------------
+
+    PromotionBar::PromotionBar(Color side, float tileSize)
+        : side(side), entrySize(tileSize)
+    {
+        const float radius = entrySize / 2.f;
+
+        for (int i = 0; i < entries.size(); i++) {
+            PieceType promotionType = PieceType(QUEEN - i);
+
+            entries[i].circle = sf::CircleShape(radius);
+            entries[i].icon.setTexture(Textures::get_texture(make_piece(side, promotionType)));
+            entries[i].icon.setScale(ICON_SCALE_FACTOR, ICON_SCALE_FACTOR);
+        }
+    }
+
+    void PromotionBar::setPosition(sf::Vector2f pos)
+    {
+        topLeft = side == WHITE ? pos : pos - sf::Vector2f(0.f, entrySize * (entries.size() - 1));
+        alignEntries();
+    }
+
+    PieceType PromotionBar::update(const sf::Event& event, sf::Vector2i mousePos)
+    {
+        PieceType result = NULL_TYPE;
+
+        // PromotionBar accepts only mouse left clicks
+		if (event.type == sf::Event::MouseButtonPressed && event.key.code != sf::Mouse::Left)
+			return result;
+
+        for (int i = 0; i < entries.size(); i++) {
+            if (entries[i].circle.getGlobalBounds().contains(sf::Vector2f(mousePos))) {
+                if (entries[i].update(event.type, true))
+                    result = PieceType(QUEEN - i);
             }
             else
-                circle.setFillColor(colorOnCover);
+                entries[i].update(sf::Event::MouseMoved, false);
         }
-        else
-            circle.setFillColor(colorDefault);
-    }
-    return choice;
-}
 
-void PromotionBar::setAlignment()
-{
-    const float adjustment = (1.f - SPRITE_SCALE_FACTOR) * entrySize / 2.f;
-    for (int i = 0; i < PROMOTION_CHOICE_RANGE; i++) {
-        sf::Vector2f pos = { topLeftCorner.x, topLeftCorner.y + i * entrySize };
-        entries[i].circle.setPosition(pos);
-        entries[i].sprite.setPosition(pos + sf::Vector2f(adjustment, adjustment));
+        return result;
     }
+
+    void PromotionBar::draw(sf::RenderTarget& target, sf::RenderStates states) const
+    {
+        for (const PromotionEntry& entry : entries) {
+            target.draw(entry.circle, states);
+            target.draw(entry.icon, states);
+        }
+    }
+
+    void PromotionBar::alignEntries()
+    {
+        const float adjustment = (1.f - ICON_SCALE_FACTOR) * entrySize / 2.f;
+
+        for (int i = 0; i < entries.size(); i++) {
+            sf::Vector2f pos = {topLeft.x, topLeft.y + i * entrySize};
+
+            entries[i].circle.setPosition(pos);
+            entries[i].icon.setPosition(pos + sf::Vector2f(adjustment, adjustment));
+        }
+    }
+
 }

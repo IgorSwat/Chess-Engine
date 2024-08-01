@@ -39,13 +39,21 @@ private:
 };
 
 
-// ------------------------------
-// Declarations of test functions
-// ------------------------------
-
 namespace Testing {
-	// General purpose testing function
-	// ...
+
+	// ----------------
+	// Type definitions
+	// ----------------
+
+	enum class OutputMode {
+		CONSOLE = 1,
+		FILE
+	};
+
+
+	// --------------
+	// Test functions
+	// --------------
 
 	// Magic bitboard tests
 	void magicsTest();
@@ -82,4 +90,7 @@ namespace Testing {
 
 	// Move selection tests
 	void moveSelectionTest();
+
+	// Search tests
+	void searchTest1();
 }

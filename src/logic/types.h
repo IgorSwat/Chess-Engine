@@ -165,7 +165,7 @@ constexpr inline Color operator~(Color side)
 // ------
 
 enum PieceType : int {
-	INVALID_PIECE_TYPE = 0,
+	NULL_TYPE = 0,
 
 	PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 	ALL_PIECES,

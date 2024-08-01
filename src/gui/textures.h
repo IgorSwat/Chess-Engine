@@ -1,18 +1,22 @@
 #pragma once
 
 #include "../logic/types.h"
-#include <unordered_map>
 #include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
-extern sf::RenderWindow* window;
-extern bool mouseLeftButtonClicked;
 
-namespace BoardTextures {
-	extern std::unordered_map<std::string, sf::Texture> textures;
+namespace GUI {
 
-	void loadTextures();
-	const sf::Texture& getTexture(const std::string& textureName);
-	const sf::Texture& pieceTexture(Piece piece);
+	enum class ButtonType;
+	
+	namespace Textures {
+		
+		void load_textures();
+
+		const sf::Texture& get_texture(const std::string& textureName);
+		const sf::Texture& get_texture(Piece piece);
+		const sf::Texture& get_texture(ButtonType bType);
+
+	}
 }

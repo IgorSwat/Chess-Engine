@@ -1,76 +1,69 @@
 #pragma once
 
-#include "pieceImage.h"
-#include "bluredCircle.h"
+#include "imageRepository.h"
+#include "checkMarker.h"
 #include "promotionBar.h"
 #include "../logic/move.h"
 #include <vector>
 
-namespace GUI {
-	constexpr int MAX_PIECES_PER_TYPE = 12;
-	constexpr int MAX_PIECES_NUM = 32;
-}
 
-
-class BoardController;
 class BoardConfig;
-namespace Evaluation { class Evaluator; }
-
-struct PieceImageStack
-{
-	PieceImage* top() { return &pieces[topID++]; }
-
-	int topID = 0;
-	std::vector<PieceImage> pieces = {};
-};
 
 
+namespace GUI {
 
-class BoardImage : public sf::Drawable
-{
-public:
-	BoardImage(BoardController* boardController, Evaluation::Evaluator* evalutor);
+	// ----------------
+	// BoardImage class
+	// ----------------
 
-	void loadPosition(const BoardConfig* board);
-	void updatePieces(BoardConfig* board);
-	void updatePromotion(BoardConfig* board);
-	bool isWaitingForPromotion() const;
+	class BoardImage : public sf::Drawable
+	{
+	public:
+		BoardImage(float tileSize = 100.f);
 
-	void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+		// Position loading
+		void loadPosition(const BoardConfig* board);
+		void clearBoard();
 
-private:
-	void clearPosition();
-	void updateCheckBlur(const BoardConfig* board);
-	Move translateMove(Square from, Square to, Piece piece, Piece onTargetSquare) const;
-	void showEvaluationStats(const BoardConfig* board);
+		// User event processing
+		// Returns (move, promotion) tuple, where move is move succesfully made by user (or null move in other case)
+		// and promotion flag specifies whether move comes from promotion bar selection
+		std::pair<Move, bool> update(const sf::Event& event, sf::Vector2i mousePos, const BoardConfig* board);
+		// Called by BoardController after receiveing a correct promotion move
+		void setupPromotionScreen(Move incompletePromotion);
 
-	BoardController* controller;
-	Evaluation::Evaluator* evaluator;
+		// Visualization
+		void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
-	// Graphical resources & objects
-	sf::VertexArray squareGrid;
-	std::vector<PieceImage*> pieces;
-	std::vector< PieceImageStack > piecesTables;
-	sf::RectangleShape movedTo;
-	sf::RectangleShape movedFrom;
-	BluredCircle checkBlur;
-	sf::RectangleShape promotionFog;
-	PromotionBar whitePromotionBar;
-	PromotionBar blackPromotionBar;
-	const sf::Texture& squaresTexture;
+	private:
+		sf::Vector2f squareToCoords(Square sq) const;
+		Square coordsToSquare(sf::Vector2f coords) const;
 
-	// Graphical logic
-	PieceImage* selectedPiece = nullptr;
-	PromotionBar* selectedPromotionBar = nullptr;
-	Move promotionMove = NULL_MOVE;
-	bool moveRectanglesState = false;
-	bool bluredCircleState = false;
-	bool awaitingPromotion = false;
-};
+		// Graphic content - squares
+		sf::VertexArray squares;				// Grid filled with square textures
+		// Graphic content - pieces
+		PieceImageRepository imageRepository;	// PieceImage bank
+		std::vector<PieceImage*> pieces;		// Actually used piece images
+		// Graphic content - move markers
+		sf::RectangleShape movedFromMarker;
+		sf::RectangleShape movedToMarker;
+		// Graphic content - check marker
+		CheckMarker checkMarker;
+		// Graphic content - promotion elements
+		sf::RectangleShape promotionFog;
+		PromotionBar whitePromotionBar;
+		PromotionBar blackPromotionBar;
 
+		// Logic
+		PieceImage* selectedPiece = nullptr;
+		PromotionBar* activePromotionBar = nullptr;
+		Move awaitingPromotion = Move::null();
+		bool moveMarkerState = false;
+		bool checkMarkerState = false;
 
+		// Additional info
+		float tileSize;
 
-inline bool BoardImage::isWaitingForPromotion() const
-{
-	return awaitingPromotion;
+	};
+
 }

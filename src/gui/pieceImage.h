@@ -1,93 +1,37 @@
 #pragma once
 
-#include "../logic/types.h"
-#include <SFML/Graphics.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Window.hpp>
-
-class PieceImage : public sf::Drawable
-{
-public:
-	PieceImage(Piece piece, const sf::Texture& texture)
-		: representedPiece(piece), image(texture), stablePosition({ 0.f, 0.f }) {
-		image.setPosition(stablePosition);
-	}
-
-	PieceImage(Piece piece, const sf::Texture& texture, const sf::Vector2f& initialPos)	
-		: representedPiece(piece), image(texture), stablePosition(initialPos) {
-		image.setPosition(stablePosition);
-	}
-
-	// Position manipulations
-	void setTempPosition(const sf::Vector2f& pos);
-	void setPermPosition(const sf::Vector2f& pos);
-	void resetToStablePosition();
-	void updateOrigin(const sf::Vector2f& mousePos);
-	void updateOrigin(const sf::Vector2i& mousePos);
-
-	const sf::Vector2f& getStablePosition() const;
-	const sf::Vector2f& getCurrentPosition() const;
-	sf::FloatRect getGlobalBounds() const;
-	Piece piece() const;
-
-	void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
-
-private:
-	Piece representedPiece;
-	sf::Sprite image;
-	sf::Vector2f stablePosition;
-};
+#include "textures.h"
 
 
+namespace GUI {
 
-inline void PieceImage::setTempPosition(const sf::Vector2f& pos)
-{
-	image.setPosition(pos);
-}
+    class PieceImage : public sf::Drawable
+    {
+    public:
+        PieceImage(Piece piece, sf::Vector2f initialPos = sf::Vector2f(0.f, 0.f));
 
-inline void PieceImage::setPermPosition(const sf::Vector2f& pos)
-{
-	stablePosition = pos;
-	resetToStablePosition();
-}
+        // Image position change
+        void setTempPosition(sf::Vector2f pos);     // Change image position, but do not affect stable position (= keep the previous one)
+        void setPermPosition(sf::Vector2f pos);     // Change both image and stable position
+        void restoreStablePosition();
+        void updateOrigin(float mouseX, float mouseY);   // Updates origin of grabbed piece to match mouse posiiton well
 
-inline void PieceImage::resetToStablePosition()
-{
-	image.setOrigin({ 0.f, 0.f });
-	image.setPosition(stablePosition);
-}
+        // Draw
+        void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
-inline void PieceImage::updateOrigin(const sf::Vector2f& mousePos)
-{
-	image.setOrigin({ mousePos.x - stablePosition.x, mousePos.y - stablePosition.y });
-}
+        // Getters
+        sf::Vector2f getCurrentPosition() const { return image.getPosition(); }
+        sf::Vector2f getStablePosition() const { return stablePosition; }
+        sf::FloatRect getGlobalBounds() const { return image.getGlobalBounds(); }
+        Piece representedPiece() const {return piece; }
 
-inline void PieceImage::updateOrigin(const sf::Vector2i& mousePos)
-{
-	updateOrigin(sf::Vector2f(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y)));
-}
+    private:
+        // Graphic content
+        sf::Sprite image;
+        sf::Vector2f stablePosition;    // Last known correct position, before piece has been grabbed by user
 
-inline const sf::Vector2f& PieceImage::getStablePosition() const 
-{
-	return stablePosition; 
-}
+        // Additional info
+        Piece piece;
+    };
 
-inline const sf::Vector2f& PieceImage::getCurrentPosition() const 
-{ 
-	return image.getPosition(); 
-}
-
-inline sf::FloatRect PieceImage::getGlobalBounds() const 
-{
-	return image.getGlobalBounds(); 
-}
-
-inline Piece PieceImage::piece() const
-{
-	return representedPiece;
-}
-
-inline void PieceImage::draw(sf::RenderTarget& target, sf::RenderStates states) const
-{
-	target.draw(image, states);
 }

@@ -1,41 +1,41 @@
 #pragma once
 
 #include "button.h"
+#include <vector>
 
 
-class Navbar : public sf::Drawable
-{
-public:
-	Navbar(const sf::Vector2f& initialPos, const sf::Vector2f& initialSize, float buttonSize = 40.f);
+namespace GUI {
 
-	void addButton(const Button& button);
-	void alignButtons(bool horizontally = true);
+	// ------------
+	// Navbar class
+	// ------------
 
-	ButtonType updateButtonsStates();
+	class Navbar : public sf::Drawable
+	{
+	public:
+		Navbar(sf::Vector2f pos, sf::Vector2f size, float buttonSize = 40.f);
 
-	void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+		// Manipulating button list
+		void addButton(const RoundedButton& button);
 
-private:
-	sf::Vector2f topLeftCorner;
-	sf::Vector2f size;
-	float buttonSize;
-	float buttonSpacing;
+		// Main state update, returns the clicked button (if any)
+		ButtonType update(const sf::Event& event, sf::Vector2i mousePos = sf::Vector2i(0, 0));
 
-	std::vector<Button> buttons;
+		// Draw
+		void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
-	bool horizontalAlignment = true;
-};
+	private:
+		void alignButtons(bool horizontally = true);
 
+		// Graphic content
+		std::vector<RoundedButton> buttons;
 
+		// Size and alignment
+		sf::Vector2f topLeft;
+		sf::Vector2f size;
+		float buttonSize;
+		float buttonSpacing;
 
-inline void Navbar::addButton(const Button& button)
-{
-	buttons.push_back(button);
-	alignButtons(horizontalAlignment);
-}
+	};
 
-inline void Navbar::draw(sf::RenderTarget& target, sf::RenderStates states) const
-{
-	for (const Button& button : buttons)
-		target.draw(button);
 }

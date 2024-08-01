@@ -1,65 +1,51 @@
 #pragma once
 
-#include "textures.h"
-#include <vector>
+#include "button.h"
+#include <array>
 
 
-enum class PromotionChoice : int {
-	QUEEN = 0, ROOK, BISHOP, KNIGHT,
-	NONE
-};
+namespace GUI {
 
-constexpr int PROMOTION_CHOICE_RANGE = 4;
+	// ------------------
+	// PromotionBar class
+	// ------------------
 
+	class PromotionBar : public sf::Drawable
+	{
+	public:
+		// Helper class
+		struct PromotionEntry : public InteractiveButton
+		{
+			sf::CircleShape circle;
+			sf::Sprite icon;
 
+			void onDefault() override;
+			void onHover() override;
+			void onClick() override;
+		};
 
-struct PromotionEntry
-{
-	sf::CircleShape circle;
-	sf::Sprite sprite;
-};
+		PromotionBar(Color side, float tileSize = 100.f);
 
+		// Position change
+		void setPosition(sf::Vector2f pos);
 
+		// Reacting to user events
+		PieceType update(const sf::Event& event, sf::Vector2i mousePos);
 
-class PromotionBar : public sf::Drawable
-{
-public:
-	PromotionBar(Color side, float tileSize);
-	
-	void setPosition(const sf::Vector2f& pos, bool topCorner = true);
-	void setPosition(float xPos, float yPos, bool topCorner = true);
+		// Draw
+		void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
 
-	PromotionChoice update();	// Returns the piece selected as a promotion result
+	private:
+		void alignEntries();
 
-	void draw(sf::RenderTarget& target, sf::RenderStates states) const override;
+		// Graphic content
+		std::array<PromotionEntry, 4> entries;
 
-private:
-	void setAlignment();
+		// Size and positioning
+		Color side;				// Affects setPosition() by selecting the relative corner
+		sf::Vector2f topLeft;
+		float entrySize;
 
-	sf::Vector2f topLeftCorner;
-	float entrySize;
+	};
 
-	std::vector<PromotionEntry> entries;
-
-};
-
-
-
-inline void PromotionBar::setPosition(const sf::Vector2f& pos, bool topCorner)
-{
-	topLeftCorner = topCorner ? pos : pos - sf::Vector2f(0.f, entrySize * (entries.size() - 1));
-	setAlignment();
-}
-
-inline void PromotionBar::setPosition(float xPos, float yPos, bool topCorner)
-{
-	setPosition(sf::Vector2f(xPos, yPos), topCorner);
-}
-
-inline void PromotionBar::draw(sf::RenderTarget& target, sf::RenderStates states) const
-{
-	for (const PromotionEntry& entry : entries) {
-		target.draw(entry.circle, states);
-		target.draw(entry.sprite, states);
-	}
 }

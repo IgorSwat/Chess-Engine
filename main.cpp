@@ -1,5 +1,5 @@
 #include "src/test/test.h"
-//#include "src/gui/boardController.h"
+#include "src/gui/boardController.h"
 #include "src/logic/zobrist.h"
 #include "src/engine/moveSelection.h"
 #include <iostream>
@@ -16,9 +16,11 @@ int main()
 	tester.initEnvironment();
 	
 	//tester.test(Testing::perftMovegenTestEndgamePos, Testing::perftMovegenTestMidgamePos2, Testing::pinsAndChecksTest);
-	tester.test(Testing::moveSelectionTest);
+	//tester.test(Testing::searchTest1);
 
-	//runGUI();
+	GUI::Textures::load_textures();
+	std::unique_ptr<GUI::BoardController> gui = std::make_unique<GUI::BoardController>();
+	gui->run();
 
 	return 0;
 }

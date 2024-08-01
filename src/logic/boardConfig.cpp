@@ -60,7 +60,7 @@ BoardConfig::BoardConfig()
 {
 	rootState = new PositionInfo();
 	posInfo = rootState;
-	loadPosition(STARTING_POS);
+	loadPosition();
 }
 
 BoardConfig::~BoardConfig()
@@ -70,6 +70,11 @@ BoardConfig::~BoardConfig()
 		posInfo = posInfo->prev;
 		delete tmp;
 	}
+}
+
+void BoardConfig::loadPosition()
+{
+	loadPosition(STARTING_POS);
 }
 
 void BoardConfig::loadPosition(const std::string& fen)
@@ -451,25 +456,34 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 	Square to = move.to();
 	Piece piece = board[from];
 	Color side = color_of(piece);
-	if (pieces(side) & to) return false;	// Target square cannot be already occupied by friendly piece
 
+	// Target square cannot be already occupied by friendly piece
+	if (pieces(side) & to) 
+		return false;
+
+	// Special case 1 - enpassant
 	if (move.isEnpassant()) {
-		if (!(Board::AdjacentRankSquares[enpassantSquare()] & from) || file_of(enpassantSquare()) != file_of(to)) return false;
-		Square kingSq = kingSquare[side];
+		if (!(Board::AdjacentRankSquares[enpassantSquare()] & from) || file_of(enpassantSquare()) != file_of(to)) 
+			return false;
 		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
-		return !attackersToSquare(kingSq, ~side, occ) ||
+		return !attackersToSquare(kingSquare[side], ~side, occ) ||
 			(checkingPieces() && ((Bitboards::single_populated(checkingPieces())) && enpassantSquare() == Bitboards::lsb(checkingPieces())));
 	}
 
+	// Special case 2 - castle
 	if (move.isCastle()) {
 		CastleType castleType = make_castle_type(side, to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE);
 		if (!hasCastlingRight(castleType)) return false;
 		if (!isCastlingPathClear(castleType)) return false;
 		Direction dir = (castleType & KINGSIDE_CASTLE) ? EAST : WEST;
-		Color enemy = ~side;
-		return attackersToSquare(from + dir, enemy, pieces()) == 0 &&
-			attackersToSquare(to, enemy, pieces()) == 0 && !isInCheck(side);
+		return attackersToSquare(from + dir, ~side, pieces()) == 0 &&
+			attackersToSquare(to, ~side, pieces()) == 0 && !isInCheck(side);
 	}
+
+	// Eliminate moves that violetes piece moving rules
+	if ((type_of(piece) == PAWN && !Pieces::in_pawn_range(side, from, to) && !(Pieces::pawn_attacks(side, from) & to)) ||
+		(type_of(piece) != PAWN && !Pieces::in_piece_range(type_of(piece), from, to)))
+		return false;
 
 	if (type_of(piece) == KING)
 		return !attackersToSquare(to, ~side, pieces() ^ from);	// The "to" square cannot be in check after king move

@@ -1,4 +1,5 @@
 #include "moveSelection.h"
+#include "see.h"
 
 
 // ---------------------
@@ -46,14 +47,14 @@ Move MoveSelector::selectNext()
         if (currGenType == MoveGeneration::CAPTURE || currGenType == MoveGeneration::CHECK_EVASION) {
             switch (stage) {
                 case 1:
-                    move = selectMove<false>([this](const Move& move){return this->see.evaluate(move) > 0;});
+                    move = selectMove<false>([this](const Move& move){return SEE::evaluate(board, move) > 0;});
                     if (move == Move::null()) {
                         nextSection();
                         return selectNext<genStrategy, selStrategy>();
                     }
                     break;
                 case 2:
-                    move = selectMove<true>([this](const Move& move){return this->see.evaluate(move) >= 0;});
+                    move = selectMove<true>([this](const Move& move){return SEE::evaluate(board, move) >= 0;});
                     if (move == Move::null()) {
                         nextSection();
                         return selectNext<genStrategy, selStrategy>();
