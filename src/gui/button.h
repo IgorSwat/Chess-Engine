@@ -12,9 +12,10 @@ namespace GUI {
     enum class ButtonType {
         BACK = 1,
         RESET,
+        LOAD,
 
         NONE = 0,
-        BUTTON_TYPE_RANGE = 3
+        BUTTON_TYPE_RANGE = 4
     };
 
 

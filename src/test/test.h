@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../engine/engine.h"
 #include <iostream>
 #include <functional>
 #include <cassert>
@@ -49,6 +50,14 @@ namespace Testing {
 		CONSOLE = 1,
 		FILE
 	};
+
+
+	// ------------
+	// Test helpers
+	// ------------
+
+	// Search
+	void print_search_tree(BoardConfig* board, const TranspositionTable* tTable, bool deep = false, OutputMode mode = OutputMode::CONSOLE);
 
 
 	// --------------

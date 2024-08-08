@@ -22,7 +22,7 @@ namespace GUI {
             int used = 0;
         };
 
-        PieceImageRepository() = default;
+        PieceImageRepository(float imageSize = 100.f) : imageSize(imageSize) {}
 
         // Repository handlers
         PieceImage* takeImage(Piece piece);
@@ -31,6 +31,7 @@ namespace GUI {
 
     private:
         std::array<ImageBank, PIECE_RANGE> repository;
+        float imageSize;
     };
 
 }

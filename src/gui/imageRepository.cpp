@@ -13,7 +13,7 @@ namespace GUI {
 
         // Check if new image needs to be generated
         if (bank.used == bank.images.size())
-            bank.images.push_back(std::make_unique<PieceImage>(piece));
+            bank.images.push_back(std::make_unique<PieceImage>(piece, imageSize));
         
         PieceImage* image = bank.images[bank.used].get();
         bank.used++;

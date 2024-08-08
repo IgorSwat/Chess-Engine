@@ -22,6 +22,7 @@ namespace GUI {
 
     BoardImage::BoardImage(float tileSize)
         : tileSize(tileSize),
+          imageRepository(tileSize),
           movedFromMarker(sf::Vector2f(tileSize, tileSize)), movedToMarker(sf::Vector2f(tileSize, tileSize)),
           checkMarker(tileSize / 2.f, CHECK_MARKER_FRAGMENTATION),
           promotionFog(sf::Vector2f(tileSize * 8, tileSize * 8)), whitePromotionBar(WHITE, tileSize), blackPromotionBar(BLACK, tileSize)

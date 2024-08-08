@@ -8,7 +8,7 @@ namespace GUI {
     class PieceImage : public sf::Drawable
     {
     public:
-        PieceImage(Piece piece, sf::Vector2f initialPos = sf::Vector2f(0.f, 0.f));
+        PieceImage(Piece piece, float size);
 
         // Image position change
         void setTempPosition(sf::Vector2f pos);     // Change image position, but do not affect stable position (= keep the previous one)

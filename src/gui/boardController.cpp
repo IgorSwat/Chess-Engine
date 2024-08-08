@@ -7,10 +7,17 @@ namespace GUI {
 	// GUI parameters
 	// --------------
 
-	constexpr float TILE_SIZE = 60.f;
-	constexpr float NAVBAR_HEIGHT = 60.f;
-	constexpr float NAV_BUTTON_SIZE = 30.f;
-	constexpr float NAV_BUTTON_ROUND = 0.4f;
+	const float TILE_SIZE = 100.f;
+	const float NAVBAR_HEIGHT = 80.f;
+	const float NAV_BUTTON_SIZE = 40.f;
+	const float NAV_BUTTON_ROUND = 0.4f;
+	const float INPUT_BAR_WIDTH = TILE_SIZE * 8 * 0.8f;
+	const float INPUT_BAR_HEIGHT = 30.f;
+	const float INPUT_BOTTOM_MARGIN = 20.f;
+	const unsigned INPUT_FONT_SIZE = 14;
+
+	const float WINDOW_WIDTH = TILE_SIZE * 8;
+	const float WINDOW_HEIGHT = TILE_SIZE * 8 + NAVBAR_HEIGHT + INPUT_BAR_HEIGHT;
 
 	const sf::Color WINDOW_BACKGROUND_COLOR = sf::Color(245, 220, 152, 128);
 
@@ -21,14 +28,18 @@ namespace GUI {
 
 	BoardController::BoardController()
 		: board(), 
-		  window(sf::VideoMode(TILE_SIZE * 8, TILE_SIZE * 8 + NAVBAR_HEIGHT), "Chess", sf::Style::Close | sf::Style::Titlebar),
+		  window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT + INPUT_BOTTOM_MARGIN), "Chess", sf::Style::Close | sf::Style::Titlebar,
+		  		 sf::ContextSettings(0, 0, 2, 1, 1, 0, false)),
 		  boardImage(TILE_SIZE), 
-		  navbar(sf::Vector2f(0.f, TILE_SIZE * 8), sf::Vector2f(TILE_SIZE * 8, NAVBAR_HEIGHT))
+		  navbar(sf::Vector2f(0.f, WINDOW_WIDTH), sf::Vector2f(WINDOW_WIDTH, NAVBAR_HEIGHT)),
+		  inputBar(sf::Vector2f((WINDOW_WIDTH - INPUT_BAR_WIDTH) / 2.f, WINDOW_HEIGHT - INPUT_BAR_HEIGHT),
+		  		   sf::Vector2f(INPUT_BAR_WIDTH, INPUT_BAR_HEIGHT), INPUT_FONT_SIZE)   
 	{
 		window.setFramerateLimit(60);
 
 		navbar.addButton(RoundedButton(ButtonType::BACK, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
 		navbar.addButton(RoundedButton(ButtonType::RESET, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
+		navbar.addButton(RoundedButton(ButtonType::LOAD, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
 
 		sf::Cursor cursor;
 		if (cursor.loadFromSystem(sf::Cursor::Hand))
@@ -41,9 +52,6 @@ namespace GUI {
 	// -----------------------------------
 	// BoardController methods - main loop
 	// -----------------------------------
-
-	// BUG 1 - Ruy Lopez Exchange, pawn capture on c6
-	// BUG 2 - Short castle
 
 	void BoardController::run()
 	{
@@ -72,6 +80,7 @@ namespace GUI {
 					else if (legal) {
 						board.makeMove(move);
 						boardImage.loadPosition(&board);
+						runTesters();
 					}
 					else
 						boardImage.loadPosition(&board);
@@ -81,24 +90,61 @@ namespace GUI {
 				ButtonType clicked = navbar.update(event, mousePos);
 				switch (clicked) {
 					case ButtonType::BACK:
-						board.undoLastMove();
-						// TODO: perform a check if undoLastMove() changed anything
-						boardImage.loadPosition(&board);
+						if (board.lastMove() != Move::null()) {
+							board.undoLastMove();
+							boardImage.loadPosition(&board);
+							runTesters();
+						}
 						break;
 					case ButtonType::RESET:
 						board.loadPosition();
 						boardImage.loadPosition(&board);
+						runTesters(true);
+						break;
+					case ButtonType::LOAD:
+						if (!inputBar.getInput().empty()) {
+							board.loadPosition(inputBar.getInput());
+							boardImage.loadPosition(&board);
+							runTesters(true);
+						}
 						break;
 					default:
 						break;
 				}
+
+				// Update input bar
+				inputBar.update(event, mousePos);
 			}
+
+			// Periodic update
+			inputBar.updateTimer();
 
 			// Render
 			window.clear(WINDOW_BACKGROUND_COLOR);
 			window.draw(boardImage);
 			window.draw(navbar);
+			window.draw(inputBar);
 			window.display();
+		}
+	}
+
+
+	// ---------------------------------------------
+	// BoardController methods - testing environment
+	// ---------------------------------------------
+
+	void BoardController::addTester(GuiTesterPtr tester)
+	{
+		testers.push_back(std::move(tester));
+	}
+
+	void BoardController::runTesters(bool init)
+	{
+		for (GuiTesterPtr& tester : testers) {
+			if (init)
+				tester->initialTest(&board);
+			else
+				tester->nextTest(&board);
 		}
 	}
 

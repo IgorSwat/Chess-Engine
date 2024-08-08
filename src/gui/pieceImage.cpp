@@ -3,9 +3,11 @@
 
 namespace GUI {
 
-    PieceImage::PieceImage(Piece piece, sf::Vector2f initialPos)
-        : image(Textures::get_texture(piece)), stablePosition(initialPos), piece(piece)
+    PieceImage::PieceImage(Piece piece, float size)
+        : image(Textures::get_texture(piece)), piece(piece)
     {
+        float scaleFactor = size / Textures::get_texture(piece).getSize().x;
+        image.setScale(scaleFactor, scaleFactor);
         image.setPosition(stablePosition);
     }
 

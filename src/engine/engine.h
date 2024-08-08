@@ -19,7 +19,7 @@ public:
     void setPosition(const std::string& fen);
 
     // Main functionalities
-    Value evaluate(Search::Depth depth);    // No iterative deepening as for now
+    Value evaluate(Search::Depth depth = 0);    // No iterative deepening as for now. By default returns a static eval (depth 0)
 
     // Getters
     const TranspositionTable* transpositionTable() const;

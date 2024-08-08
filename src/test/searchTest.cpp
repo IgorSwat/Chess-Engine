@@ -12,7 +12,7 @@ namespace Testing {
     // Test helpers
     // ------------
 
-    void printSearchTree(BoardConfig* board, const TranspositionTable* tTable, Search::Depth depth, std::ostream& os)
+    void print_search_tree(BoardConfig* board, const TranspositionTable* tTable, Search::Depth depth, bool deep, std::ostream& os)
     {
         // Generate all legal moves
         MoveList moves;
@@ -26,24 +26,23 @@ namespace Testing {
                 std::string offset(2 * depth, ' ');
                 os << offset << int(depth) << ": " << move << std::dec << " ... Score: " << entry->score << ", Type: " << int(entry->typeOfNode);
                 os << ", ((( Best " << entry->bestMove << " )))\n";
-                printSearchTree(board, tTable, depth + 1, os);
+                if (deep)
+                    print_search_tree(board, tTable, depth + 1, deep, os);
             }
 
             board->undoLastMove();
         }
     }
 
-    template <OutputMode mode>
-    void printSearchTree(BoardConfig* board, const TranspositionTable* tTable)
+    void print_search_tree(BoardConfig* board, const TranspositionTable* tTable, bool deep, OutputMode mode)
     {
         // Select output object
-        std::ostream& out = std::cout;
-        if constexpr (mode == OutputMode::FILE) {
+        if (mode == OutputMode::FILE) {
             std::ofstream file("search_test.txt");
-            out = file;
+            print_search_tree(board, tTable, 0, deep, file);
         }
-
-        printSearchTree(board, tTable, 0, out);
+        else
+            print_search_tree(board, tTable, 0, deep, std::cout);
     }
 
 
@@ -63,7 +62,7 @@ namespace Testing {
         engine->setPosition(&board);
         engine->evaluate(depth);
 
-        printSearchTree<OutputMode::CONSOLE>(&board, engine->transpositionTable());
+        print_search_tree(&board, engine->transpositionTable(), true, OutputMode::CONSOLE);
     }
 
 }
