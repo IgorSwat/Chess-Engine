@@ -45,6 +45,7 @@ namespace Evaluation {
         // King safety related
         Square kingSq = board->kingPosition(side);
         safetyPoints[side] = 0;
+        tropismPoints[side] = 0;
         kingAreaAttackers[side] = 0;
         kingAreaAttackPoints[side] = 0;
         kingArea[side] = Pieces::piece_attacks_s<KING>(kingSq) | kingSq;
@@ -268,8 +269,7 @@ namespace Evaluation {
 
             // King tropism
             int tropismDistance = (Board::SquareDistance[sq][enemyKingPos] - 1) >> 1;
-            int tropism = KingTropismKnightPoints >> tropismDistance;
-            safetyPoints[enemy] += tropism;
+            tropismPoints[enemy] += KingTropismKnightPoints >> tropismDistance;
 
             // King area attacks & defence
             updateKingAreaSafety<side>(sq, att, KingAreaAttackWages[KNIGHT]);
@@ -327,7 +327,7 @@ namespace Evaluation {
             // King tropism
             int blockers = Bitboards::popcount(Board::Boxes[sq][enemyKingPos] & ourPiecesExcluded);
             int tropism = (Pieces::pseudo_attacks(BISHOP, sq) & kingArea[enemy]) ? KingTropismBishopPoints[blockers] : KingTropismBishopPoints[blockers] >> 1;
-            safetyPoints[enemy] += tropism;
+            tropismPoints[enemy] += tropism;
 
             // King area attacks & defence
             updateKingAreaSafety<side>(sq, attAndXray, KingAreaAttackWages[BISHOP]);
@@ -367,7 +367,7 @@ namespace Evaluation {
             // King tropism
             int blockers = Bitboards::popcount(Board::Boxes[sq][enemyKingPos] & ourPiecesExcluded);
             int tropism = (Pieces::pseudo_attacks(ROOK, sq) & kingArea[enemy]) ? KingTropismRookPoints[blockers] : KingTropismRookPoints[blockers] >> 1;
-            safetyPoints[enemy] += tropism;
+            tropismPoints[enemy] += tropism;
 
             // King area attacks & defence
             updateKingAreaSafety<side>(sq, attAndXray, KingAreaAttackWages[ROOK]);
@@ -398,7 +398,7 @@ namespace Evaluation {
             Bitboard betweenArea = Board::aligned(sq, enemyKingPos) ? Board::Paths[sq][enemyKingPos] : Board::Boxes[sq][enemyKingPos];
             int blockers = Bitboards::popcount(betweenArea & ourPiecesExcluded);
             int tropism = (Pieces::pseudo_attacks(QUEEN, sq) & kingArea[enemy]) ? KingTropismQueenPoints[blockers] : KingTropismQueenPoints[blockers] >> 1;
-            safetyPoints[enemy] += tropism;
+            tropismPoints[enemy] += tropism;
 
             // King area attacks & defence
             updateKingAreaSafety<side>(sq, attAndXray, KingAreaAttackWages[QUEEN]);
@@ -448,12 +448,19 @@ namespace Evaluation {
             shieldId |= 0x4;
         safetyPoints[side] += PawnShieldPoints[shieldId];
 
+        // King tropism
+        if (tropismPoints[side] < KING_TROPISM_THRESHOLD)
+            safetyPoints[side] += tropismPoints[side];
+        else
+            safetyPoints[side] += tropismPoints[side] * tropismPoints[side] / (KING_TROPISM_THRESHOLD * 1.25f);
+
         // King area attacks
         kingAreaAttackers[side] = std::max(kingAreaAttackers[side], 1);
         int attackPoints = kingAreaAttackPoints[side] * kingAreaAttackers[side] * kingAreaAttackers[side];
         safetyPoints[side] += attackPoints;
 
         // Global king safety
+        safetyPoints[side] = std::min(0, safetyPoints[side]);
         add_eval<side, kingTest>(result, (safetyPoints[side] * Interpolation::interpolate_gs(KING_SAFETY_VALUE, stage)) >> 6, "King safety");
 
 
@@ -505,6 +512,9 @@ namespace Evaluation {
 
         add_eval<side, miscTest>(result, (threatCount[side] * threatPoints * Interpolation::interpolate_gs(THREAT_VALUE, stage)) >> 6, "Threats");
 
+        // Tempo bonus for side on move
+        if (board->movingSide() == side)
+            add_eval<side, miscTest>(result, TEMPO_BONUS, "Tempo bonus");
 
         return result;
     }

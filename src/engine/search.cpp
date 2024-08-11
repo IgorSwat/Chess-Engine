@@ -20,6 +20,7 @@ namespace Search {
     Value Crawler::search(Value alpha, Value beta, Depth depth)
     {
         if (depth == 0)
+            //return 0;                 // - to test max speed with no eval
             return evaluate();
         //  return quiescence() ...     -- needs to cover checkmates and stealmates
 

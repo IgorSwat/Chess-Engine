@@ -36,6 +36,11 @@ namespace Search {
         return age > rootAge ? age - rootAge : rootAge - age;
     }
 
+    inline Value relative_score(Value score, const BoardConfig* board)
+    {
+        return board->movingSide() == WHITE ? score : -score;
+    }
+
 
     // -------------
     // Crawler class
@@ -88,14 +93,9 @@ namespace Search {
         rootAge = virtualBoard.halfmovesPlain();
     }
 
-    inline Value Crawler::relativeEval(Value eval) const
-    {
-        return virtualBoard.movingSide() == WHITE ? eval : -eval;
-    }
-
     inline Value Crawler::evaluate()
     {
-        return relativeEval(evaluator.evaluate());
+        return relative_score(evaluator.evaluate(), &virtualBoard);
     }
 
 }

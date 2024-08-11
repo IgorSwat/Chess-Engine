@@ -102,9 +102,9 @@ namespace Evaluation {
     };
     constexpr IValue QUEEN_MOBILITY[28] = {
         {-6, -31}, {-4, -24}, {-2, -17}, {-1, -11}, {0, -3}, {1, 6}, {3, 24}, {5, 40},
-        {7, 50}, {9, 69}, {13, 86}, {17, 98}, {24, 124}, {30, 136}, {35, 145}, {40, 150},
-        {44, 155}, {47, 159}, {49, 161}, {50, 163}, {51, 166}, {51, 168}, {52, 170}, {52, 173},
-        {53, 175}, {53, 176}, {53, 177}, {54, 179}
+        {7, 50}, {9, 69}, {11, 86}, {14, 98}, {17, 124}, {19, 136}, {22, 145}, {24, 150},
+        {26, 155}, {28, 159}, {29, 161}, {30, 163}, {30, 166}, {31, 168}, {31, 170}, {31, 173},
+        {31, 175}, {31, 176}, {31, 177}, {32, 179}
     };
 
     // Outposts
@@ -209,10 +209,11 @@ namespace Evaluation {
         -4, -4, -4, -4, -4, -4, -4, -4
     };
     constexpr int KingTropismQueenPoints[24] = {
-        -76, -76, -58, -40, -26, -19, -16, -14,
-        -12, -11, -10, -9, -9, -9, -9, -9,
-        -9, -9, -9, -9, -9, -9, -9, -9
+        -94, -93, -79, -58, -41, -37, -33, -29,
+        -25, -22, -20, -18, -18, -15, -15, -15,
+        -15, -15, -15, -15, -15, -15, -15, -15
     };
+    constexpr int KING_TROPISM_THRESHOLD = -60;
     constexpr int KingAreaAttackWages[PIECE_TYPE_RANGE] = {
         0,
         0,  // Pawn
@@ -230,8 +231,8 @@ namespace Evaluation {
     constexpr int CENTRAL_SPACE_POINTS = 64;
     constexpr int OTHER_SPACE_POINTS = 38;
 
-    constexpr IValue SPACE_TYPE_I = { 5, 1 };           // Per 64 space points (easier scaling)
-    constexpr IValue SPACE_TYPE_II = { 9, 2 };          // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_I = { 6, 1 };           // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_II = { 12, 2 };          // Per 64 space points (easier scaling)
 
     // Threats
     constexpr bool EVALUATE_HNGING_PAWN_THREATS = true;
@@ -243,6 +244,9 @@ namespace Evaluation {
     constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 8;
 
     constexpr IValue THREAT_VALUE = { -64, -64 };         // Per 64 space points (easier scaling)
+
+    // Tempo bonus
+    constexpr Value TEMPO_BONUS = 18;
 
     // Evaluation descent
     constexpr int PAWN_COMPLEXITY_POINTS = 25;

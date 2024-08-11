@@ -154,6 +154,7 @@ void BoardConfig::loadPosition(const BoardConfig& other)
 	std::copy(other.board, other.board + SQUARE_RANGE, this->board);
 	std::copy(other.piecesByType, other.piecesByType + PIECE_TYPE_RANGE, this->piecesByType);
 	std::copy(other.piecesByColor, other.piecesByColor + COLOR_RANGE, this->piecesByColor);
+	std::copy(other.kingSquare, other.kingSquare + COLOR_RANGE, this->kingSquare);
 	posInfo->gameStageValue = other.posInfo->gameStageValue;
 	halfmoveCount = other.halfmoveCount;
 

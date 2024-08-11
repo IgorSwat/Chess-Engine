@@ -81,7 +81,8 @@ namespace Evaluation {
         int proximityWages[COLOR_RANGE] = { 0 };
 
         // King safety related
-        int safetyPoints[COLOR_RANGE] = { 0 };
+        int safetyPoints[COLOR_RANGE] = { 0 };                  // Points against given side
+        int tropismPoints[COLOR_RANGE] = { 0 };                 // Points against given side
         int kingAreaAttackers[COLOR_RANGE] = { 0 };             // (Number of attackers) - (Number of defenders) difference
         int kingAreaAttackPoints[COLOR_RANGE] = { 0 };          // Absolute weighted count of each attack on king area
         Bitboard kingFrontSpans[COLOR_RANGE][2] = { 0 };        // First and second rank span areas in front of king

@@ -1,6 +1,7 @@
 #include "test.h"
 #include "../engine/engine.h"
 #include <fstream>
+#include <chrono>
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -24,7 +25,8 @@ namespace Testing {
             auto entry = tTable->probe(board->hash(), board->pieces());
             if (entry != nullptr) {
                 std::string offset(2 * depth, ' ');
-                os << offset << int(depth) << ": " << move << std::dec << " ... Score: " << entry->score << ", Type: " << int(entry->typeOfNode);
+                os << offset << int(depth) << ": " << move << std::dec << " ... Score: " << Search::relative_score(entry->score, board);
+                os << ", Type: " << int(entry->typeOfNode);
                 os << ", ((( Best " << entry->bestMove << " )))\n";
                 if (deep)
                     print_search_tree(board, tTable, depth + 1, deep, os);
@@ -53,16 +55,22 @@ namespace Testing {
     void searchTest1()
     {
         std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        Search::Depth depth = 3;
+        Search::Depth depth = 6;
 
         BoardConfig board;
         board.loadPosition(fen);
 
         std::unique_ptr<Engine> engine = std::make_unique<Engine>();
         engine->setPosition(&board);
-        engine->evaluate(depth);
 
-        print_search_tree(&board, engine->transpositionTable(), true, OutputMode::CONSOLE);
+        auto start = std::chrono::steady_clock::now();
+        engine->evaluate(depth);
+        auto end = std::chrono::steady_clock::now();
+
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Search (depth " << std::dec << int(depth) << ") time: " << elapsed.count() << " seconds" << std::endl;
+
+        //print_search_tree(&board, engine->transpositionTable(), true, OutputMode::CONSOLE);
     }
 
 }

@@ -29,7 +29,7 @@ namespace Testing {
     class SearchPrinter : public GuiTester
     {
     public:
-        SearchPrinter(Engine* engine, Search::Depth depth);
+        SearchPrinter(Engine* engine, bool useSearch = true, Search::Depth depth = 2);
 
         void initialTest(BoardConfig* board) override;
         void nextTest(BoardConfig* board) override;
@@ -37,6 +37,7 @@ namespace Testing {
     private:
         Engine* engine;
         Search::Depth maxSearchDepth;
+        bool useSearch;
     };
 
 }
