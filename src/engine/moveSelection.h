@@ -1,6 +1,8 @@
 #pragma once
 
 #include "moveGeneration.h"
+#include "see.h"
+#include <algorithm>
 
 
 // ------------------------
@@ -27,23 +29,34 @@ enum class SelectionStrategy {
 // Move selector class
 // -------------------
 
+class MoveSelector;
+namespace MoveSelection { template <typename Functor> void sort_moves(MoveSelector&, Functor); }
+
 class MoveSelector
 {
 public:
     MoveSelector(BoardConfig* board) : board(board), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()) {}
 
+    // Change board
+    void setBoard(BoardConfig* board);
+
     // Generating moves
     template <MoveGeneration::MoveGenType gen>
     void generateMoves();   // Initializes move list by generating moves 
 
-    // Selecting generated moves
+    // Move selection
     template <GenerationStrategy genStrategy, SelectionStrategy selStrategy>
     Move selectNext();
-    // Reset current move set to allow another loop
-    void resetSelection();
+    bool hasMoves();            // Check for any legal move existance
 
-    // Change board
-    void setBoard(BoardConfig* board);
+    // Reseting the selection
+    void resetSelection();      // Reset current move set in both ends to allow another loop
+
+    // Helper functions
+    void sortCaptures();    // A specialized, in-place sort by SEE value
+    template <typename Functor> friend void MoveSelection::sort_moves(MoveSelector& selector, Functor func);
+
+    MoveGeneration::MoveGenType currGenType = MoveGeneration::NONE;
     
 private:
     // 'reselection' parameter decides whether we already checked some move (which means we do not need to check it's legality again)
@@ -57,14 +70,23 @@ private:
     MoveList moves;
     Move* sectionBegin;
     Move* sectionEnd;
-    MoveGeneration::MoveGenType currGenType = MoveGeneration::NONE;
-    int stage = 1;
+    int stage = 1;      // Used in the scope of one generation type
+
+    // Objects of interest - for different strategies like select moves from given square, select promotions, etc.
+    Square dFrom;
+    Square dTo;
 };
 
 
 // ---------------------
 // Move selector methods
 // ---------------------
+
+inline void MoveSelector::setBoard(BoardConfig* board)
+{
+    this->board = board;
+    moves.clear();
+}
 
 template <MoveGeneration::MoveGenType gen>
 inline void MoveSelector::generateMoves()
@@ -75,6 +97,14 @@ inline void MoveSelector::generateMoves()
     resetSelection();
 }
 
+// Warning - use this one carefully!
+inline bool MoveSelector::hasMoves()
+{
+    Move move = selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();   // It can change the current generation type
+    resetSelection();
+    return move != Move::null();
+}
+
 inline void MoveSelector::resetSelection()
 {
     sectionBegin = moves.begin();
@@ -82,10 +112,10 @@ inline void MoveSelector::resetSelection()
     stage = 1;
 }
 
-inline void MoveSelector::setBoard(BoardConfig* board)
+inline void MoveSelector::sortCaptures()
 {
-    this->board = board;
-    moves.clear();
+    std::for_each(moves.begin(), moves.end(), [this](Move& move) -> void { SEE::evaluate(this->board, move); });
+    std::sort(moves.begin(), moves.end(), [](const Move& a, const Move& b) -> bool { return a.see > b.see; });   // Descending order
 }
 
 inline void MoveSelector::nextSection()
@@ -93,4 +123,41 @@ inline void MoveSelector::nextSection()
     sectionBegin = sectionEnd;
     sectionEnd = moves.end();
     stage++;
+}
+
+
+// ---------------------------
+// Other move selection issues
+// ---------------------------
+
+namespace MoveSelection {
+
+    // ------------
+    // Move sorting
+    // ------------
+
+    // WARNING - adds some additional performance overhead due to not sorting in place
+    template <typename Functor>
+    void sort_moves(MoveList& moveList, Functor func)
+    {
+        // Decorator pattern for sorting
+        std::pair<Move, int> carray[MoveList::MAX_MOVES];
+        std::transform(moveList.begin(), moveList.end(), carray, 
+                       [func](Move move) -> std::pair<Move, int> { return {move, func(move)}; });
+        
+        std::sort(carray, carray + moveList.size(), 
+                  [](const auto& a, const auto& b){ return a.second > b.second; });     // Descending order
+        
+        std::transform(carray, carray + moveList.size(), moveList.begin(),
+                       [](const auto& p) -> Move { return p.first; });
+    }
+
+    // WARNING - adds some additional performance overhead due to not sorting in place
+    template <typename Functor>
+    inline void sort_moves(MoveSelector& selector, Functor func)
+    {
+        sort_moves(selector.moves, func);
+        selector.resetSelection();
+    }
+
 }

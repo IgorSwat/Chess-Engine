@@ -40,8 +40,8 @@ private:
     std::uint64_t index(std::uint64_t key) const;
 
     // Adjustable hyperparameters
-    static constexpr int MB_SIZE = 32;             // Total size of the transposition table in MB
-    static constexpr int MASK_LENGTH = 20;         // For Entry of size 32 B
+    static constexpr int MB_SIZE = 64;             // Total size of the transposition table in MB
+    static constexpr int MASK_LENGTH = 21;         // For Entry of size 32 B
 
     // Data table
     Entry entries[1024 * 1024 * MB_SIZE / sizeof(Entry)];

@@ -33,7 +33,8 @@ namespace Evaluation {
         Value evaluate();
 
         // Position info obtained after evaluation
-        int threats(Color side) const;
+        int getThreatCount(Color side) const;             // Number of threats against given side
+        Bitboard getThreatMap(Color side) const;          // Bitboard of threatened pieces from given side
 
         // Change board
         void setBoard(BoardConfig* board);
@@ -91,6 +92,7 @@ namespace Evaluation {
 
         // Threats
         int threatCount[COLOR_RANGE] = { 0 };                   // Threats for side X means threats that side Y generates against X
+        Bitboard threatMap[COLOR_RANGE] = { 0 };
 
         // Other common properties
         int centralDensity = 0;
@@ -99,9 +101,14 @@ namespace Evaluation {
     };
 
 
-    inline int Evaluator::threats(Color side) const
+    inline int Evaluator::getThreatCount(Color side) const
     {
         return threatCount[side];
+    }
+
+    inline Bitboard Evaluator::getThreatMap(Color side) const
+    {
+        return threatMap[side];
     }
 
     inline void Evaluator::setBoard(BoardConfig* board)

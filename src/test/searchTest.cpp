@@ -55,7 +55,7 @@ namespace Testing {
     void searchTest1()
     {
         std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        Search::Depth depth = 6;
+        Search::Depth depth = 8;
 
         BoardConfig board;
         board.loadPosition(fen);

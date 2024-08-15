@@ -80,7 +80,8 @@ public:
 	bool isCastlingPathClear(CastleType castle) const;
 
 	// Checks & pins
-	bool isInCheck(Color side) const;
+	bool isInCheck(Color side) const;		// Performs check for a given side
+	bool isInCheck() const;					// Performs check for the current side on move
 	Bitboard checkingPieces() const;
 	Bitboard possibleChecks(PieceType ptype) const;	// Returns bitboard map of squares, from which piece of given type can deliver check to ~sideOnMove
 	Bitboard pinnedPieces(Color side) const;	// Returns the pinned pieces of given color.
@@ -220,6 +221,11 @@ inline bool BoardConfig::isCastlingPathClear(CastleType castle) const
 inline bool BoardConfig::isInCheck(Color side) const
 {
 	return side == sideOnMove && posInfo->checkers != 0;
+}
+
+inline bool BoardConfig::isInCheck() const
+{
+	return posInfo->checkers;
 }
 
 inline Bitboard BoardConfig::checkingPieces() const

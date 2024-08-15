@@ -1,10 +1,20 @@
 #include "see.h"
+#include <numeric>
 
 
 namespace SEE {
 
 	constexpr int MAX_DEPTH = 33;
-	constexpr int PieceExchangeValue[PIECE_TYPE_RANGE] = { 0, 100, 325, 325, 500, 900, 100000, 0 };
+	constexpr int16_t PieceExchangeValue[PIECE_TYPE_RANGE] = { 
+		0, 	// Covers the NULL_TYPE (= no piece on target square)
+		100, 
+		325, 
+		325, 
+		500, 
+		900, 
+		16000, 
+		0 
+	};
 
 
 	// ----------------
@@ -27,13 +37,13 @@ namespace SEE {
 	// SEE methods
 	// -----------
 
-	int evaluate(BoardConfig* board, Square from, Square to, PieceType promotionType)
+	int16_t evaluate(BoardConfig* board, Square from, Square to, PieceType promotionType)
 	{
 		// Check whether a real exchange happens (Possible to also check the color of both pieces)
 		if (board->isFree(from) || board->isFree(to))
 			return 0;
 
-		int gain[MAX_DEPTH];
+		int16_t gain[MAX_DEPTH];
 		int depth = board->movingSide();
 		Bitboard mayXray = board->pieces() ^ board->pieces(KNIGHT) ^ board->pieces(KING);
 		Bitboard occ = board->pieces();
@@ -46,7 +56,7 @@ namespace SEE {
 		do {
 			depth++;
 			gain[depth] = PieceExchangeValue[attackingPiece] - gain[depth - 1];
-			if (std::max(-gain[depth - 1], gain[depth]) < 0)
+			if (std::max<int16_t>(-gain[depth - 1], gain[depth]) < 0)
 				break;
 			attackdef ^= fromSet;
 			if (fromSet & mayXray)
@@ -59,7 +69,7 @@ namespace SEE {
 			fromSet = lvp(board, Color(depth & 0x1), attackdef, attackingPiece);
 		} while (fromSet);
 		while (--depth)
-			gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+			gain[depth - 1] = -std::max<int16_t>(-gain[depth - 1], gain[depth]);
 		return gain[board->movingSide()];
 	}
 	

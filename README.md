@@ -12,7 +12,7 @@ Or just a chess bot if that's what you want to call it.<br><br>
 + Hand crafted, heuristic evaluation function (HCE):&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Transposition table, zobrist hash&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Basic search&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
-+ Quiescence search&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
++ Quiescence search&nbsp; <img src="md/check.png" alt="Check icon" width="20" height="20">
 + Selectivity heuristics&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
 + Multi-threaded search&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">
 + Evaluation parameters tuning (data collection and data processing environment)&nbsp; <img src="md/delete.png" alt="Delete icon" width="20" height="20">

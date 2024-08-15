@@ -17,13 +17,30 @@ namespace Search {
     using Depth = std::uint8_t;
     using Age = std::uint16_t;
 
+    // Node (position) type info
     enum NodeType : std::uint8_t {
         PV_NODE = 1,    // Exact value
-        CUT_NODE,
-        ALL_NODE,
+        CUT_NODE,       // A lower-bound score (a line which should not be allowed by enemy)
+        ALL_NODE,       // An upper-bound score (no move exceeds alpha - best possible score for moving side)
+        TERMINAL_NODE,  // A node where checkmate or stealmate appears
 
         INVALID_NODE = 0,
         NODE_TYPE_RANGE = 3
+    };
+
+    // Specifies behavior of search subroutine
+    enum SearchStage : std::uint8_t {
+        // Main search stages
+        ROOT_STAGE_I = 1,   // At initial, root position
+        ROOT_STAGE_II,      // Exactly one play after root
+        COMMON_STAGE,
+
+        // Quiescence search stages
+        Q_ROOT_STAGE,
+        Q_COMMON_STAGE,
+
+        INVALID_STAGE = 0,
+        SEARCH_STAGE_RANGE = 5
     };
 
 
@@ -58,13 +75,14 @@ namespace Search {
 
         // Main search functions
         Value search(Depth depth);                              // Initial function
-        Value search(Value alpha, Value beta, Depth depth);     // Recursive subfunction
-
-        // Evaluation functions
-        Value relativeEval(Value eval) const;   // For NegaMax algorithm purposes
-        Value evaluate();                       // Stand pat evaluation = search on depth 0
 
     private:
+        Value evaluate();                                       // Stand pat evaluation = search on depth 0
+        template <SearchStage stage>
+        Value search(Value alpha, Value beta, Depth depth);     // Recursive subroutine
+        template <SearchStage stage>
+        Value quiescence(Value alpha, Value beta, Depth depth);
+
         // Virtual board and related properties
         BoardConfig virtualBoard;
         Age rootAge = 0;

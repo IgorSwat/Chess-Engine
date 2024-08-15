@@ -66,14 +66,12 @@ inline const Move* MoveList::end() const
 
 inline void MoveList::push_back(const Move& move)
 {
-	assert(endPtr != generatedMoves + MAX_MOVES);	// TODO: remove after testing
 	*endPtr = move;
 	endPtr++;
 }
 
 inline void MoveList::pop_back()
 {
-	assert(endPtr != generatedMoves);			   // TO DO: remove after testing
 	endPtr--;
 }
 

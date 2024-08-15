@@ -241,7 +241,7 @@ namespace Evaluation {
     constexpr int MINOR_PIECE_EXCHANGE_THREAT_POINTS = 21;
     constexpr int ROOK_EXCHANGE_THREAT_POINTS = 30;
     constexpr int UNDEFENDED_PIECE_THREAT_POINTS = 13;
-    constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 8;
+    constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 10;
 
     constexpr IValue THREAT_VALUE = { -64, -64 };         // Per 64 space points (easier scaling)
 

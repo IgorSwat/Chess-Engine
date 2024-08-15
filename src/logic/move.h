@@ -80,6 +80,9 @@ public:
 	friend bool operator!=(const Move& m1, const Move& m2);
 	friend std::ostream& operator<<(std::ostream& os, const Move& move);
 
+	// For optimization purposes, we store a calculated SEE value here.
+	int16_t see = 0;
+
 private:
 	Movemask m_move = 0;
 };
@@ -97,11 +100,13 @@ inline Move::Move(Square from, Square to, Movemask flags)
 inline Move::Move(const Move& other)
 {
 	m_move = other.m_move;
+	see = other.see;
 }
 
 inline void Move::operator=(const Move& other)
 {
 	m_move = other.m_move;
+	see = other.see;
 }
 
 

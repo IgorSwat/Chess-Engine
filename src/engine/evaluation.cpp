@@ -480,7 +480,8 @@ namespace Evaluation {
         add_eval<side, miscTest>(result, (spaceTypeII * Interpolation::interpolate_gs(SPACE_TYPE_II, stage)) >> 6, "Space type II");
 
         // Lower type attack threats
-        Bitboard safePieces = board->pieces(side, KNIGHT, BISHOP, ROOK, QUEEN);
+        threatMap[side] = board->pieces(side, KNIGHT, BISHOP, ROOK, QUEEN);
+        Bitboard safePieces = threatMap[side];
         Bitboard pawnThreats = safePieces & attacks[enemy][PAWN];
         int pawnThreatCount = Bitboards::popcount(pawnThreats);
         safePieces ^= pawnThreats;
@@ -490,10 +491,13 @@ namespace Evaluation {
         Bitboard rookThreats = safePieces & board->pieces(side, QUEEN) & attacks[enemy][ROOK];
         int rookThreatCount = Bitboards::popcount(rookThreats);
         safePieces ^= rookThreats;
+        threatMap[side] ^= safePieces;  // Now threatMap contains just threatened pieces
 
         // Undefended piece threats
         Bitboard undefendedAndAttacked = attacks[enemy][ALL_PIECES] & ~attacks[side][ALL_PIECES];
-        int undefendedPieceThreatCount = Bitboards::popcount(safePieces & undefendedAndAttacked);
+        Bitboard hangingPieces = safePieces & undefendedAndAttacked;
+        int undefendedPieceThreatCount = Bitboards::popcount(hangingPieces);
+        threatMap[side] |= hangingPieces;
 
         // Calculate all piece threats together
         threatCount[side] = pawnThreatCount + minorPieceThreatCount + rookThreatCount + undefendedPieceThreatCount;
@@ -503,7 +507,7 @@ namespace Evaluation {
         // Undefended pawn threats (requires some tests for it's utility)
         if constexpr (EVALUATE_HNGING_PAWN_THREATS) {
             int undefendedPawnThreatCount = Bitboards::popcount(ourPawns & undefendedAndAttacked);
-            threatCount[side] += undefendedPawnThreatCount;
+            // threatCount[side] += undefendedPawnThreatCount;
             threatPoints += undefendedPawnThreatCount * UNDEFENDED_PAWN_THEAT_POINTS;
         }
 

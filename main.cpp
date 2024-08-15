@@ -20,23 +20,23 @@ int main()
 	// ---------------------------
 	
 	//tester.test(Testing::perftMovegenTestEndgamePos, Testing::perftMovegenTestMidgamePos2, Testing::pinsAndChecksTest);
-	tester.test(Testing::searchTest1);
-
+	//tester.test(Testing::searchTest1);
+	//tester.test(Testing::moveSelectionTest);
 
 	// ----------------
 	// Testing with GUI
 	// ----------------
 
-	// GUI::Textures::load_textures();		// Initialize textures
-	// std::unique_ptr<GUI::BoardController> gui = std::make_unique<GUI::BoardController>();	// Create gui object
+	GUI::Textures::load_textures();		// Initialize textures
+	std::unique_ptr<GUI::BoardController> gui = std::make_unique<GUI::BoardController>();	// Create gui object
 
-	// // Testers
-	// std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
-	// Search::Depth depth = 5;
-	// gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
-	// gui->runTesters(true);
+	// Testers
+	std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
+	Search::Depth depth = 8;
+	gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
+	gui->runTesters(true);
 
-	// gui->run();		// Run GUI
+	gui->run();		// Run GUI
 
 
 	return 0;

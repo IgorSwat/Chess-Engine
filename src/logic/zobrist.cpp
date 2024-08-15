@@ -61,7 +61,7 @@ namespace Zobrist {
     {
         constexpr unsigned int SEED = 410376;
 
-        MersenneTwister64 generator(SEED);
+        MersenneTwister<uint64_t> generator(SEED);
         std::unordered_set<U64> generatedCodes;
         
         std::generate(hashCodes, hashCodes + HASH_CODES_NUM, [&generatedCodes, &generator]() {

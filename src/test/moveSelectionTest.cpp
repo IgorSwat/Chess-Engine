@@ -1,5 +1,5 @@
 #include "test.h"
-#include "../engine/moveSelection.h"
+#include "../engine/engine.h"
 
 namespace Testing {
     
@@ -31,5 +31,23 @@ namespace Testing {
         selector.generateMoves<MoveGeneration::CAPTURE>();
         std::cout << "\nStandard ordering:\n";
         show_all_moves<GenerationStrategy::CASCADE, SelectionStrategy::STANDARD_ORDERING>(&selector);
+    }
+
+    void moveSortingTest()
+    {
+        BoardConfig board;
+        MoveSelector selector(&board);
+        Evaluation::Evaluator evaluator(&board);
+
+        selector.generateMoves<MoveGeneration::LEGAL>();
+        MoveSelection::sort_moves(selector, [&evaluator, &board](const Move& move) -> int {
+            board.makeMove(move);
+            Value eval = evaluator.evaluate();
+            board.undoLastMove();
+            return eval;
+        });
+
+        std::cout << "Sorting by static eval:\n";
+        show_all_moves<GenerationStrategy::STRICT, SelectionStrategy::SIMPLE>(&selector);
     }
 }

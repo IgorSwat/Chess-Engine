@@ -5,6 +5,11 @@
 #include <numeric>
 #include <climits>
 
+
+// --------------------------
+// Random generator interface
+// --------------------------
+
 template <typename DataType>
 class RandomGenerator
 {
@@ -17,11 +22,14 @@ protected:
 };
 
 
+// ---------------------------------------
+// Specialized generator - MagicsGenerator
+// ---------------------------------------
 
 class MagicsGenerator : public RandomGenerator<uint64_t>
 {
 public:
-	MagicsGenerator(uint64_t s) : RandomGenerator(s) {}
+	MagicsGenerator(uint64_t seed) : RandomGenerator(seed) {}
 
 	uint64_t random() override
 	{
@@ -44,14 +52,19 @@ private:
 };
 
 
+// ----------------------------------------------
+// Specialized generators - MersenneTwister based
+// ----------------------------------------------
 
-class MersenneTwister64 : public RandomGenerator<uint64_t>
+template <typename IntType>
+class MersenneTwister : public RandomGenerator<IntType>
 {
 public:
-	MersenneTwister64(int s)
-		: RandomGenerator(s), generator(seed), distribution(0, std::numeric_limits<uint64_t>::max()) {}
+	MersenneTwister(IntType seed)
+		: RandomGenerator<IntType>(seed), generator(seed), 
+		  distribution(std::numeric_limits<IntType>::min(), std::numeric_limits<IntType>::max()) {}
 
-	uint64_t random() override
+	IntType random() override
 	{
 		return distribution(generator);
 	}

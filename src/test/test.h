@@ -99,6 +99,7 @@ namespace Testing {
 
 	// Move selection tests
 	void moveSelectionTest();
+	void moveSortingTest();
 
 	// Search tests
 	void searchTest1();

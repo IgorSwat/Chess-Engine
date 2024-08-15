@@ -1,5 +1,4 @@
 #include "moveSelection.h"
-#include "see.h"
 
 
 // ---------------------
@@ -39,34 +38,34 @@ Move MoveSelector::selectNext()
 
     // No ordering, just get the first legal move
     if constexpr (selStrategy == SelectionStrategy::SIMPLE) {
-        move = selectMove<false>([](const Move& move){return true;});
+        move = selectMove<false>([](const Move& move) -> bool {return true;});
     }
 
     // Good captures -> average captures -> bad captures
     if constexpr (selStrategy == SelectionStrategy::STANDARD_ORDERING) {
-        if (currGenType == MoveGeneration::CAPTURE || currGenType == MoveGeneration::CHECK_EVASION) {
+        if (currGenType != MoveGeneration::QUIET_CHECK && currGenType != MoveGeneration::QUIET) {
             switch (stage) {
                 case 1:
-                    move = selectMove<false>([this](const Move& move){return SEE::evaluate(board, move) > 0;});
+                    move = selectMove<false>([this](Move& move) -> bool {return SEE::evaluate(board, move) > 0;});
                     if (move == Move::null()) {
                         nextSection();
                         return selectNext<genStrategy, selStrategy>();
                     }
                     break;
                 case 2:
-                    move = selectMove<true>([this](const Move& move){return SEE::evaluate(board, move) >= 0;});
+                    move = selectMove<true>([this](const Move& move) -> bool {return move.see >= 0;});   // We assume that SEE is already calculated
                     if (move == Move::null()) {
                         nextSection();
                         return selectNext<genStrategy, selStrategy>();
                     }
                     break;
                 default:
-                    move = selectMove<true>([](const Move& move){return true;});
+                    move = selectMove<true>([](const Move& move) -> bool {return true;});
                     break;
             }
         }
         else
-            move = selectMove<false>([](const Move& move){return true;});
+            move = selectMove<false>([](const Move& move) -> bool {return true;});
     }
 
     // Handle edge case - end of legal moves
@@ -88,5 +87,6 @@ Move MoveSelector::selectNext()
 
 // Declaration of all usages
 template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::SIMPLE>();
+template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::STANDARD_ORDERING>();
 template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();
 template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::STANDARD_ORDERING>();
