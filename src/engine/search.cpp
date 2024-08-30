@@ -18,9 +18,6 @@ namespace Search {
     // Crawler methods - main search
     // -----------------------------
 
-    // Just for testing with quick, random eval
-    //MersenneTwister<int16_t> gen(static_cast<int16_t>(410376));
-
     Value Crawler::search(Depth depth)
     {
         if (depth == 0)
@@ -38,6 +35,7 @@ namespace Search {
         if (entry) {
             if (entry->depth >= depth || entry->typeOfNode == TERMINAL_NODE)
                 return entry->score;
+                
             suggestedMove = entry->bestMove;
         }
 
@@ -47,21 +45,20 @@ namespace Search {
             //return evaluate();
             return quiescence<Q_ROOT_STAGE>(alpha, beta, MAX_QUIESCENCE_DEPTH);
 
-        Value bestScore = alpha;
-        NodeType nodeType = ALL_NODE;
-        Move bestMove;                  // A null move by default
-
         // Initial move generation
         MoveSelector moveSelector(&virtualBoard);
         if constexpr (stage == ROOT_STAGE_I || stage == ROOT_STAGE_II) {
             moveSelector.generateMoves<MoveGeneration::LEGAL>();
 
             // Sort moves by static evaluation of the following position
-            MoveSelection::sort_moves(moveSelector, [this](const Move& move) -> int {
+            MoveSelection::sort_moves(moveSelector, [this](const Move& move) -> int64_t {
                 this->virtualBoard.makeMove(move);
                 Value eval = -this->evaluate();
                 this->virtualBoard.undoLastMove();
-                return eval;
+
+                // This makes SEE a primary sorting parameter
+                // Static evaluation is considered only when SEE of two moves is equal
+                return 3LL * MAX_EVAL * SEE::evaluate(&this->virtualBoard, move) + eval;
             });
         }
         else {
@@ -88,9 +85,14 @@ namespace Search {
             return score;
         }
 
+        // Key state variables
+        Value bestScore = -MAX_EVAL;
+        NodeType nodeType = ALL_NODE;
+        Move bestMove;                  // A null move by default
+
         // Specify selection strategy according to search stage
-        constexpr GenerationStrategy genStrategy = stage == ROOT_STAGE_I ? GenerationStrategy::STRICT : GenerationStrategy::CASCADE;
-        constexpr SelectionStrategy selStrategy = SelectionStrategy::STANDARD_ORDERING;
+        constexpr GenerationStrategy genStrategy = stage == COMMON_STAGE ? GenerationStrategy::CASCADE : GenerationStrategy::STRICT;
+        constexpr SelectionStrategy selStrategy = stage == COMMON_STAGE ? SelectionStrategy::STANDARD_ORDERING : SelectionStrategy::SIMPLE;
         constexpr SearchStage nextStage = stage == ROOT_STAGE_I ? ROOT_STAGE_II : COMMON_STAGE;
         
         // Main loop
@@ -108,7 +110,7 @@ namespace Search {
                     virtualBoard.hash(),
                     virtualBoard.pieces(),
                     depth,
-                    beta,  // score
+                    score,  // score
                     move,
                     CUT_NODE,
                     virtualBoard.halfmovesPlain()
@@ -117,16 +119,18 @@ namespace Search {
             }
 
             // PV node - a move that is better for moving side than previous best one
-            if (score > alpha) {
-                alpha = score;
-                nodeType = PV_NODE;
-                bestMove = move;
+            if (score > bestScore) {
                 bestScore = score;
+                bestMove = move;
+                if (score > alpha) {
+                    alpha = score;
+                    nodeType = PV_NODE;
+                }
             }
 
             move = moveSelector.selectNext<genStrategy, selStrategy>();
 
-            // Experimental - avoid repeating of transposition table suggestion
+            // Avoid repeating of transposition table suggestion
             if (move != Move::null() && move == suggestedMove)
                 move = moveSelector.selectNext<genStrategy, selStrategy>();
         }
@@ -142,7 +146,7 @@ namespace Search {
             virtualBoard.halfmovesPlain()
         }, rootAge);
 
-        return alpha;
+        return bestScore;
     }
 
 
@@ -154,7 +158,10 @@ namespace Search {
     Value Crawler::quiescence(Value alpha, Value beta, Depth depth)
     {
         MoveSelector moveSelector(&virtualBoard);
-        moveSelector.generateMoves<MoveGeneration::CAPTURE>();
+        if (virtualBoard.isInCheck())
+            moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
+        else
+            moveSelector.generateMoves<MoveGeneration::CAPTURE>();
 
         // Detect mate, stealmate and other types of draw
         if (!moveSelector.hasMoves()) {
@@ -180,18 +187,21 @@ namespace Search {
         if (depth == 0)
             return standpat;
 
+        Value bestScore = -MAX_EVAL;
+        Move move;
+
         // Check all "good" captures which could boost the score near the alpha (upper bound) region
-        if (moveSelector.currGenType == MoveGeneration::CAPTURE) {
+        if (moveSelector.currGenType >= MoveGeneration::CAPTURE) {
             // Experimental - sort moves by SEE at initial quiescence depth
             if constexpr (stage == Q_ROOT_STAGE)
                 moveSelector.sortCaptures();
 
             constexpr SelectionStrategy selStrategy = stage == Q_ROOT_STAGE ? SelectionStrategy::SIMPLE : SelectionStrategy::STANDARD_ORDERING;
 
-            Move move = moveSelector.selectNext<GenerationStrategy::STRICT, selStrategy>();
+            move = moveSelector.selectNext<GenerationStrategy::STRICT, selStrategy>();
             while (move.see > 0) {
                 // Delta pruning
-                if (standpat + move.see + DELTA_MARGIN < alpha) {
+                if (standpat + move.see + DELTA_MARGIN < alpha && moveSelector.currGenType != MoveGeneration::CHECK_EVASION) {
                     if constexpr (stage == Q_ROOT_STAGE)
                         break;
                     else {
@@ -205,10 +215,13 @@ namespace Search {
                 virtualBoard.undoLastMove();
 
                 if (score >= beta)
-                    return beta;
-                    
-                if (score > alpha)
-                    alpha = score;
+                    return score;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    if (score > alpha)
+                        alpha = score;
+                }
                 
                 move = moveSelector.selectNext<GenerationStrategy::STRICT, selStrategy>();
             }
@@ -218,14 +231,16 @@ namespace Search {
         Bitboard threats = evaluator.getThreatMap(virtualBoard.movingSide());
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
-        if (standpat + EPSILON_MARGIN > alpha && noThreats > 1) {
-            Move move = moveSelector.selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();
+        if (standpat + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {
+            if (move == Move::null())
+                move = moveSelector.selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();
             while (move != Move::null()) {
                 PieceType pType = type_of(virtualBoard.onSquare(move.to()));
                 Bitboard attacks = pType == NULL_TYPE ? 0 :
                                    pType == PAWN ? Pieces::pawn_attacks(~virtualBoard.movingSide(), move.to()) :
                                                    Pieces::piece_attacks_d(pType, move.to(), virtualBoard.pieces());
-                if (moveSelector.currGenType != MoveGeneration::CAPTURE && threats & move.from() ||
+                if (virtualBoard.isInCheck() ||
+                    moveSelector.currGenType != MoveGeneration::CAPTURE && threats & move.from() ||
                     moveSelector.currGenType == MoveGeneration::CAPTURE &&
                     standpat + EPSILON_MARGIN + move.see > alpha &&
                     (threats & move.from() || attacks & threats)
@@ -235,19 +250,22 @@ namespace Search {
                     virtualBoard.undoLastMove();
 
                     if (score >= beta)
-                        return beta;
+                        return score;
                     
-                    if (score > alpha)
-                        alpha = score;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        if (score > alpha)
+                            alpha = score;
+                    }
                 }
 
                 move = moveSelector.selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();
             }
 
-            return alpha;
+            return bestScore;
         }
         
-        return std::max(standpat, alpha);
+        return std::max(standpat, bestScore);
     }
 
 }

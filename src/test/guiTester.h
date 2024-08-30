@@ -1,6 +1,7 @@
 #pragma once
 
 #include "test.h"
+#include "testEngine.h"
 
 
 namespace Testing {
@@ -16,7 +17,7 @@ namespace Testing {
     public:
         virtual ~GuiTester() {}
         virtual void initialTest(BoardConfig* board) = 0;
-        virtual void nextTest(BoardConfig* board) = 0;
+        virtual void nextTest(BoardConfig* board, bool forward) = 0;
     };
 
 
@@ -29,14 +30,15 @@ namespace Testing {
     class SearchPrinter : public GuiTester
     {
     public:
-        SearchPrinter(Engine* engine, bool useSearch = true, Search::Depth depth = 2);
+        SearchPrinter(TestEngine* engine, bool useSearch = true, Search::Depth depth = 2);
 
         void initialTest(BoardConfig* board) override;
-        void nextTest(BoardConfig* board) override;
+        void nextTest(BoardConfig* board, bool forward) override;
 
     private:
-        Engine* engine;
+        TestEngine* engine;
         Search::Depth maxSearchDepth;
+        int currSearchDepth;
         bool useSearch;
     };
 

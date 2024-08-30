@@ -27,7 +27,7 @@ namespace GUI {
 
 		// Testing environment handling
 		void addTester(GuiTesterPtr tester);
-		void runTesters(bool init = false);
+		void runTesters(bool init = false, bool forward = true);
 
 	private:
 		// Logical board

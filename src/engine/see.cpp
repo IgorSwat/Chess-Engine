@@ -5,16 +5,6 @@
 namespace SEE {
 
 	constexpr int MAX_DEPTH = 33;
-	constexpr int16_t PieceExchangeValue[PIECE_TYPE_RANGE] = { 
-		0, 	// Covers the NULL_TYPE (= no piece on target square)
-		100, 
-		325, 
-		325, 
-		500, 
-		900, 
-		16000, 
-		0 
-	};
 
 
 	// ----------------
@@ -39,10 +29,6 @@ namespace SEE {
 
 	int16_t evaluate(BoardConfig* board, Square from, Square to, PieceType promotionType)
 	{
-		// Check whether a real exchange happens (Possible to also check the color of both pieces)
-		if (board->isFree(from) || board->isFree(to))
-			return 0;
-
 		int16_t gain[MAX_DEPTH];
 		int depth = board->movingSide();
 		Bitboard mayXray = board->pieces() ^ board->pieces(KNIGHT) ^ board->pieces(KING);

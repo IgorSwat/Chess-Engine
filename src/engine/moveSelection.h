@@ -60,8 +60,8 @@ public:
     
 private:
     // 'reselection' parameter decides whether we already checked some move (which means we do not need to check it's legality again)
-    template <bool reselection, typename Pred>
-    Move selectMove(Pred pred);
+    template <bool reselection> Move selectMove();                          // No filtering
+    template <bool reselection, typename Pred> Move selectMove(Pred pred);  // Additional filtering
     void nextSection();
 
     BoardConfig* board;
@@ -101,7 +101,7 @@ inline void MoveSelector::generateMoves()
 inline bool MoveSelector::hasMoves()
 {
     Move move = selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();   // It can change the current generation type
-    resetSelection();
+    sectionBegin = moves.begin();
     return move != Move::null();
 }
 
@@ -141,9 +141,9 @@ namespace MoveSelection {
     void sort_moves(MoveList& moveList, Functor func)
     {
         // Decorator pattern for sorting
-        std::pair<Move, int> carray[MoveList::MAX_MOVES];
+        std::pair<Move, std::int64_t> carray[MoveList::MAX_MOVES];
         std::transform(moveList.begin(), moveList.end(), carray, 
-                       [func](Move move) -> std::pair<Move, int> { return {move, func(move)}; });
+                       [func](Move move) -> std::pair<Move, std::int64_t> { return {move, func(move)}; });
         
         std::sort(carray, carray + moveList.size(), 
                   [](const auto& a, const auto& b){ return a.second > b.second; });     // Descending order

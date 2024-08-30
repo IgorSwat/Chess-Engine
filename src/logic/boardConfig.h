@@ -28,7 +28,7 @@ struct PositionInfo
 	Bitboard checkArea[PIECE_TYPE_RANGE] = { 0ULL };	// Squares from which pieces of sideToMove can check enemy king
 	Bitboard discoveries[COLOR_RANGE] = { 0ULL };		// Squares occupied by pieces which could cause a discovered check against enemy king if moved
 	Bitboard pinned[COLOR_RANGE] = { 0ULL };			// Pinned pieces of given side
-	Bitboard pinners[COLOR_RANGE] = { 0ULL };			// Pinners of given side (pieces that pins some enemy pieces)
+	Bitboard pinners[COLOR_RANGE] = { 0ULL };			// Pinners of given side (pieces that pin some enemy piece)
 
 	Piece capturedPiece = NO_PIECE;
 	std::uint16_t halfmoveClock = 0;

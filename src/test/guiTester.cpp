@@ -9,29 +9,27 @@ namespace Testing {
     // SearchPrinter methods
     // ---------------------
 
-    SearchPrinter::SearchPrinter(Engine* engine, bool useSearch, Search::Depth depth)
-        : engine(engine), maxSearchDepth(depth), useSearch(useSearch)
+    SearchPrinter::SearchPrinter(TestEngine* engine, bool useSearch, Search::Depth depth)
+        : engine(engine), maxSearchDepth(depth), currSearchDepth(depth), useSearch(useSearch)
     {
     }
 
     void SearchPrinter::initialTest(BoardConfig* board)
     {
-        engine->setPosition(board);
-        if (useSearch)
-            engine->evaluate(maxSearchDepth);
-        nextTest(board);
+        currSearchDepth = maxSearchDepth + 1;
+        nextTest(board, true);
     }
 
-    void SearchPrinter::nextTest(BoardConfig* board)
+    void SearchPrinter::nextTest(BoardConfig* board, bool forward)
     {
+        currSearchDepth += forward ? -1 : 1;
+        currSearchDepth = std::min(currSearchDepth, static_cast<int>(maxSearchDepth));
+
         system("clear");
         engine->setPosition(board);
-        std::cout << "--- Static eval: " << std::dec << Search::relative_score(engine->evaluate(0), board) << "\n";
-        if (useSearch) {
-            std::cout << "\n--- Transposition table entries:\n";
-            print_search_tree(board, engine->transpositionTable(), false);
-            std::cout << "\n";
-        }
+        std::cout << "--- Static eval: " << std::dec << engine->evaluate_s() << "\n\n";
+        if (useSearch && currSearchDepth >= 0)
+            engine->evaluate_d(static_cast<Search::Depth>(currSearchDepth));
     }
 
 }

@@ -603,10 +603,13 @@ namespace Evaluation {
         initCommonData<WHITE>();
         initCommonData<BLACK>();
 
-        Value result = evaluatePawns1<WHITE>() - evaluatePawns1<BLACK>() +
-                       evaluatePieces<WHITE>() - evaluatePieces<BLACK>() +
-                       evaluatePawns2<WHITE>() - evaluatePawns2<BLACK>() +
-                       evaluateKingAndMisc<WHITE>() - evaluateKingAndMisc<BLACK>();
+        // VERY IMPORTANT - it's necessary to manually specify the order of calculations, to prevent compiler from destroying it in Release mode
+        Value pawnsDiff1 = evaluatePawns1<WHITE>() - evaluatePawns1<BLACK>();
+        Value piecesDiff = evaluatePieces<WHITE>() - evaluatePieces<BLACK>();
+        Value pawnsDiff2 = evaluatePawns2<WHITE>() - evaluatePawns2<BLACK>();
+        Value kingAndMiscDiff = evaluateKingAndMisc<WHITE>() - evaluateKingAndMisc<BLACK>();
+
+        Value result = pawnsDiff1 + piecesDiff + pawnsDiff2 + kingAndMiscDiff;
 
         return adjustEval(result);
     }

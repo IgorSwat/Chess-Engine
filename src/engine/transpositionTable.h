@@ -56,6 +56,8 @@ private:
 inline void TranspositionTable::set(const Entry& entry, Search::Age rootAge)
 {
     Entry* oldEntry = &entries[index(entry.key)];
+    if (entry.key == 13773802344004739671 && entry.pieces == 1161965627835326977)
+        std::cout << "LOL\n";
     if (oldEntry->matches(entry.key, entry.pieces)) {
         if (oldEntry->depth < entry.depth)      // Deeper search is usualy more reliable
             (*oldEntry) = entry;

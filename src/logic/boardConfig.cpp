@@ -401,11 +401,12 @@ void BoardConfig::undoLastMove()
 // Attacks from both sides
 Bitboard BoardConfig::attackersToSquare(Square sq, Bitboard occ) const
 {
-	return ((Pieces::pawn_attacks(WHITE, sq) | Pieces::pawn_attacks(BLACK, sq)) & pieces(PAWN)) |
-		(Pieces::piece_attacks_s<KNIGHT>(sq) & pieces(KNIGHT)) |
-		(Pieces::piece_attacks_s<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN)) |
-		(Pieces::piece_attacks_s<ROOK>(sq, occ) & pieces(ROOK, QUEEN)) |
-		(Pieces::piece_attacks_s<KING>(sq) & pieces(KING));
+	return Pieces::pawn_attacks(WHITE, sq) & pieces(BLACK, PAWN) | 
+		   Pieces::pawn_attacks(BLACK, sq) & pieces(WHITE, PAWN) |
+		   Pieces::piece_attacks_s<KNIGHT>(sq) & pieces(KNIGHT) |
+		   Pieces::piece_attacks_s<BISHOP>(sq, occ) & pieces(BISHOP, QUEEN) |
+		   Pieces::piece_attacks_s<ROOK>(sq, occ) & pieces(ROOK, QUEEN) |
+		   Pieces::piece_attacks_s<KING>(sq) & pieces(KING);
 }
 
 // Attacks from given side

@@ -38,6 +38,7 @@ namespace MoveGeneration {
 	void generate_pawn_moves(const BoardConfig& board, Bitboard target, MoveList& moveList)
 	{
 		constexpr Color enemy = ~side;
+		constexpr Bitboard rank8mark = (side == WHITE ? Board::RANK_8 : Board::RANK_1);
 		constexpr Bitboard rank7mark = (side == WHITE ? Board::RANK_7 : Board::RANK_2);
 		constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
 		constexpr Direction forwardLeftDir = (side == WHITE ? NORTH_WEST : SOUTH_WEST);
@@ -48,6 +49,8 @@ namespace MoveGeneration {
 		Bitboard emptySquares = ~board.pieces();
 		Bitboard enemyPieces = board.pieces(enemy);
 
+		if constexpr (gen == CAPTURE)
+			target |= rank8mark;
 		if constexpr (gen == QUIET)
 			target &= ~board.possibleChecks(PAWN);
 		if constexpr (gen == QUIET_CHECK)

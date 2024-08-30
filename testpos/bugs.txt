@@ -1,0 +1,4 @@
+rnb1kbnr/ppp2ppp/3p4/8/3NP2q/8/PPP2PPP/RNBQKB1R w KQkq - 1 5
+    - Static eval is different than queiescence score (even tho it should return static eval)
+    - It is equal when you just load the position, but if you try to get there by making moves it's different
+    - The problem is with threats
