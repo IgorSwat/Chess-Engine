@@ -200,6 +200,7 @@ void BoardConfig::normalMove(const Move& move)
 	if (move.isCapture()) {
 		posInfo->capturedPiece = board[to];
 		posInfo->halfmoveClock = 0;
+		posInfo->irrMovePlyDist = 0;
 		posInfo->castlingRights &= castlingRightsLoss[to];
 		posInfo->gameStageValue = posInfo->prev->gameStageValue - Evaluation::PieceStageInfluence[posInfo->capturedPiece];
 		zobrist.updateByPlacementChange(board[to], to);
@@ -207,6 +208,7 @@ void BoardConfig::normalMove(const Move& move)
 	}
 	else {
 		posInfo->halfmoveClock = type_of(board[from]) == PAWN ? 0 : posInfo->prev->halfmoveClock + 1;
+		posInfo->irrMovePlyDist = type_of(board[from]) == PAWN ? 0 : posInfo->prev->irrMovePlyDist + 1;
 		posInfo->gameStageValue = posInfo->prev->gameStageValue;
 	}
 	zobrist.updateByPlacementChange(board[from], from);
@@ -267,6 +269,7 @@ void BoardConfig::promotion(const Move& move)
 	zobrist.updateByEnpassantChange(INVALID_SQUARE);
 
 	posInfo->halfmoveClock = 0;
+	posInfo->irrMovePlyDist = 0;
 	halfmoveCount++;
 
 	posInfo->hash = zobrist.getHash();
@@ -306,6 +309,7 @@ void BoardConfig::castle(const Move& move)
 	zobrist.updateByEnpassantChange(INVALID_SQUARE);
 
 	posInfo->halfmoveClock = posInfo->prev->halfmoveClock + 1;
+	posInfo->irrMovePlyDist = 0;
 	halfmoveCount++;
 
 	posInfo->hash = zobrist.getHash();
@@ -342,6 +346,7 @@ void BoardConfig::enpassant(const Move& move)
 	zobrist.updateByEnpassantChange(INVALID_SQUARE);
 
 	posInfo->halfmoveClock = 0;
+	posInfo->irrMovePlyDist = 0;
 	halfmoveCount++;
 
 	posInfo->hash = zobrist.getHash();
@@ -500,8 +505,29 @@ bool BoardConfig::legalityCheckFull(const Move& move) const
 
 
 // --------------------
+// Move counting issues
+// --------------------
+
+std::uint16_t BoardConfig::countRepetitions() const
+{
+	PositionInfo* curr = posInfo;
+	std::uint64_t targetHash = curr->hash;
+	std::uint16_t loops = curr->irrMovePlyDist >> 1;	// Equivalent to "/ 2"
+	std::uint16_t count = 1;
+
+	for (std::uint16_t i = 0; i < loops; i++) {
+		curr = curr->prev->prev;
+		if (curr->hash == targetHash)
+			count++;
+	}
+
+	return count;
+}
+
+
+// --------------------
 // Board state handlers
-// ---------------------
+// --------------------
 
 void BoardConfig::clear()
 {

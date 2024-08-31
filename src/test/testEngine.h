@@ -44,6 +44,7 @@ private:
     // Virtual board and related properties
     BoardConfig virtualBoard;
     Search::Age rootAge = 0;
+    Search::Depth lastUsedDepth = 0;
 
     // Main components
     Evaluation::Evaluator evaluator;

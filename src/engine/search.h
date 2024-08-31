@@ -87,6 +87,9 @@ namespace Search {
         BoardConfig virtualBoard;
         Age rootAge = 0;
 
+        // Additional search info
+        Depth lastUsedDepth = 0;
+
         // Evaluation helper
         Evaluation::Evaluator evaluator;
 

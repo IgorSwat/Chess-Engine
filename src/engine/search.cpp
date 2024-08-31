@@ -20,6 +20,8 @@ namespace Search {
 
     Value Crawler::search(Depth depth)
     {
+        lastUsedDepth = depth;
+
         if (depth == 0)
             return evaluate();
 
@@ -29,6 +31,20 @@ namespace Search {
     template <SearchStage stage>
     Value Crawler::search(Value alpha, Value beta, Depth depth)
     {
+        // 50-move rule
+        if (virtualBoard.halfmovesClocked() >= 100)
+            return 0;
+        
+        // Repetitions
+        if (virtualBoard.irreversibleMoveDistance() >= 4) {
+            std::uint16_t repetitions = virtualBoard.countRepetitions();
+
+            if (repetitions == 3)   // A definite 3-fold
+                return 0;
+            if (repetitions == 2 && lastUsedDepth - depth > virtualBoard.irreversibleMoveDistance())    // A repetition inside search space
+                return 0;
+        }
+
         // Check the transposition table
         const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
         Move suggestedMove;
@@ -39,10 +55,8 @@ namespace Search {
             suggestedMove = entry->bestMove;
         }
 
+        // Go to quiescence if maximum depth reached
         if (depth == 0)
-            //return 0;                 // - to test max speed with no eval and beta-cutoffs almost everywhere
-            //return gen.random();
-            //return evaluate();
             return quiescence<Q_ROOT_STAGE>(alpha, beta, MAX_QUIESCENCE_DEPTH);
 
         // Initial move generation

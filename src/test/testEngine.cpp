@@ -34,6 +34,8 @@ Value TestEngine::evaluate_s()
 
 Value TestEngine::evaluate_d(Depth depth)
 {
+    lastUsedDepth = depth;
+
     std::cout << "Position hash: " << virtualBoard.hash() << ", positon pieces: " << virtualBoard.pieces() << "\n";
     // Show queiescence procedure in details
     if (depth == 0) {
@@ -61,6 +63,26 @@ Value TestEngine::evaluate_d(Depth depth)
 template <SearchStage stage>
 SearchResult TestEngine::search(Value alpha, Value beta, Depth depth)
 {
+    // 50-move rule
+    if (virtualBoard.halfmovesClocked() >= 100) {
+        std::cout << "DRAW by 50 move rules\n";
+        return {0, TERMINAL_NODE, Move::null()};
+    }
+
+    // Repetitions
+    if (virtualBoard.irreversibleMoveDistance() >= 4) {
+        std::uint16_t repetitions = virtualBoard.countRepetitions();
+
+        if (repetitions == 3) { // A definite 3-fold 
+            std::cout << "DRAW by 3-fold repetition\n";
+            return {0, TERMINAL_NODE, Move::null()};
+        }
+        if (repetitions == 2 && lastUsedDepth - depth > virtualBoard.irreversibleMoveDistance()) { // A repetition inside search space
+            std::cout << "2-fold inside current search tree\n";
+            return {0, TERMINAL_NODE, Move::null()};
+        }
+    }
+
     // Check the transposition table
     const TranspositionTable::Entry *entry = tTable.probe(virtualBoard.hash(), virtualBoard.pieces());
     Move suggestedMove;

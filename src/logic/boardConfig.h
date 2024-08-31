@@ -35,6 +35,7 @@ struct PositionInfo
 	std::uint16_t gameStageValue = 0;
 
 	std::uint64_t hash = 0ULL;
+	std::uint16_t irrMovePlyDist = 0;					// Determines the distance to last irreversible move in game history
 
 	PositionInfo* prev = nullptr;
 	PositionInfo* next = nullptr;
@@ -98,6 +99,8 @@ public:
 	std::uint16_t gameStage() const;
 	std::uint16_t halfmovesPlain() const;
 	std::uint16_t halfmovesClocked() const;
+	std::uint16_t irreversibleMoveDistance() const;
+	std::uint16_t countRepetitions() const;		// Counts all repetitions of current position
 	std::uint16_t generatedMoves() const;
 	std::uint64_t hash() const;
 
@@ -289,6 +292,11 @@ inline std::uint16_t BoardConfig::halfmovesPlain() const
 inline std::uint16_t BoardConfig::halfmovesClocked() const
 {
 	return posInfo->halfmoveClock;
+}
+
+inline std::uint16_t BoardConfig::irreversibleMoveDistance() const
+{
+	return posInfo->irrMovePlyDist;
 }
 
 inline std::uint16_t BoardConfig::generatedMoves() const
