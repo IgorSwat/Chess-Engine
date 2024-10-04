@@ -1,4 +1,6 @@
 #include "engine.h"
+#include "searchConfig.h"
+#include <chrono>
 
 
 // --------------
@@ -18,7 +20,35 @@ void Engine::setPosition(const std::string& fen)
 // Returns a relative score - to transform it back to absolute score you need to apply relative_score() again
 Value Engine::evaluate(Search::Depth depth)
 {
-    return crawler.search(depth);
+    if constexpr (SEARCH_MODE == STANDARD)
+        return iterativeDeepening(depth);
+    
+    if constexpr (SEARCH_MODE == TRACE)
+        return crawler.search(depth);
+    
+    if constexpr (SEARCH_MODE == STATS) {
+        auto start = std::chrono::steady_clock::now();
+        Value result = iterativeDeepening(depth);
+        auto end = std::chrono::steady_clock::now();
+
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        std::cout << "Total search time: " << duration_ms.count() << " [ms]\n";
+        std::cout << "> Nodes per second: " << (long long) (crawler.non_leaf_nodes + crawler.qs_nodes) * 1000 / duration_ms.count() << "\n";
+        std::cout << "> Non-leaf nodes: " << crawler.non_leaf_nodes << "\n";
+        std::cout << "> Leaf nodes: " << crawler.leaf_nodes << "\n";
+        std::cout << "> Queiescence nodes: " << crawler.qs_nodes << "\n";
+
+        return result;
+    }
+}
+
+Value Engine::iterativeDeepening(Search::Depth depth)
+{
+    Value result = 0;
+    for (auto d = 1; d <= depth; d++)
+        result = crawler.search(d);
+    return result;
 }
 
 const TranspositionTable* Engine::transpositionTable() const

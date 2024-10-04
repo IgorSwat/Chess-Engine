@@ -56,11 +56,11 @@ namespace Evaluation {
     // ---------------------
 
     // Piece base values
-    constexpr IValue PAWN_BASE_VALUE = { 100, 150 };
-    constexpr IValue KNIGHT_BASE_VALUE = { 350, 525 };
-    constexpr IValue BISHOP_BASE_VALUE = { 350, 525 };
-    constexpr IValue ROOK_BASE_VALUE = { 450, 788 };
-    constexpr IValue QUEEN_BASE_VALUE = { 1000, 1600 };
+    constexpr IValue PAWN_BASE_VALUE = { 100, 125 };
+    constexpr IValue KNIGHT_BASE_VALUE = { 350, 475 };
+    constexpr IValue BISHOP_BASE_VALUE = { 375, 505 };
+    constexpr IValue ROOK_BASE_VALUE = { 400, 750 };
+    constexpr IValue QUEEN_BASE_VALUE = { 900, 1500 };
 
     // Knight-specyfic evaluation
     constexpr int MAX_CENTRAL_DENSITY = 16;
@@ -73,36 +73,36 @@ namespace Evaluation {
     constexpr IValue KNIGHT_PAWN_SPREAD[8] = { {0, 30}, {0, 28}, {0, 25}, {0, 22}, {0, 17}, {0, 12}, {0, 6}, {0, 0} };
 
     // Bishop-specyfic evaluation
-    constexpr IValue BISHOP_PAIR_VALUE = { 50, 50 };
-    constexpr IValue BISHOP_ENEMY_PAWN_WEAKNESS = { 8, 46 };
-    constexpr IValue BISHOP_OWN_PAWN_BLOCKAGE[7] = { {20, 10}, {18, 9}, {13, 7}, {5, 3}, {-7, -3}, {-23, -11}, {-40, -20} };
-    constexpr IValue BISHOP_ENEMY_PAWN_BLOCKAGE[7] = { {42, -20}, {18, -11}, {6, -8}, {-6, -6}, {-14, -4}, {-22, -2}, {-28, 0} };
+    constexpr IValue BISHOP_PAIR_VALUE = { 60, 75 };
+    constexpr IValue BISHOP_ENEMY_PAWN_WEAKNESS = { 5, 24 };
+    constexpr IValue BISHOP_OWN_PAWN_BLOCKAGE[7] = { {20, 10}, {18, 9}, {13, 7}, {5, 3}, {-8, -4}, {-26, -13}, {-48, -23} };
+    constexpr IValue BISHOP_ENEMY_PAWN_BLOCKAGE[7] = { {32, -20}, {14, -11}, {5, -8}, {-6, -6}, {-14, -4}, {-22, -2}, {-28, 0} };
 
     // Rook-specyfic evaluation
     constexpr IValue ROOK_ON_SEMIOPEN_FILE = { 15, 3 };
     constexpr IValue ROOK_ON_OPEN_FILE = { 20, 5 };
-    constexpr IValue ROOK_ON_78_RANK = { 25, 35 };
-    constexpr IValue ROOK_ENEMY_PAWN_WEAKNESS = { 10, 64 };
+    constexpr IValue ROOK_ON_78_RANK = { 20, 30 };
+    constexpr IValue ROOK_ENEMY_PAWN_WEAKNESS = { 0, 20 };
 
     // Queen-specyfic evaluation
-    constexpr IValue QUEEN_ENEMY_PAWN_WEAKNESS = { 15, 175 };
+    constexpr IValue QUEEN_ENEMY_PAWN_WEAKNESS = { 0, 70 };
 
     // Piece mobility
     constexpr IValue KNIGHT_MOBILITY[9] = {
-        {-27, -58}, {-12, -42}, {6, -21}, {12, -11}, {19, -2}, {27, 8}, {33, 15}, {39, 23},
-        {45, 28}
+        {-31, -58}, {-12, -42}, {6, -21}, {10, -11}, {17, -2}, {23, 8}, {30, 15}, {36, 23},
+        {40, 28}
     };
     constexpr IValue BISHOP_MOBILITY[14] = {
-        {-23, -47}, {-14, -30}, {-7, -23}, {-1, -14}, {8, -1}, {18, 10}, {27, 22}, {32, 30},
+        {-26, -47}, {-9, -34}, {-4, -13}, {-1, -3}, {8, 0}, {18, 8}, {27, 22}, {32, 30},
         {36, 36}, {40, 43}, {43, 49}, {46, 54}, {49, 59}, {51, 64}
     };
     constexpr IValue ROOK_MOBILITY[15] = {
-        {-10, -55}, {-4, -39}, {1, -27}, {4, -16}, {9, -7}, {16, 10}, {24, 30}, {29, 44},
-        {33, 54}, {36, 62}, {39, 70}, {42, 78}, {45, 83}, {48, 90}, {50, 94}
+        {-20, -75}, {-6, -27}, {-2, -12}, {-2, -4}, {-1, 0}, {0, 7}, {2, 20}, {8, 29},
+        {13, 40}, {20, 52}, {27, 54}, {40, 56}, {46, 63}, {51, 70}, {56, 78}
     };
     constexpr IValue QUEEN_MOBILITY[28] = {
-        {-6, -31}, {-4, -24}, {-2, -17}, {-1, -11}, {0, -3}, {1, 6}, {3, 24}, {5, 40},
-        {7, 50}, {9, 69}, {11, 86}, {14, 98}, {17, 124}, {19, 136}, {22, 145}, {24, 150},
+        {-6, -31}, {-4, -19}, {-2, -10}, {-1, -3}, {0, -1}, {1, 5}, {3, 15}, {5, 29},
+        {7, 47}, {9, 66}, {11, 85}, {14, 98}, {17, 124}, {19, 136}, {22, 145}, {24, 150},
         {26, 155}, {28, 159}, {29, 161}, {30, 163}, {30, 166}, {31, 168}, {31, 170}, {31, 173},
         {31, 175}, {31, 176}, {31, 177}, {32, 179}
     };
@@ -132,23 +132,22 @@ namespace Evaluation {
 
     constexpr IValue KNIGHT_OUTPOST_I_DEG = { 23, 5 };
     constexpr IValue KNIGHT_OUTPOST_II_DEG = { 40, 9 };
-    constexpr IValue KNIGHT_OUTPOST_III_DEG = { 67, 18 };
+    constexpr IValue KNIGHT_OUTPOST_III_DEG = { 65, 15 };
     constexpr IValue BISHOP_OUTPOST_I_DEG = { 10, 2 };
     constexpr IValue BISHOP_OUTPOST_II_DEG = { 24, 6 };
     constexpr IValue BISHOP_OUTPOST_III_DEG = { 42, 10 };
 
     // Pawn structure points
-    constexpr int GOOD_PAWN = -4;
-    constexpr int UNDEFENDED_MOBILE_PAWN = 1;
-    constexpr int DEFENDED_BLOCKED_PAWN = 2;
-    constexpr int ISOLATED_MOBILE_PAWN = 7;
+    constexpr int GOOD_PAWN = -6;
+    constexpr int UNDEFENDED_MOBILE_PAWN = 2;
+    constexpr int DEFENDED_BLOCKED_PAWN = 3;
+    constexpr int ISOLATED_MOBILE_PAWN = 6;
     constexpr int UNDEFENDED_BLOCKED_PAWN = 8;
-    constexpr int ISOLATED_BLOCKED_PAWN = 15;
-    constexpr int BACKWARD_PAWN = 15;
+    constexpr int ISOLATED_BLOCKED_PAWN = 12;
+    constexpr int BACKWARD_PAWN = 12;
 
-    constexpr IValue DOUBLED_PAWN_PENALTY = { -5, -30 };
-    constexpr Value DOUBLED_PAWN_MAX_PENALTY = -70;
-    constexpr IValue WEAK_PAWN_ATTACKED = { -8, -16 };
+    constexpr IValue DOUBLED_PAWN_PENALTY = { -1, -40 };
+    constexpr Value DOUBLED_PAWN_MAX_PENALTY = -80;
 
     // Passed pawns
     constexpr int PASSED_PAWN_POINTS[7][32] = {
@@ -169,8 +168,8 @@ namespace Evaluation {
         // On a starting square
         {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20 /*Base*/, 23, 25, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26}
     };
-    constexpr int BLOCKED_PASSER_PENALTY_SIZE = -2; // Less = more severe penalty (based on PASSED_PAWN_POINTS table)
-    constexpr int HEAVY_PIECE_BEHIND_PASSER[7] = { 50, 38, 24, 18, 10, 4, 4 };
+    constexpr int BLOCKED_PASSER_PENALTY_SIZE = -3; // Less = more severe penalty (based on PASSED_PAWN_POINTS table)
+    constexpr int HEAVY_PIECE_BEHIND_PASSER[7] = { 36, 28, 18, 12, 7, 3, 2 };
     constexpr int CONNECTED_PASSERS_FACTOR = 20;    // To balance division by 1024 (2^10)
 
     constexpr IValue PASSED_PAWNS_VALUE = { 64, 64 };    // How much do 64 passer points worth (easier scaling)
@@ -197,23 +196,22 @@ namespace Evaluation {
     constexpr int PawnStormPoints[7] = {
         0, -30, -28, -21, -12, -3, -1
     };
-    constexpr int KingTropismKnightPoints = -28;
     constexpr int KingTropismBishopPoints[24] = {
         -24, -24, -19, -13, -9, -7, -6, -5,
         -4, -3, -3, -3, -3, -3, -3, -3,
         -3, -3, -3, -3, -3, -3, -3, -3
     };
     constexpr int KingTropismRookPoints[24] = {
-        -36, -36, -31, -23, -17, -11, -8, -6,
-        -5, -5, -4, -4, -4, -4, -4, -4,
-        -4, -4, -4, -4, -4, -4, -4, -4
+        -24, -24, -20, -14, -10, -8, -6, -5
+        -4, -4, -3, -3, -3, -3, -3, -3,
+        -3, -3, -3, -3, -3, -3, -3, -3
     };
     constexpr int KingTropismQueenPoints[24] = {
-        -94, -93, -79, -58, -41, -37, -33, -29,
-        -25, -22, -20, -18, -18, -15, -15, -15,
+        -94, -93, -81, -66, -49, -43, -37, -31,
+        -25, -22, -19, -17, -15, -15, -15, -15,
         -15, -15, -15, -15, -15, -15, -15, -15
     };
-    constexpr int KING_TROPISM_THRESHOLD = -60;
+    constexpr int KING_TROPISM_THRESHOLD = -90;
     constexpr int KingAreaAttackWages[PIECE_TYPE_RANGE] = {
         0,
         0,  // Pawn
@@ -225,40 +223,40 @@ namespace Evaluation {
         0
     };
 
-    constexpr IValue KING_SAFETY_VALUE = { 64, 20 };    // How much do 64 safety points worth (easier scaling)
+    constexpr IValue KING_SAFETY_VALUE = { 60, 0 };    // How much do 64 safety points worth (easier scaling)
 
     // Space
     constexpr int CENTRAL_SPACE_POINTS = 64;
-    constexpr int OTHER_SPACE_POINTS = 38;
+    constexpr int OTHER_SPACE_POINTS = 42;
 
-    constexpr IValue SPACE_TYPE_I = { 6, 1 };           // Per 64 space points (easier scaling)
-    constexpr IValue SPACE_TYPE_II = { 12, 2 };          // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_I = { 2, 0 };           // Per 64 space points (easier scaling)
+    constexpr IValue SPACE_TYPE_II = { 8, 0 };          // Per 64 space points (easier scaling)
 
     // Threats
     constexpr bool EVALUATE_HNGING_PAWN_THREATS = true;
 
     constexpr int PAWN_EXCHANGE_THREAT_POINTS = 27;
-    constexpr int MINOR_PIECE_EXCHANGE_THREAT_POINTS = 21;
+    constexpr int MINOR_PIECE_EXCHANGE_THREAT_POINTS = 22;
     constexpr int ROOK_EXCHANGE_THREAT_POINTS = 30;
-    constexpr int UNDEFENDED_PIECE_THREAT_POINTS = 13;
-    constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 10;
+    constexpr int UNDEFENDED_PIECE_THREAT_POINTS = 18;
+    constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 16;
 
     constexpr IValue THREAT_VALUE = { -64, -64 };         // Per 64 space points (easier scaling)
 
     // Tempo bonus
-    constexpr Value TEMPO_BONUS = 18;
+    constexpr IValue TEMPO_BONUS = { 24, 8 };
 
     // Evaluation descent
-    constexpr int PAWN_COMPLEXITY_POINTS = 25;
-    constexpr int PASSED_PAWN_COMPLEXITY_POINTS = 35;
+    constexpr int PAWN_COMPLEXITY_POINTS = 42;
+    constexpr int PASSED_PAWN_COMPLEXITY_POINTS = 55;
     constexpr int PIECE_COMPLEXITY_POINTS = 85;
     constexpr int INFILTRATION_COMPLEXITY_POINTS = 64;
     constexpr int PAWNS_ON_BOTH_SIDES_COMPLEXITY_POINTS = 58;
 
-    constexpr int COMPLEXITY_THRESHOLD = 750;
+    constexpr int COMPLEXITY_THRESHOLD = 1200;
     constexpr int PAWN_ENDGAME_COMPLEXITY_THRESHOLD = 120;
 
-    constexpr int PieceImbalancePoints[PIECE_TYPE_RANGE] = { 0, 0, 60, 60, 114, 269, 0, 0 };
+    constexpr int PieceImbalancePoints[PIECE_TYPE_RANGE] = { 0, 0, 60, 60, 106, 240, 0, 0 };
 
     // Special case evaluation adjustment
     constexpr Value OPPOSITE_COLOR_BISHOPS_PAWN_ADJUSTMENT = 70;    // Negative adjustment

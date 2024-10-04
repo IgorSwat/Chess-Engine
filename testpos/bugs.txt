@@ -1,4 +1,8 @@
-rnb1kbnr/ppp2ppp/3p4/8/3NP2q/8/PPP2PPP/RNBQKB1R w KQkq - 1 5
-    - Static eval is different than queiescence score (even tho it should return static eval)
-    - It is equal when you just load the position, but if you try to get there by making moves it's different
-    - The problem is with threats
+b6r/5k2/3p1N1p/qnp1pPp1/3nP1PP/2PPN3/3Q1K2/3B3R b - - 0 32
+    - hash: 4991324323410342009, pieces: 9295614863573002376
+    - At depth 6, search with TT shows different score than without TT
+    - Making a move and searching (without using TT entry) shows correct score, but TT entry shows different score
+
+
+    11481937667984448458
+    9223557200815333512

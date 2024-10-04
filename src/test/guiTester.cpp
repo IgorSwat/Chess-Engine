@@ -9,7 +9,7 @@ namespace Testing {
     // SearchPrinter methods
     // ---------------------
 
-    SearchPrinter::SearchPrinter(TestEngine* engine, bool useSearch, Search::Depth depth)
+    SearchPrinter::SearchPrinter(Engine* engine, bool useSearch, Search::Depth depth)
         : engine(engine), maxSearchDepth(depth), currSearchDepth(depth), useSearch(useSearch)
     {
     }
@@ -25,11 +25,11 @@ namespace Testing {
         currSearchDepth += forward ? -1 : 1;
         currSearchDepth = std::min(currSearchDepth, static_cast<int>(maxSearchDepth));
 
-        system("clear");
+        system("cls");
         engine->setPosition(board);
-        std::cout << "--- Static eval: " << std::dec << engine->evaluate_s() << "\n\n";
+        std::cout << "--- Static eval: " << std::dec << engine->evaluate() << "\n\n";
         if (useSearch && currSearchDepth >= 0)
-            engine->evaluate_d(static_cast<Search::Depth>(currSearchDepth));
+            engine->evaluate(static_cast<Search::Depth>(currSearchDepth));
     }
 
 }

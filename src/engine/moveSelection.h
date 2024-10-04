@@ -19,6 +19,7 @@ enum class SelectionStrategy {
     // SEE-dependable
     SIMPLE = 1,        // No strategy, selects every legal move in generation order
     STANDARD_ORDERING, // Selects good captures, then average captures, then bad captures, and then other moves
+    IMPROVED_ORDERING  // STANDARD_ORDERING + prioritizing moves that counters other move
 
     // Other
     // ...
@@ -57,6 +58,10 @@ public:
     template <typename Functor> friend void MoveSelection::sort_moves(MoveSelector& selector, Functor func);
 
     MoveGeneration::MoveGenType currGenType = MoveGeneration::NONE;
+
+    // Objects of interest - for different strategies like select moves from given square, select promotions, etc.
+    Square dFrom = INVALID_SQUARE;
+    Square dTo = INVALID_SQUARE;
     
 private:
     // 'reselection' parameter decides whether we already checked some move (which means we do not need to check it's legality again)
@@ -71,10 +76,6 @@ private:
     Move* sectionBegin;
     Move* sectionEnd;
     int stage = 1;      // Used in the scope of one generation type
-
-    // Objects of interest - for different strategies like select moves from given square, select promotions, etc.
-    Square dFrom;
-    Square dTo;
 };
 
 

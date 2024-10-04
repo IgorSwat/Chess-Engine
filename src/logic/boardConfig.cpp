@@ -398,6 +398,33 @@ void BoardConfig::undoLastMove()
 	zobrist.restoreHash(posInfo->hash);
 }
 
+void BoardConfig::makeNullMove()
+{
+	pushStateList(Move::null());
+
+	// Dynamic update
+	sideOnMove = ~sideOnMove;
+	zobrist.updateBySideOnMoveChange();
+	updateChecks(sideOnMove);
+
+	// Fill in other state fields with previous values
+	posInfo->castlingRights = posInfo->prev->castlingRights;
+	std::copy(posInfo->prev->discoveries, posInfo->prev->discoveries + COLOR_RANGE, posInfo->discoveries);
+	std::copy(posInfo->prev->pinned, posInfo->prev->pinned + COLOR_RANGE, posInfo->pinned);
+	std::copy(posInfo->prev->pinners, posInfo->prev->pinners + COLOR_RANGE, posInfo->pinners);
+	posInfo->halfmoveClock = posInfo->prev->halfmoveClock;
+	posInfo->gameStageValue = posInfo->prev->gameStageValue;
+	posInfo->hash = zobrist.getHash();
+	posInfo->irrMovePlyDist = posInfo->prev->irrMovePlyDist;	// TODO: Is this correct?
+}
+
+void BoardConfig::undoNullMove()
+{
+	sideOnMove = ~sideOnMove;
+	posInfo = posInfo->prev;
+	zobrist.restoreHash(posInfo->hash);
+}
+
 
 // -------------------------
 // Square-centric operations

@@ -12,6 +12,7 @@ namespace Search {
     // --------------
 
     constexpr Value MAX_EVAL = std::numeric_limits<Value>::max();   // Used as a checkmate evaluation and upper boundary for beta
+    constexpr Value NO_EVAL = MAX_EVAL - 1;
 
 
     // -----------------------------
@@ -22,15 +23,23 @@ namespace Search {
     {
         lastUsedDepth = depth;
 
+        non_leaf_nodes = leaf_nodes = qs_nodes = 0;
+
         if (depth == 0)
             return evaluate();
 
-        return search<ROOT_STAGE_I>(-MAX_EVAL, MAX_EVAL, depth);
+        return search<ROOT_STAGE_I, false>(-MAX_EVAL, MAX_EVAL, depth);
     }
 
-    template <SearchStage stage>
+    template <SearchStage stage, bool nmpAvailable>
     Value Crawler::search(Value alpha, Value beta, Depth depth)
     {
+        // Testing block
+        if (depth != 0)
+            non_leaf_nodes++;
+        else
+            leaf_nodes++;
+
         // 50-move rule
         if (virtualBoard.halfmovesClocked() >= 100)
             return 0;
@@ -45,18 +54,26 @@ namespace Search {
                 return 0;
         }
 
+        Value static_eval = NO_EVAL, eval = NO_EVAL;
+
         // Check the transposition table
-        const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
         Move suggestedMove;
+        const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
         if (entry) {
+            if constexpr (SEARCH_MODE == TRACE && stage == ROOT_STAGE_I) {
+                std::cout << "[TestEngine]: found existing entry in T.Table: [score: " << relative_score(entry->score, &virtualBoard);
+                std::cout << ", type: " << int(entry->typeOfNode) << ", best " << entry->bestMove << "]\n";
+            }
+
             if (entry->depth >= depth || entry->typeOfNode == TERMINAL_NODE)
                 return entry->score;
                 
             suggestedMove = entry->bestMove;
+            eval = entry->score;
         }
 
         // Go to quiescence if maximum depth reached
-        if (depth == 0)
+        if (depth <= 0)
             return quiescence<Q_ROOT_STAGE>(alpha, beta, MAX_QUIESCENCE_DEPTH);
 
         // Initial move generation
@@ -99,6 +116,52 @@ namespace Search {
             return score;
         }
 
+        // Null move pruning heuristic
+        // Note: Since it is used before stealmate condition check, it might make some bugs in extremaly rare positions.
+        //       Luckily it does not affect checkmate positions, since it cannot be used when side on move is in check.
+        if constexpr (false && nmpAvailable) {
+            // Null move pruning failes in zugzwang, so we want to avoid using it in late endgames, where zugzwang positions are most common.
+            // Also, we want to prevent it from running twice in a row in the same branch.
+            if (!virtualBoard.isInCheck() && virtualBoard.gameStage() > Evaluation::SINGLE_ROOK_VS_ROOK_ENDGAME) {
+                static_eval = evaluate();
+                int threats = evaluator.getThreatCount(virtualBoard.movingSide());
+                Value betterEval = eval != NO_EVAL ? eval : static_eval;
+
+                if (threats == 0 && (depth < NPM_CHECK_MIN_DEPTH || betterEval - NPM_ACTIVATION_THRESHOLD > beta)) {
+                    virtualBoard.makeNullMove();
+
+                    // NPM is not available at root node, so nextStage has to be COMMON_STAGE
+                    // nmpAvailable = false to prevent double null move in two consecutive nodes
+                    Value score = -search<COMMON_STAGE, false>(-beta, -alpha, depth - 1);
+
+                    // If score already exceeds beta (with side on move playing one move less), then beta-cutoff is almost sure
+                    if (score >= beta) {
+                        virtualBoard.undoNullMove();
+                        tTable->set({
+                            virtualBoard.hash(),
+                            virtualBoard.pieces(),
+                            depth,
+                            score,  // score
+                            Move::null(),
+                            CUT_NODE,
+                            virtualBoard.halfmovesPlain()
+                        }, rootAge);
+
+                        return score;
+                    }
+                
+                    // In other case, we can extract a refutation move (best move for other side) and try to improve move ordering with that
+                    const TranspositionTable::Entry* npmEntry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
+                    if (npmEntry) {
+                        moveSelector.dFrom = npmEntry->bestMove.from();
+                        moveSelector.dTo = npmEntry->bestMove.to();
+                    }
+
+                    virtualBoard.undoNullMove();
+                }
+            }
+        }
+
         // Key state variables
         Value bestScore = -MAX_EVAL;
         NodeType nodeType = ALL_NODE;
@@ -108,15 +171,24 @@ namespace Search {
         constexpr GenerationStrategy genStrategy = stage == COMMON_STAGE ? GenerationStrategy::CASCADE : GenerationStrategy::STRICT;
         constexpr SelectionStrategy selStrategy = stage == COMMON_STAGE ? SelectionStrategy::STANDARD_ORDERING : SelectionStrategy::SIMPLE;
         constexpr SearchStage nextStage = stage == ROOT_STAGE_I ? ROOT_STAGE_II : COMMON_STAGE;
+
+        const bool improveOrdering = moveSelector.dFrom != INVALID_SQUARE;
+
+        if constexpr (SEARCH_MODE == TRACE && stage == ROOT_STAGE_I)
+            std::cout << "Analyzing the following moves:\n";
         
         // Main loop
         Move move = suggestedMove != Move::null() ? suggestedMove : 
-                                                    moveSelector.selectNext<genStrategy, selStrategy>();
+                    improveOrdering ? moveSelector.selectNext<genStrategy, SelectionStrategy::IMPROVED_ORDERING>() :
+                                      moveSelector.selectNext<genStrategy, selStrategy>();
         while (move != Move::null()) {
             // Make move and evaluate further
             virtualBoard.makeMove(move);
-            Value score = -search<nextStage>(-beta, -alpha, depth - 1);
+            Value score = -search<nextStage, true>(-beta, -alpha, depth - 1);
             virtualBoard.undoLastMove();
+
+            if constexpr (SEARCH_MODE == TRACE && stage == ROOT_STAGE_I)
+                std::cout << move << std::dec << " -> [score: " << relative_score(score, &virtualBoard) << "]\n";
 
             // Beta cut-off: an enemy would never allow a line worse than beta to occur
             if (score >= beta) {
@@ -129,7 +201,7 @@ namespace Search {
                     CUT_NODE,
                     virtualBoard.halfmovesPlain()
                 }, rootAge);
-                return beta;
+                return score;
             }
 
             // PV node - a move that is better for moving side than previous best one
@@ -146,7 +218,8 @@ namespace Search {
 
             // Avoid repeating of transposition table suggestion
             if (move != Move::null() && move == suggestedMove)
-                move = moveSelector.selectNext<genStrategy, selStrategy>();
+                move = improveOrdering ? moveSelector.selectNext<genStrategy, SelectionStrategy::IMPROVED_ORDERING>() :
+                                         moveSelector.selectNext<genStrategy, selStrategy>();
         }
 
         // Save search results in transposition table
@@ -171,6 +244,12 @@ namespace Search {
     template <SearchStage stage>
     Value Crawler::quiescence(Value alpha, Value beta, Depth depth)
     {
+        qs_nodes++;
+        
+        const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
+        if (entry)
+            return entry->score;
+
         MoveSelector moveSelector(&virtualBoard);
         if (virtualBoard.isInCheck())
             moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();

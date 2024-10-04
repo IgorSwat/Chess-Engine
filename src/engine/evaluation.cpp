@@ -155,15 +155,10 @@ namespace Evaluation {
 
         constexpr Color enemy = ~side;
         constexpr Direction forwardDir = (side == WHITE ? NORTH : SOUTH);
-        Bitboard weak = weakPawns[side] & attacks[enemy][ALL_PIECES];
         Bitboard passed = passedPawns[side];
 
         // Weak pawns
-        while (weak) {
-            Bitboard sqBB = square_to_bb(Bitboards::pop_lsb(weak));
-            Value penalty = Interpolation::interpolate_gs(WEAK_PAWN_ATTACKED, stage) * countAttackers(sqBB, enemy, KNIGHT, BISHOP, ROOK, QUEEN, KING);
-            add_eval<side, test>(result, penalty, "Weak pawn attacked");
-        }
+        // TODO: Find a better metric
 
         // Passed pawns
         int points = 0;
@@ -268,8 +263,7 @@ namespace Evaluation {
                 add_eval<side, test>(result, (Interpolation::interpolate_gs(KNIGHT_OUTPOST_I_DEG, stage) * OutpostFactors[side][sq]) >> 4, "Knight I deg outpost");
 
             // King tropism
-            int tropismDistance = (Board::SquareDistance[sq][enemyKingPos] - 1) >> 1;
-            tropismPoints[enemy] += KingTropismKnightPoints >> tropismDistance;
+            // TODO: Find a better metric
 
             // King area attacks & defence
             updateKingAreaSafety<side>(sq, att, KingAreaAttackWages[KNIGHT]);
@@ -518,7 +512,7 @@ namespace Evaluation {
 
         // Tempo bonus for side on move
         if (board->movingSide() == side)
-            add_eval<side, miscTest>(result, TEMPO_BONUS, "Tempo bonus");
+            add_eval<side, miscTest>(result, Interpolation::interpolate_gs(TEMPO_BONUS, stage), "Tempo bonus");
 
         return result;
     }

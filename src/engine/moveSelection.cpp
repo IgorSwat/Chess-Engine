@@ -16,6 +16,8 @@ Move MoveSelector::selectMove()
             if (board->legalityCheckLight(move))
                 return move;
         }
+        else
+            return move;
     }
 
     return Move::null();
@@ -65,14 +67,14 @@ Move MoveSelector::selectNext()
                         move = selectMove<false>([this](Move& move) -> bool {return SEE::evaluate(board, move) > 0;});
                         if (move == Move::null()) {
                             nextSection();
-                            return selectNext<genStrategy, selStrategy>();
+                            continue;
                         }
                         break;
                     case 2:
                         move = selectMove<true>([this](const Move& move) -> bool {return move.see >= 0;});   // We assume that SEE is already calculated
                         if (move == Move::null()) {
                             nextSection();
-                            return selectNext<genStrategy, selStrategy>();
+                            continue;
                         }
                         break;
                     default:
@@ -82,6 +84,47 @@ Move MoveSelector::selectNext()
             }
             else
                 move = selectMove<false>();
+        }
+
+        if constexpr (selStrategy == SelectionStrategy::IMPROVED_ORDERING) {
+            if (currGenType != MoveGeneration::QUIET_CHECK && currGenType != MoveGeneration::QUIET) {
+                switch (stage) {
+                    case 1:
+                        move = selectMove<false>([this](Move& move) -> bool {return SEE::evaluate(board, move) > 0;});
+                        if (move == Move::null()) {
+                            nextSection();
+                            continue;
+                        }
+                        break;
+                    case 2:
+                        move = selectMove<true>([this](const Move& move) -> bool {
+                            return move.see >= 0 && (move.to() == dFrom || move.from() == dTo);
+                        });
+                        if (move == Move::null()) {
+                            nextSection();
+                            continue;
+                        }
+                        break;
+                    default:
+                        move = selectMove<true>();
+                        break;
+                }
+            }
+            else {
+                switch (stage) {
+                    case 1:
+                        move = selectMove<false>([this](const Move& move) -> bool { return move.from() == dTo; });
+                        if (move == Move::null()) {
+                            nextSection();
+                            continue;
+                        }
+                        break;
+                    default:
+                        move = selectMove<true>();
+                }
+            }
+            if (move == Move::null())
+                stage = 1;
         }
 
         // Handle edge case - end of legal moves
@@ -107,5 +150,7 @@ Move MoveSelector::selectNext()
 // Declaration of all usages
 template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::SIMPLE>();
 template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::STANDARD_ORDERING>();
+template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::IMPROVED_ORDERING>();
 template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();
 template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::STANDARD_ORDERING>();
+template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::IMPROVED_ORDERING>();

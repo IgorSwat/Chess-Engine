@@ -35,7 +35,7 @@ namespace GUI {
 		  inputBar(sf::Vector2f((WINDOW_WIDTH - INPUT_BAR_WIDTH) / 2.f, WINDOW_HEIGHT - INPUT_BAR_HEIGHT),
 		  		   sf::Vector2f(INPUT_BAR_WIDTH, INPUT_BAR_HEIGHT), INPUT_FONT_SIZE)   
 	{
-		board.loadPosition("5k2/2R3p1/4p2p/8/P1p2P2/2Pr2PP/8/7K w - - 3 43");
+		//board.loadPosition("8/4kbp1/5p2/5Q1p/8/8/5K2/8 w - - 1 51");
 		window.setFramerateLimit(60);
 
 		navbar.addButton(RoundedButton(ButtonType::BACK, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));

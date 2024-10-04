@@ -60,6 +60,8 @@ public:
 	// Move makers
 	void makeMove(const Move& move);
 	void undoLastMove();
+	void makeNullMove();
+	void undoNullMove();
 
 	// Piece-centric operations
 	Bitboard pieces(PieceType ptype = ALL_PIECES) const;

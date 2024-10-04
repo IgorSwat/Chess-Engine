@@ -76,9 +76,14 @@ namespace Search {
         // Main search functions
         Value search(Depth depth);                              // Initial function
 
+        // Last search data
+        int non_leaf_nodes = 0;
+        int leaf_nodes = 0;
+        int qs_nodes = 0;
+
     private:
         Value evaluate();                                       // Stand pat evaluation = search on depth 0
-        template <SearchStage stage>
+        template <SearchStage stage, bool nmpAvailable>  // NMP = Null Move Pruning
         Value search(Value alpha, Value beta, Depth depth);     // Recursive subroutine
         template <SearchStage stage>
         Value quiescence(Value alpha, Value beta, Depth depth);

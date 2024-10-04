@@ -1,7 +1,6 @@
 #pragma once
 
 #include "test.h"
-#include "testEngine.h"
 
 
 namespace Testing {
@@ -30,13 +29,13 @@ namespace Testing {
     class SearchPrinter : public GuiTester
     {
     public:
-        SearchPrinter(TestEngine* engine, bool useSearch = true, Search::Depth depth = 2);
+        SearchPrinter(Engine* engine, bool useSearch = true, Search::Depth depth = 2);
 
         void initialTest(BoardConfig* board) override;
         void nextTest(BoardConfig* board, bool forward) override;
 
     private:
-        TestEngine* engine;
+        Engine* engine;
         Search::Depth maxSearchDepth;
         int currSearchDepth;
         bool useSearch;
