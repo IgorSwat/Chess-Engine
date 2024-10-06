@@ -46,8 +46,7 @@ public:
     void generateMoves();   // Initializes move list by generating moves 
 
     // Move selection
-    template <GenerationStrategy genStrategy, SelectionStrategy selStrategy>
-    Move selectNext();
+    Move selectNext(GenerationStrategy genStrategy, SelectionStrategy selStrategy);
     bool hasMoves();            // Check for any legal move existance
 
     // Reseting the selection
@@ -101,7 +100,7 @@ inline void MoveSelector::generateMoves()
 // Warning - use this one carefully!
 inline bool MoveSelector::hasMoves()
 {
-    Move move = selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();   // It can change the current generation type
+    Move move = selectNext(GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE);   // It can change the current generation type
     sectionBegin = moves.begin();
     return move != Move::null();
 }

@@ -2,6 +2,7 @@
 
 #include "moveSelection.h"
 #include "evaluation.h"
+#include "searchConfig.h"
 
 
 // For pointers inside crawler class
@@ -18,29 +19,15 @@ namespace Search {
     using Age = std::uint16_t;
 
     // Node (position) type info
-    enum NodeType : std::uint8_t {
-        PV_NODE = 1,    // Exact value
-        CUT_NODE,       // A lower-bound score (a line which should not be allowed by enemy)
-        ALL_NODE,       // An upper-bound score (no move exceeds alpha - best possible score for moving side)
-        TERMINAL_NODE,  // A node where checkmate or stealmate appears
+     enum NodeType : std::uint8_t {
+        PV_NODE = 1,
+        ROOT_NODE = (PV_NODE << 1) | PV_NODE,           // Exact value
+        CUT_NODE = PV_NODE << 2,                        // A lower-bound score (a line which should not be allowed by enemy)
+        ALL_NODE = PV_NODE << 3,                        // An upper-bound score (no move exceeds alpha - best possible score for moving side)
+        NON_PV_NODE = PV_NODE << 4,                     // Either root, cut or all node
+        TERMINAL_NODE = (PV_NODE << 4) | PV_NODE,       // A node where checkmate or stealmate appears
 
         INVALID_NODE = 0,
-        NODE_TYPE_RANGE = 3
-    };
-
-    // Specifies behavior of search subroutine
-    enum SearchStage : std::uint8_t {
-        // Main search stages
-        ROOT_STAGE_I = 1,   // At initial, root position
-        ROOT_STAGE_II,      // Exactly one play after root
-        COMMON_STAGE,
-
-        // Quiescence search stages
-        Q_ROOT_STAGE,
-        Q_COMMON_STAGE,
-
-        INVALID_STAGE = 0,
-        SEARCH_STAGE_RANGE = 5
     };
 
 
@@ -67,7 +54,8 @@ namespace Search {
     class Crawler
     {
     public:
-        Crawler(TranspositionTable* tTable) : virtualBoard(), evaluator(&this->virtualBoard), tTable(tTable) {}
+        Crawler(TranspositionTable* tTable) 
+            : virtualBoard(), evaluator(&this->virtualBoard), tTable(tTable), ssTop(searchStack) {}
 
         // Setup
         void setPosition(BoardConfig* board);
@@ -81,12 +69,28 @@ namespace Search {
         int leaf_nodes = 0;
         int qs_nodes = 0;
 
+        // Extra search info
+        struct SearchInfo
+        {
+            int ply = -1;
+            Value staticEval = NO_EVAL;
+            Value eval = NO_EVAL;
+
+            Value score = -MAX_EVAL;
+            NodeType node = ALL_NODE;
+            Move bestMove = Move::null();
+        };
+
     private:
+        // Search helpers
         Value evaluate();                                       // Stand pat evaluation = search on depth 0
-        template <SearchStage stage, bool nmpAvailable>  // NMP = Null Move Pruning
+        template <NodeType stage, bool nmpAvailable>            // NMP = Null Move Pruning
         Value search(Value alpha, Value beta, Depth depth);     // Recursive subroutine
-        template <SearchStage stage>
+        template <NodeType stage>
         Value quiescence(Value alpha, Value beta, Depth depth);
+
+        // Search stack handlers
+        void pushStack();
 
         // Virtual board and related properties
         BoardConfig virtualBoard;
@@ -94,6 +98,8 @@ namespace Search {
 
         // Additional search info
         Depth lastUsedDepth = 0;
+        SearchInfo searchStack[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1] = {};
+        SearchInfo* ssTop;
 
         // Evaluation helper
         Evaluation::Evaluator evaluator;
@@ -122,6 +128,16 @@ namespace Search {
     inline Value Crawler::evaluate()
     {
         return relative_score(evaluator.evaluate(), &virtualBoard);
+    }
+
+    inline void Crawler::pushStack()
+    {
+        ++ssTop;
+        ssTop->ply = (ssTop - 1)->ply + 1;
+        ssTop->score = -MAX_EVAL;
+        ssTop->node = ALL_NODE;
+        ssTop->eval = ssTop->staticEval = NO_EVAL;
+        ssTop->bestMove = Move::null();
     }
 
 }

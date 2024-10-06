@@ -6,11 +6,11 @@ namespace Testing {
     template <GenerationStrategy genStrategy, SelectionStrategy selStrategy>
     void show_all_moves(MoveSelector *selector)
     {
-        Move move = selector->selectNext<genStrategy, selStrategy>();
+        Move move = selector->selectNext(genStrategy, selStrategy);
         while (move != Move::null())
         {
             std::cout << move << "\n";
-            move = selector->selectNext<genStrategy, selStrategy>();
+            move = selector->selectNext(genStrategy, selStrategy);
         }
     }
 

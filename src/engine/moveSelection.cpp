@@ -48,19 +48,18 @@ Move MoveSelector::selectMove(Pred pred)
     return Move::null();
 }
 
-template <GenerationStrategy genStrategy, SelectionStrategy selStrategy>
-Move MoveSelector::selectNext()
+Move MoveSelector::selectNext(GenerationStrategy genStrategy, SelectionStrategy selStrategy)
 {
     Move move;
 
     while (true) {
         // No ordering, just get the first legal move
-        if constexpr (selStrategy == SelectionStrategy::SIMPLE) {
+        if (selStrategy == SelectionStrategy::SIMPLE) {
             move = selectMove<false>();
         }
 
         // Good captures -> average captures -> bad captures
-        if constexpr (selStrategy == SelectionStrategy::STANDARD_ORDERING) {
+        else if (selStrategy == SelectionStrategy::STANDARD_ORDERING) {
             if (currGenType != MoveGeneration::QUIET_CHECK && currGenType != MoveGeneration::QUIET) {
                 switch (stage) {
                     case 1:
@@ -86,7 +85,7 @@ Move MoveSelector::selectNext()
                 move = selectMove<false>();
         }
 
-        if constexpr (selStrategy == SelectionStrategy::IMPROVED_ORDERING) {
+        else if (selStrategy == SelectionStrategy::IMPROVED_ORDERING) {
             if (currGenType != MoveGeneration::QUIET_CHECK && currGenType != MoveGeneration::QUIET) {
                 switch (stage) {
                     case 1:
@@ -129,7 +128,7 @@ Move MoveSelector::selectNext()
 
         // Handle edge case - end of legal moves
         if (move == Move::null()) {
-            if constexpr (genStrategy == GenerationStrategy::CASCADE) {
+            if (genStrategy == GenerationStrategy::CASCADE) {
                 if (currGenType == MoveGeneration::CAPTURE) {
                     generateMoves<MoveGeneration::QUIET_CHECK>();
                     continue;
@@ -146,11 +145,3 @@ Move MoveSelector::selectNext()
 
     return move;
 }
-
-// Declaration of all usages
-template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::SIMPLE>();
-template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::STANDARD_ORDERING>();
-template Move MoveSelector::selectNext<GenerationStrategy::STRICT, SelectionStrategy::IMPROVED_ORDERING>();
-template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>();
-template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::STANDARD_ORDERING>();
-template Move MoveSelector::selectNext<GenerationStrategy::CASCADE, SelectionStrategy::IMPROVED_ORDERING>();
