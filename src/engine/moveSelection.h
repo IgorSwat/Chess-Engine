@@ -9,21 +9,35 @@
 // Selection behavior flags
 // ------------------------
 
-enum class GenerationStrategy {
-    STRICT = 1, // Selects only moves from specified MoveGenType
-    CASCADE,    // Selects moves from another MoveGenType if current MoveGenType is completely used
-};
+namespace MoveSelection {
 
-// Defines strategy of selecting (filtering) moves from given MoveGenType. It's usually equivallent to imposing a predicate.
-enum class SelectionStrategy {
-    // SEE-dependable
-    SIMPLE = 1,        // No strategy, selects every legal move in generation order
-    STANDARD_ORDERING, // Selects good captures, then average captures, then bad captures, and then other moves
-    IMPROVED_ORDERING  // STANDARD_ORDERING + prioritizing moves that counters other move
+    // Selection strategy is defined as 64 bit integer, with 10 consecutive bits representing strategy for given generation phase
+    // For example, first 10 bits defines strategy for QUIET (moves) phase
+    using Strategy = std::uint64_t;
 
-    // Other
-    // ...
-};
+    // Define hooks for other flags
+    // We assume following offsets: QUIET = 0, QUIET_CHECK = 10, CAPTURE = 20, CHECK_EVASION = 30, LEGAL = 40, PSEUDO_LEGAL = 50
+    // Do calculate phase offset we can use offset = (phase - 1) * 10 formula
+    constexpr int QUIET_OFFSET = 0;
+    constexpr int QUIET_CHECK_OFFSET = QUIET_OFFSET + 10;
+    constexpr int CAPTURE_OFFSET = QUIET_CHECK_OFFSET + 10;
+    constexpr int CHECK_EVASION_OFFSET = CAPTURE_OFFSET + 10;
+    constexpr int LEGAL_OFFSET = CHECK_EVASION_OFFSET + 10;
+    constexpr int PSEUDO_LEGAL_OFFSET = LEGAL_OFFSET + 10;
+
+    // Local strategies
+    constexpr Strategy STRATEGY_BASE = 0x1;
+    constexpr Strategy POSITIVE_SEE = STRATEGY_BASE;
+    constexpr Strategy MOVE_TO = STRATEGY_BASE << 1;
+    constexpr Strategy MOVE_FROM = STRATEGY_BASE << 2;
+    constexpr Strategy ZERO_SEE = STRATEGY_BASE << 3;
+
+    // Complex strategies
+    constexpr Strategy SIMPLE_ORDERING = 0;
+    constexpr Strategy STANDARD_ORDERING = 
+        (POSITIVE_SEE | ZERO_SEE) << CAPTURE_OFFSET |
+        (POSITIVE_SEE | ZERO_SEE) << CHECK_EVASION_OFFSET;
+}
 
 
 // -------------------
@@ -38,25 +52,21 @@ class MoveSelector
 public:
     MoveSelector(BoardConfig* board) : board(board), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()) {}
 
-    // Change board
-    void setBoard(BoardConfig* board);
-
-    // Generating moves
-    template <MoveGeneration::MoveGenType gen>
-    void generateMoves();   // Initializes move list by generating moves 
+    // Selector setup
+    void setBoard(BoardConfig* board);                                  // Changes the connected board, resets moves
+    template <MoveGeneration::MoveGenType gen> void generateMoves();    // Generates new moves (acc. to board), resets selection strategy
+    void setStrategy(MoveSelection::Strategy);                          // Sets new selection strategy
 
     // Move selection
-    Move selectNext(GenerationStrategy genStrategy, SelectionStrategy selStrategy);
+    Move selectNext(bool cascade);
     bool hasMoves();            // Check for any legal move existance
-
-    // Reseting the selection
-    void resetSelection();      // Reset current move set in both ends to allow another loop
 
     // Helper functions
     void sortCaptures();    // A specialized, in-place sort by SEE value
     template <typename Functor> friend void MoveSelection::sort_moves(MoveSelector& selector, Functor func);
 
     MoveGeneration::MoveGenType currGenType = MoveGeneration::NONE;
+    MoveSelection::Strategy strategy = MoveSelection::SIMPLE_ORDERING;
 
     // Objects of interest - for different strategies like select moves from given square, select promotions, etc.
     Square dFrom = INVALID_SQUARE;
@@ -64,9 +74,12 @@ public:
     
 private:
     // 'reselection' parameter decides whether we already checked some move (which means we do not need to check it's legality again)
-    template <bool reselection> Move selectMove();                          // No filtering
-    template <bool reselection, typename Pred> Move selectMove(Pred pred);  // Additional filtering
+    Move selectMove(bool reselection);                                      // No filtering
+    template <typename Pred> Move selectMove(bool reselection, Pred pred);  // Additional filtering
     void nextSection();
+
+    void resetSelection() { sectionBegin = moves.begin(); sectionEnd = moves.end(); legalityChecked = false; }
+    void nextSelection() { sectionBegin = sectionEnd; sectionEnd = moves.end(); legalityChecked = true; }
 
     BoardConfig* board;
 
@@ -74,13 +87,14 @@ private:
     MoveList moves;
     Move* sectionBegin;
     Move* sectionEnd;
-    int stage = 1;      // Used in the scope of one generation type
+    bool legalityChecked = false;
+    bool seeChecked = false;
 };
 
 
-// ---------------------
-// Move selector methods
-// ---------------------
+// --------------------
+// MoveSelector methods
+// --------------------
 
 inline void MoveSelector::setBoard(BoardConfig* board)
 {
@@ -95,34 +109,31 @@ inline void MoveSelector::generateMoves()
     MoveGeneration::generate_moves<gen>(*board, moves);
     currGenType = gen;
     resetSelection();
+    seeChecked = false;
+    strategy = MoveSelection::SIMPLE_ORDERING;
+}
+
+inline void MoveSelector::setStrategy(MoveSelection::Strategy strategy)
+{
+    this->strategy = strategy;
 }
 
 // Warning - use this one carefully!
 inline bool MoveSelector::hasMoves()
 {
-    Move move = selectNext(GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE);   // It can change the current generation type
-    sectionBegin = moves.begin();
-    return move != Move::null();
-}
+    MoveSelection::Strategy tmp = this->strategy;
+    setStrategy(MoveSelection::SIMPLE_ORDERING);
+    Move move = selectNext(true);
+    resetSelection();
+    this->strategy = tmp;
 
-inline void MoveSelector::resetSelection()
-{
-    sectionBegin = moves.begin();
-    sectionEnd = moves.end();
-    stage = 1;
+    return move != Move::null();
 }
 
 inline void MoveSelector::sortCaptures()
 {
     std::for_each(moves.begin(), moves.end(), [this](Move& move) -> void { SEE::evaluate(this->board, move); });
     std::sort(moves.begin(), moves.end(), [](const Move& a, const Move& b) -> bool { return a.see > b.see; });   // Descending order
-}
-
-inline void MoveSelector::nextSection()
-{
-    sectionBegin = sectionEnd;
-    sectionEnd = moves.end();
-    stage++;
 }
 
 

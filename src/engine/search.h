@@ -97,7 +97,6 @@ namespace Search {
         Age rootAge = 0;
 
         // Additional search info
-        Depth lastUsedDepth = 0;
         SearchInfo searchStack[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1] = {};
         SearchInfo* ssTop;
 

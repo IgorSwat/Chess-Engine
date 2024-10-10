@@ -12,8 +12,6 @@ namespace Search {
 
     Value Crawler::search(Depth depth)
     {
-        lastUsedDepth = depth;
-
         non_leaf_nodes = leaf_nodes = qs_nodes = 0;
 
         if (depth == 0)
@@ -46,7 +44,7 @@ namespace Search {
 
             if (repetitions == 3)   // A definite 3-fold
                 return 0;
-            if (repetitions == 2 && lastUsedDepth - depth > virtualBoard.irreversibleMoveDistance())    // A repetition inside search space
+            if (repetitions == 2 && ssTop->ply > virtualBoard.irreversibleMoveDistance())    // A repetition inside search space
                 return 0;
         }
 
@@ -165,6 +163,7 @@ namespace Search {
                 moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
             else
                 moveSelector.generateMoves<MoveGeneration::CAPTURE>();
+            moveSelector.setStrategy(MoveSelection::STANDARD_ORDERING);
         }
 
         // Detect mate, stealmate and other types of draw
@@ -188,15 +187,14 @@ namespace Search {
             std::cout << "Analyzing the following moves:\n";
 
         // Specify selection strategy according to search stage
-        GenerationStrategy genStrategy = ssTop->ply >= 2 ? GenerationStrategy::CASCADE : GenerationStrategy::STRICT;
-        SelectionStrategy selStrategy = ssTop->ply >= 2 ? SelectionStrategy::STANDARD_ORDERING : SelectionStrategy::SIMPLE;
+        bool cascadeSelection = ssTop->ply >= 2;
         
         // Main loop
-        Move move = moveSelector.selectNext(genStrategy, selStrategy);
+        Move move = moveSelector.selectNext(cascadeSelection);
         while (move != Move::null()) {
             // Avoid repeating of transposition table suggestion
             if (move == ttMove) {
-                move = moveSelector.selectNext(genStrategy, selStrategy);
+                move = moveSelector.selectNext(cascadeSelection);
                 continue;
             }
 
@@ -205,7 +203,7 @@ namespace Search {
                 !move.isCapture() && !move.isPromotion() && !virtualBoard.isCheck(move) &&
                 ssTop->staticEval + FUTILITY_MARGIN < alpha) {
 
-                move = moveSelector.selectNext(genStrategy, selStrategy);
+                move = moveSelector.selectNext(cascadeSelection);
                 continue;
             }
 
@@ -242,7 +240,7 @@ namespace Search {
                 }
             }
 
-            move = moveSelector.selectNext(genStrategy, selStrategy);
+            move = moveSelector.selectNext(cascadeSelection);
         }
 
         // Save search results in transposition table
@@ -318,17 +316,17 @@ namespace Search {
             // Experimental - sort moves by SEE at initial quiescence depth
             if constexpr (node == ROOT_NODE)
                 moveSelector.sortCaptures();
+            else
+                moveSelector.setStrategy(MoveSelection::STANDARD_ORDERING);
 
-            constexpr SelectionStrategy selStrategy = node == ROOT_NODE ? SelectionStrategy::SIMPLE : SelectionStrategy::STANDARD_ORDERING;
-
-            move = moveSelector.selectNext(GenerationStrategy::STRICT, selStrategy);
+            move = moveSelector.selectNext(false);
             while (move.see > 0) {
                 // Delta pruning
                 if (ssTop->staticEval + move.see + DELTA_MARGIN < alpha && moveSelector.currGenType != MoveGeneration::CHECK_EVASION) {
                     if constexpr (node == ROOT_NODE)
                         break;
                     else {
-                        move = moveSelector.selectNext(GenerationStrategy::STRICT, selStrategy);
+                        move = moveSelector.selectNext(false);
                         continue;
                     }
                 }
@@ -347,7 +345,7 @@ namespace Search {
                         alpha = score;
                 }
                 
-                move = moveSelector.selectNext(GenerationStrategy::STRICT, selStrategy);
+                move = moveSelector.selectNext(false);
             }
         }
 
@@ -356,8 +354,11 @@ namespace Search {
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
         if (ssTop->staticEval + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {
+            if constexpr (node != ROOT_NODE)
+                moveSelector.setStrategy(MoveSelection::SIMPLE_ORDERING);
+
             if (move == Move::null())
-                move = moveSelector.selectNext(GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE);
+                move = moveSelector.selectNext(true);
             while (move != Move::null()) {
                 PieceType pType = type_of(virtualBoard.onSquare(move.to()));
                 Bitboard attacks = pType == NULL_TYPE ? 0 :
@@ -384,7 +385,7 @@ namespace Search {
                     }
                 }
 
-                move = moveSelector.selectNext(GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE);
+                move = moveSelector.selectNext(true);
             }
 
             return ssTop->score;

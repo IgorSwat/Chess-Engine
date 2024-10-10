@@ -3,14 +3,13 @@
 
 namespace Testing {
     
-    template <GenerationStrategy genStrategy, SelectionStrategy selStrategy>
     void show_all_moves(MoveSelector *selector)
     {
-        Move move = selector->selectNext(genStrategy, selStrategy);
+        Move move = selector->selectNext(true);
         while (move != Move::null())
         {
             std::cout << move << "\n";
-            move = selector->selectNext(genStrategy, selStrategy);
+            move = selector->selectNext(true);
         }
     }
 
@@ -24,13 +23,15 @@ namespace Testing {
 
         // Simple selection - start from quiet_checks
         selector.generateMoves<MoveGeneration::QUIET_CHECK>();
+        selector.setStrategy(MoveSelection::SIMPLE_ORDERING);
         std::cout << "Simple selection:\n";
-        show_all_moves<GenerationStrategy::CASCADE, SelectionStrategy::SIMPLE>(&selector);
+        show_all_moves(&selector);
 
         // Standard ordering
         selector.generateMoves<MoveGeneration::CAPTURE>();
+        selector.setStrategy(MoveSelection::STANDARD_ORDERING);
         std::cout << "\nStandard ordering:\n";
-        show_all_moves<GenerationStrategy::CASCADE, SelectionStrategy::STANDARD_ORDERING>(&selector);
+        show_all_moves(&selector);
     }
 
     void moveSortingTest()
@@ -48,6 +49,6 @@ namespace Testing {
         });
 
         std::cout << "Sorting by static eval:\n";
-        show_all_moves<GenerationStrategy::STRICT, SelectionStrategy::SIMPLE>(&selector);
+        show_all_moves(&selector);
     }
 }

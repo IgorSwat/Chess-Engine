@@ -5,35 +5,30 @@
 // Move selector methods
 // ---------------------
 
-template <bool reselection>
-Move MoveSelector::selectMove()
+Move MoveSelector::selectMove(bool reselection)
 {
     while (sectionBegin != sectionEnd) {
         Move move = *sectionBegin;
         sectionBegin++;
 
-        if constexpr (!reselection) {
-            if (board->legalityCheckLight(move))
-                return move;
-        }
-        else
+        if (reselection || board->legalityCheckLight(move))
             return move;
     }
 
     return Move::null();
 }
 
-template <bool reselection, typename Pred>
-Move MoveSelector::selectMove(Pred pred)
+template <typename Pred>
+Move MoveSelector::selectMove(bool reselection, Pred pred)
 {
     while (sectionBegin != sectionEnd) {
         Move move = *sectionBegin;
-        if constexpr (!reselection) {
-            if (!board->legalityCheckLight(move)) {
-                sectionBegin++;
-                continue;
-            }
+
+        if (!reselection && !board->legalityCheckLight(move)) {
+            sectionBegin++;
+            continue;
         }
+
         if (!pred(move)) {                 // Swap the move (partition step) with another not processed yet. The processed move may be used later.
             sectionEnd--;
             if (sectionBegin != sectionEnd)
@@ -48,95 +43,51 @@ Move MoveSelector::selectMove(Pred pred)
     return Move::null();
 }
 
-Move MoveSelector::selectNext(GenerationStrategy genStrategy, SelectionStrategy selStrategy)
+Move MoveSelector::selectNext(bool cascade)
 {
     Move move;
 
     while (true) {
-        // No ordering, just get the first legal move
-        if (selStrategy == SelectionStrategy::SIMPLE) {
-            move = selectMove<false>();
+        // Extract bitset corresponding to current move generation phase
+        int phaseOffset = (this->currGenType - 1) * 10;
+        MoveSelection::Strategy flags = (this->strategy >> phaseOffset) & 0x1111111111;
+
+        // Adjust selection of next move according to most important flag (least significant bit)
+        if (flags & MoveSelection::POSITIVE_SEE)
+            move = selectMove(false, [this](Move& move) -> bool { return SEE::evaluate(board, move) > 0; });
+        else if (flags & MoveSelection::MOVE_TO)
+            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { return move.to() == this->dTo; });
+        else if (flags & MoveSelection::MOVE_FROM)
+            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { return move.from() == this->dFrom; });
+        else if (flags & MoveSelection::ZERO_SEE) {
+            move = this->seeChecked ? selectMove(this->legalityChecked, [this](const Move& move) -> bool {return move.see >= 0;}) :
+                                      selectMove(this->legalityChecked, [this](const Move& move) -> bool {return SEE::evaluate(board, move) >= 0;});
+        }
+        else
+            move = selectMove(this->legalityChecked);
+
+        // Checpoint 1 - selection phase adjustment
+        if (move == Move::null() && flags) {
+            if (flags & MoveSelection::POSITIVE_SEE)
+                this->seeChecked = true;
+
+            // Remove LSB from flags to discard already finished selection phase
+            flags &= (flags - 1);
+            this->strategy &= flags << phaseOffset;
+
+            nextSelection();
+            continue;
         }
 
-        // Good captures -> average captures -> bad captures
-        else if (selStrategy == SelectionStrategy::STANDARD_ORDERING) {
-            if (currGenType != MoveGeneration::QUIET_CHECK && currGenType != MoveGeneration::QUIET) {
-                switch (stage) {
-                    case 1:
-                        move = selectMove<false>([this](Move& move) -> bool {return SEE::evaluate(board, move) > 0;});
-                        if (move == Move::null()) {
-                            nextSection();
-                            continue;
-                        }
-                        break;
-                    case 2:
-                        move = selectMove<true>([this](const Move& move) -> bool {return move.see >= 0;});   // We assume that SEE is already calculated
-                        if (move == Move::null()) {
-                            nextSection();
-                            continue;
-                        }
-                        break;
-                    default:
-                        move = selectMove<true>();
-                        break;
-                }
+        // Checkpoint 2 - generation phae adjustment (if 'cascade' option selected)
+        if (move == Move::null() && cascade) {
+            if (this->currGenType == MoveGeneration::CAPTURE) {
+                generateMoves<MoveGeneration::QUIET_CHECK>();
+                continue;
             }
-            else
-                move = selectMove<false>();
-        }
-
-        else if (selStrategy == SelectionStrategy::IMPROVED_ORDERING) {
-            if (currGenType != MoveGeneration::QUIET_CHECK && currGenType != MoveGeneration::QUIET) {
-                switch (stage) {
-                    case 1:
-                        move = selectMove<false>([this](Move& move) -> bool {return SEE::evaluate(board, move) > 0;});
-                        if (move == Move::null()) {
-                            nextSection();
-                            continue;
-                        }
-                        break;
-                    case 2:
-                        move = selectMove<true>([this](const Move& move) -> bool {
-                            return move.see >= 0 && (move.to() == dFrom || move.from() == dTo);
-                        });
-                        if (move == Move::null()) {
-                            nextSection();
-                            continue;
-                        }
-                        break;
-                    default:
-                        move = selectMove<true>();
-                        break;
-                }
-            }
-            else {
-                switch (stage) {
-                    case 1:
-                        move = selectMove<false>([this](const Move& move) -> bool { return move.from() == dTo; });
-                        if (move == Move::null()) {
-                            nextSection();
-                            continue;
-                        }
-                        break;
-                    default:
-                        move = selectMove<true>();
-                }
-            }
-            if (move == Move::null())
-                stage = 1;
-        }
-
-        // Handle edge case - end of legal moves
-        if (move == Move::null()) {
-            if (genStrategy == GenerationStrategy::CASCADE) {
-                if (currGenType == MoveGeneration::CAPTURE) {
-                    generateMoves<MoveGeneration::QUIET_CHECK>();
-                    continue;
-                }
-                if (currGenType == MoveGeneration::QUIET_CHECK) {
-                    generateMoves<MoveGeneration::QUIET>();
-                    continue;
-                }
+            if (this->currGenType == MoveGeneration::QUIET_CHECK) {
+                generateMoves<MoveGeneration::QUIET>();
+                continue;
             }
         }
 
