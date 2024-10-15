@@ -1,4 +1,5 @@
 #include "moveSelection.h"
+#include <bitset>
 
 
 // ---------------------
@@ -49,31 +50,31 @@ Move MoveSelector::selectNext(bool cascade)
 
     while (true) {
         // Extract bitset corresponding to current move generation phase
-        int phaseOffset = (this->currGenType - 1) * 10;
-        MoveSelection::Strategy flags = (this->strategy >> phaseOffset) & 0x1111111111;
+        MoveSelection::Substrategy substrategy = MoveSelection::extract_substrategy(this->strategy, this->currGenType);
 
         // Adjust selection of next move according to most important flag (least significant bit)
-        if (flags & MoveSelection::POSITIVE_SEE)
+        if (substrategy & MoveSelection::POSITIVE_SEE)
             move = selectMove(false, [this](Move& move) -> bool { return SEE::evaluate(board, move) > 0; });
-        else if (flags & MoveSelection::MOVE_TO)
-            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { return move.to() == this->dTo; });
-        else if (flags & MoveSelection::MOVE_FROM)
-            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { return move.from() == this->dFrom; });
-        else if (flags & MoveSelection::ZERO_SEE) {
+        else if (substrategy & MoveSelection::ZERO_SEE) {
             move = this->seeChecked ? selectMove(this->legalityChecked, [this](const Move& move) -> bool {return move.see >= 0;}) :
                                       selectMove(this->legalityChecked, [this](const Move& move) -> bool {return SEE::evaluate(board, move) >= 0;});
+        }
+        else if (substrategy & MoveSelection::THREAT_EVASION) {
+            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { 
+                return this->evaluator->threatMap[this->board->movingSide()] & move.from();
+            });
         }
         else
             move = selectMove(this->legalityChecked);
 
         // Checpoint 1 - selection phase adjustment
-        if (move == Move::null() && flags) {
-            if (flags & MoveSelection::POSITIVE_SEE)
+        if (move == Move::null() && substrategy) {
+            if (substrategy & 0x3)
                 this->seeChecked = true;
 
-            // Remove LSB from flags to discard already finished selection phase
-            flags &= (flags - 1);
-            this->strategy &= flags << phaseOffset;
+            // Remove LSB from substrategy to discard already finished selection phase
+            substrategy &= (substrategy - 1);
+            this->strategy &= MoveSelection::make_strategy(substrategy, this->currGenType);
 
             nextSelection();
             continue;

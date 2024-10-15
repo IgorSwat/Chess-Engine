@@ -1,5 +1,6 @@
 #pragma once
 
+#include <evaluation.h>
 #include "moveGeneration.h"
 #include "see.h"
 #include <algorithm>
@@ -14,29 +15,31 @@ namespace MoveSelection {
     // Selection strategy is defined as 64 bit integer, with 10 consecutive bits representing strategy for given generation phase
     // For example, first 10 bits defines strategy for QUIET (moves) phase
     using Strategy = std::uint64_t;
-
-    // Define hooks for other flags
-    // We assume following offsets: QUIET = 0, QUIET_CHECK = 10, CAPTURE = 20, CHECK_EVASION = 30, LEGAL = 40, PSEUDO_LEGAL = 50
-    // Do calculate phase offset we can use offset = (phase - 1) * 10 formula
-    constexpr int QUIET_OFFSET = 0;
-    constexpr int QUIET_CHECK_OFFSET = QUIET_OFFSET + 10;
-    constexpr int CAPTURE_OFFSET = QUIET_CHECK_OFFSET + 10;
-    constexpr int CHECK_EVASION_OFFSET = CAPTURE_OFFSET + 10;
-    constexpr int LEGAL_OFFSET = CHECK_EVASION_OFFSET + 10;
-    constexpr int PSEUDO_LEGAL_OFFSET = LEGAL_OFFSET + 10;
+    using Substrategy = Strategy;
 
     // Local strategies
-    constexpr Strategy STRATEGY_BASE = 0x1;
-    constexpr Strategy POSITIVE_SEE = STRATEGY_BASE;
-    constexpr Strategy MOVE_TO = STRATEGY_BASE << 1;
-    constexpr Strategy MOVE_FROM = STRATEGY_BASE << 2;
-    constexpr Strategy ZERO_SEE = STRATEGY_BASE << 3;
+    constexpr Substrategy STRATEGY_BASE = 0x1;
+    constexpr Substrategy SUBSTRATEGY_MASK = 0x3ff;
+
+    constexpr Substrategy POSITIVE_SEE = STRATEGY_BASE;
+    constexpr Substrategy ZERO_SEE = STRATEGY_BASE << 1;
+    constexpr Substrategy THREAT_EVASION = STRATEGY_BASE << 2;
 
     // Complex strategies
+    constexpr inline Strategy make_strategy(Substrategy substrategy, MoveGeneration::MoveGenType gen)
+    {
+        return substrategy << (gen - 1) * 10;
+    }
+
+    constexpr inline Substrategy extract_substrategy(Strategy strategy, MoveGeneration::MoveGenType gen)
+    {
+        return (strategy >> (gen - 1) * 10) & SUBSTRATEGY_MASK;
+    }
+
     constexpr Strategy SIMPLE_ORDERING = 0;
     constexpr Strategy STANDARD_ORDERING = 
-        (POSITIVE_SEE | ZERO_SEE) << CAPTURE_OFFSET |
-        (POSITIVE_SEE | ZERO_SEE) << CHECK_EVASION_OFFSET;
+        make_strategy(POSITIVE_SEE | ZERO_SEE, MoveGeneration::CAPTURE) |
+        make_strategy(POSITIVE_SEE | ZERO_SEE, MoveGeneration::CHECK_EVASION);
 }
 
 
@@ -50,12 +53,12 @@ namespace MoveSelection { template <typename Functor> void sort_moves(MoveSelect
 class MoveSelector
 {
 public:
-    MoveSelector(BoardConfig* board) : board(board), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()) {}
+    MoveSelector(BoardConfig* board, const Evaluation::Evaluator* evaluator = nullptr) 
+        : board(board), evaluator(evaluator), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()) {}
 
     // Selector setup
     void setBoard(BoardConfig* board);                                  // Changes the connected board, resets moves
     template <MoveGeneration::MoveGenType gen> void generateMoves();    // Generates new moves (acc. to board), resets selection strategy
-    void setStrategy(MoveSelection::Strategy);                          // Sets new selection strategy
 
     // Move selection
     Move selectNext(bool cascade);
@@ -67,10 +70,6 @@ public:
 
     MoveGeneration::MoveGenType currGenType = MoveGeneration::NONE;
     MoveSelection::Strategy strategy = MoveSelection::SIMPLE_ORDERING;
-
-    // Objects of interest - for different strategies like select moves from given square, select promotions, etc.
-    Square dFrom = INVALID_SQUARE;
-    Square dTo = INVALID_SQUARE;
     
 private:
     // 'reselection' parameter decides whether we already checked some move (which means we do not need to check it's legality again)
@@ -82,6 +81,7 @@ private:
     void nextSelection() { sectionBegin = sectionEnd; sectionEnd = moves.end(); legalityChecked = true; }
 
     BoardConfig* board;
+    const Evaluation::Evaluator* evaluator;
 
     // Move handling
     MoveList moves;
@@ -110,19 +110,13 @@ inline void MoveSelector::generateMoves()
     currGenType = gen;
     resetSelection();
     seeChecked = false;
-    strategy = MoveSelection::SIMPLE_ORDERING;
-}
-
-inline void MoveSelector::setStrategy(MoveSelection::Strategy strategy)
-{
-    this->strategy = strategy;
 }
 
 // Warning - use this one carefully!
 inline bool MoveSelector::hasMoves()
 {
     MoveSelection::Strategy tmp = this->strategy;
-    setStrategy(MoveSelection::SIMPLE_ORDERING);
+    this->strategy = MoveSelection::SIMPLE_ORDERING;
     Move move = selectNext(true);
     resetSelection();
     this->strategy = tmp;

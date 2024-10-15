@@ -29,10 +29,17 @@ namespace Search {
         pushStack();
 
         // Testing block
+        // -------------
+
         if (depth != 0)
             non_leaf_nodes++;
         else
             leaf_nodes++;
+
+        // Stage 1 - detect draws related to game rules
+        // --------------------------------------------
+        // 1. 50-move rule
+        // 2. Repetitions
 
         // 50-move rule
         if (virtualBoard.halfmovesClocked() >= 100)
@@ -48,12 +55,16 @@ namespace Search {
                 return 0;
         }
 
-        // Check the transposition table
+        // Stage 2 - transposition table probe
+        // -----------------------------------
+        // 1. If score is exact (pv or terminal node), or if score holds in other types of nodes, perform a cut-off
+        // 2. Otherwise try transposition table best / refutation move
+
         Move ttMove;
         const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
         if (entry) {
             if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE) {
-                std::cout << "[TestEngine]: found existing entry in T.Table: [score: " << relative_score(entry->score, &virtualBoard);
+                std::cout << "[TestEngine]: found existing entry in T.Table: [score: " << std::dec << relative_score(entry->score, &virtualBoard);
                 std::cout << ", type: " << int(entry->typeOfNode) << ", best " << entry->bestMove << "]\n";
             }
 
@@ -97,28 +108,39 @@ namespace Search {
             ssTop->eval = entry->score;
         }
 
-        // Go to quiescence if maximum depth reached
+        // Stage 2.5 - quiescence search
+        // -----------------------------
+        // 1. Go to quiescence if maximum depth reached
+        // 2. Do not go further into search routine
+
         if (depth <= 0)
             return quiescence<ROOT_NODE>(alpha, beta, MAX_QUIESCENCE_DEPTH);
         
+        // Stage 3 - static eval
+        // ---------------------
+        // 1. Statically evaluate current position
+        // 2. Use obtained knowledge to improve further move ordering and apply various heuristics (Futility Pruning, etc.)
+        
         ssTop->staticEval = evaluate();
 
-        // Null move pruning heuristic
+        // Stage 4 - NMP (Null Move Pruning) heuristic
+        // -------------------------------------------
+        // 1. Check the conditions for NMP
+        // 2. If conditions are met and cut-node is likely to happen in currect ply, perform search at lower depth
+        // 3. If obtained score exceeds beta, perform a cut-off
+
         // Note: Since it is used before stealmate condition check, it might make some bugs in extremaly rare positions.
         //       Luckily it does not affect checkmate positions, since it cannot be used when side on move is in check.
         if constexpr (false && nmpAvailable) {
             // Null move pruning failes in zugzwang, so we want to avoid using it in late endgames, where zugzwang positions are most common.
-            // Also, we want to prevent it from running twice in a row in the same branch.
             if (!virtualBoard.isInCheck() && virtualBoard.gameStage() > Evaluation::SINGLE_ROOK_VS_ROOK_ENDGAME) {
-                int threats = evaluator.getThreatCount(virtualBoard.movingSide());
+                int threats = evaluator.threatCount[virtualBoard.movingSide()];
                 Value betterEval = ssTop->eval != NO_EVAL ? ssTop->eval : ssTop->staticEval;
 
-                if (threats == 0 && (depth < NPM_CHECK_MIN_DEPTH || betterEval - NPM_ACTIVATION_THRESHOLD > beta)) {
+                if (depth > 1 && threats == 0 && betterEval - NPM_ACTIVATION_THRESHOLD > beta) {
                     virtualBoard.makeNullMove();
 
-                    // NPM is not available at root node, so nextStage has to be COMMON_STAGE
-                    // nmpAvailable = false to prevent double null move in two consecutive nodes
-                    Value score = -search<NON_PV_NODE, false>(-beta, -alpha, depth - 1);
+                    Value score = -search<NON_PV_NODE, false>(-beta, -beta + 1, depth - 1);
                     ssTop--;
 
                     // If score already exceeds beta (with side on move playing one move less), then beta-cutoff is almost sure
@@ -142,8 +164,11 @@ namespace Search {
             }
         }
 
-        // Initial move generation
-        MoveSelector moveSelector(&virtualBoard);
+        // Stage 5 - Initial move generation
+        // ---------------------------------
+        // 1. Generate moves according to current position, depth and strategy
+
+        MoveSelector moveSelector(&virtualBoard, &evaluator);
         if (ssTop->ply < 2) {
             moveSelector.generateMoves<MoveGeneration::LEGAL>();
 
@@ -163,8 +188,12 @@ namespace Search {
                 moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
             else
                 moveSelector.generateMoves<MoveGeneration::CAPTURE>();
-            moveSelector.setStrategy(MoveSelection::STANDARD_ORDERING);
+            moveSelector.strategy = MoveSelection::STANDARD_ORDERING;
         }
+
+        // Stage 6 - checkmate & stealmate detection
+        // -----------------------------------------
+        // 1. Detect checkmate and stealmate which result in terminal node
 
         // Detect mate, stealmate and other types of draw
         if (!moveSelector.hasMoves()) {
@@ -186,10 +215,17 @@ namespace Search {
         if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE)
             std::cout << "Analyzing the following moves:\n";
 
-        // Specify selection strategy according to search stage
+        // Stage 7 - move ordering strategies
+        // ----------------------------------
+
         bool cascadeSelection = ssTop->ply >= 2;
+        if (evaluator.threatCount[virtualBoard.movingSide()] > 0)
+            moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::THREAT_EVASION, MoveGeneration::QUIET_CHECK) |
+                                     MoveSelection::make_strategy(MoveSelection::THREAT_EVASION, MoveGeneration::QUIET);
         
-        // Main loop
+        // Stage 8 - main search loop
+        // --------------------------
+
         Move move = moveSelector.selectNext(cascadeSelection);
         while (move != Move::null()) {
             // Avoid repeating of transposition table suggestion
@@ -198,7 +234,10 @@ namespace Search {
                 continue;
             }
 
-            // Futility pruning - discard quiet moves with no perspective of raising alpha
+            // Stage 9 - futility pruning
+            // --------------------------
+            // 1. Discard quiet moves with no perspective of raising alpha
+
             if (depth == 1 && !virtualBoard.isInCheck() &&
                 !move.isCapture() && !move.isPromotion() && !virtualBoard.isCheck(move) &&
                 ssTop->staticEval + FUTILITY_MARGIN < alpha) {
@@ -279,7 +318,7 @@ namespace Search {
                 return entry->score;
         }
 
-        MoveSelector moveSelector(&virtualBoard);
+        MoveSelector moveSelector(&virtualBoard, &evaluator);
         if (virtualBoard.isInCheck())
             moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
         else
@@ -317,7 +356,7 @@ namespace Search {
             if constexpr (node == ROOT_NODE)
                 moveSelector.sortCaptures();
             else
-                moveSelector.setStrategy(MoveSelection::STANDARD_ORDERING);
+                moveSelector.strategy = MoveSelection::STANDARD_ORDERING;
 
             move = moveSelector.selectNext(false);
             while (move.see > 0) {
@@ -349,13 +388,13 @@ namespace Search {
             }
         }
 
-        int noThreats = evaluator.getThreatCount(virtualBoard.movingSide());
-        Bitboard threats = evaluator.getThreatMap(virtualBoard.movingSide());
+        int noThreats = evaluator.threatCount[virtualBoard.movingSide()];
+        Bitboard threats = evaluator.threatMap[virtualBoard.movingSide()];
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
         if (ssTop->staticEval + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {
             if constexpr (node != ROOT_NODE)
-                moveSelector.setStrategy(MoveSelection::SIMPLE_ORDERING);
+                moveSelector.strategy = MoveSelection::SIMPLE_ORDERING;
 
             if (move == Move::null())
                 move = moveSelector.selectNext(true);

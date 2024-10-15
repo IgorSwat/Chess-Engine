@@ -1,7 +1,6 @@
 #pragma once
 
 #include "evaluationConfig.h"
-#include <numeric>
 
 
 // -----------------
@@ -15,9 +14,6 @@ enum SearchMode {
 };
 
 constexpr SearchMode SEARCH_MODE = STATS;
-
-constexpr Value MAX_EVAL = std::numeric_limits<Value>::max();   // Used as a checkmate evaluation and upper boundary for beta
-constexpr Value NO_EVAL = MAX_EVAL - 1;
 
 // Main search
 constexpr int MAX_SEARCH_DEPTH = 50;

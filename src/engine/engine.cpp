@@ -20,11 +20,25 @@ void Engine::setPosition(const std::string& fen)
 // Returns a relative score - to transform it back to absolute score you need to apply relative_score() again
 Value Engine::evaluate(Search::Depth depth)
 {
+    if (depth == 0)
+        return Search::relative_score(crawler.search(0), crawler.getPosition());
+
     if constexpr (SEARCH_MODE == STANDARD)
         return iterativeDeepening(depth);
     
-    if constexpr (SEARCH_MODE == TRACE)
-        return crawler.search(depth);
+    if constexpr (SEARCH_MODE == TRACE) {
+        Value score = crawler.search(depth);
+
+        const BoardConfig* board = crawler.getPosition();
+        const TranspositionTable::Entry* entry = tTable.probe(board->hash(), board->pieces());
+
+        if (entry) {
+            std::cout << "\n|||||   Search results   |||||\n";
+            std::cout << std::dec << "Score: " << Search::relative_score(entry->score, board);
+            std::cout << ", Type: " << int(entry->typeOfNode) << ", Best move: " << entry->bestMove << "\n";
+        }
+        return score;
+    }
     
     if constexpr (SEARCH_MODE == STATS) {
         auto start = std::chrono::steady_clock::now();
@@ -46,7 +60,7 @@ Value Engine::evaluate(Search::Depth depth)
 Value Engine::iterativeDeepening(Search::Depth depth)
 {
     Value result = 0;
-    for (auto d = 1; d <= depth; d++)
+    for (Search::Depth d = 1; d <= depth; d++)
         result = crawler.search(d);
     return result;
 }

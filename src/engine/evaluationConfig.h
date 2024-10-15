@@ -215,10 +215,10 @@ namespace Evaluation {
     constexpr int KingAreaAttackWages[PIECE_TYPE_RANGE] = {
         0,
         0,  // Pawn
-        -6,  // Knight
-        -6,  // Bishop
-        -8,  // Rook
-        -12,  // Queen
+        -8,  // Knight
+        -7,  // Bishop
+        -10,  // Rook
+        -14,  // Queen
         0,  // King
         0
     };
@@ -234,12 +234,7 @@ namespace Evaluation {
 
     // Threats
     constexpr bool EVALUATE_HNGING_PAWN_THREATS = true;
-
-    constexpr int PAWN_EXCHANGE_THREAT_POINTS = 27;
-    constexpr int MINOR_PIECE_EXCHANGE_THREAT_POINTS = 22;
-    constexpr int ROOK_EXCHANGE_THREAT_POINTS = 30;
-    constexpr int UNDEFENDED_PIECE_THREAT_POINTS = 18;
-    constexpr int UNDEFENDED_PAWN_THEAT_POINTS = 16;
+    constexpr int THREAT_POINTS[PIECE_TYPE_RANGE] = { 0, 12, 20, 20, 24, 30, 0, 0 };
 
     constexpr IValue THREAT_VALUE = { -64, -64 };         // Per 64 space points (easier scaling)
 

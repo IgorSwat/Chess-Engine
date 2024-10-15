@@ -3,6 +3,7 @@
 #include "moveSelection.h"
 #include "evaluation.h"
 #include "searchConfig.h"
+#include <numeric>
 
 
 // For pointers inside crawler class
@@ -29,6 +30,9 @@ namespace Search {
 
         INVALID_NODE = 0,
     };
+
+    constexpr Value MAX_EVAL = std::numeric_limits<Value>::max();   // Used as a checkmate evaluation and upper boundary for beta
+    constexpr Value NO_EVAL = MAX_EVAL - 1;
 
 
     // ----------------
@@ -60,6 +64,7 @@ namespace Search {
         // Setup
         void setPosition(BoardConfig* board);
         void setPosition(const std::string& fen);
+        const BoardConfig* getPosition() const { return &virtualBoard; }
 
         // Main search functions
         Value search(Depth depth);                              // Initial function

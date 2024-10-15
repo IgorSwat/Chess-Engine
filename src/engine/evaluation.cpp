@@ -31,6 +31,7 @@ namespace Evaluation {
         attacks[side][KING] = Pieces::piece_attacks_s<KING>(board->kingPosition(side));
         attacks[side][ALL_PIECES] = attacks[side][PAWN] | attacks[side][KING];
         multipleAttacks[side][PAWN] = Pieces::pawn_attacks_x2<side>(pawns);
+        multipleAttacks[side][ALL_PIECES] = multipleAttacks[side][PAWN];
 
         // Pawn structure properties
         int fileIndex = Bitboards::fill<SOUTH>(board->pieces(PAWN)) & 0xff;
@@ -244,6 +245,7 @@ namespace Evaluation {
             Bitboard att = Pieces::piece_attacks_s<KNIGHT>(sq);
 
             multipleAttacks[side][KNIGHT] |= attacks[side][KNIGHT] & att;
+            multipleAttacks[side][ALL_PIECES] |= attacks[side][ALL_PIECES] & att;
             attacks[side][KNIGHT] |= att;
             attacks[side][ALL_PIECES] |= att;
 
@@ -286,6 +288,7 @@ namespace Evaluation {
             Bitboard attAndXray = att | Pieces::xray_attacks<BISHOP>(sq, board->pieces(), board->pieces(side, BISHOP, QUEEN));
 
             multipleAttacks[side][BISHOP] |= attacks[side][BISHOP] & attAndXray;
+            multipleAttacks[side][ALL_PIECES] |= attacks[side][ALL_PIECES] & attAndXray;
             attacks[side][BISHOP] |= att;
             attacks[side][ALL_PIECES] |= att;
 
@@ -343,6 +346,7 @@ namespace Evaluation {
             Bitboard attAndXray = att | Pieces::xray_attacks<ROOK>(sq, board->pieces(), board->pieces(side, ROOK, QUEEN));
 
             multipleAttacks[side][ROOK] |= attacks[side][ROOK] & attAndXray;
+            multipleAttacks[side][ALL_PIECES] |= attacks[side][ALL_PIECES] & attAndXray;
             attacks[side][ROOK] |= att;
             attacks[side][ALL_PIECES] |= att;
 
@@ -381,6 +385,7 @@ namespace Evaluation {
             Bitboard attAndXray = att | Pieces::xray_attacks<QUEEN>(sq, board->pieces(), board->pieces(side, BISHOP, ROOK, QUEEN));
 
             multipleAttacks[side][QUEEN] |= attacks[side][QUEEN] & attAndXray;
+            multipleAttacks[side][ALL_PIECES] |= attacks[side][ALL_PIECES] & attAndXray;
             attacks[side][QUEEN] |= att;
             attacks[side][ALL_PIECES] |= att;
 
@@ -461,6 +466,8 @@ namespace Evaluation {
         // Other evaluation features (compressed here for efficiency reasons)
 
         // Space
+        // -----
+
         Bitboard space = (Bitboards::fill<backwardDir>(ourPawns) ^ ourPawns);
         Bitboard effectiveSpace = space & ranks234;
         Bitboard uncontestedPawnSpace = effectiveSpace & ~attacks[enemy][ALL_PIECES];
@@ -473,44 +480,35 @@ namespace Evaluation {
         add_eval<side, miscTest>(result, (spaceTypeI * Interpolation::interpolate_gs(SPACE_TYPE_I, stage)) >> 6, "Space type I");
         add_eval<side, miscTest>(result, (spaceTypeII * Interpolation::interpolate_gs(SPACE_TYPE_II, stage)) >> 6, "Space type II");
 
-        // Lower type attack threats
-        threatMap[side] = board->pieces(side, KNIGHT, BISHOP, ROOK, QUEEN);
-        Bitboard safePieces = threatMap[side];
-        Bitboard pawnThreats = safePieces & attacks[enemy][PAWN];
-        int pawnThreatCount = Bitboards::popcount(pawnThreats);
-        safePieces ^= pawnThreats;
-        Bitboard minorPieceThreats = safePieces & board->pieces(side, ROOK, QUEEN) & (attacks[enemy][KNIGHT] | attacks[enemy][BISHOP]);
-        int minorPieceThreatCount = Bitboards::popcount(minorPieceThreats);
-        safePieces ^= minorPieceThreats;
-        Bitboard rookThreats = safePieces & board->pieces(side, QUEEN) & attacks[enemy][ROOK];
-        int rookThreatCount = Bitboards::popcount(rookThreats);
-        safePieces ^= rookThreats;
-        threatMap[side] ^= safePieces;  // Now threatMap contains just threatened pieces
+        // Threats
+        // -------
 
-        // Undefended piece threats
-        Bitboard undefendedAndAttacked = attacks[enemy][ALL_PIECES] & ~attacks[side][ALL_PIECES];
-        Bitboard hangingPieces = safePieces & undefendedAndAttacked;
-        int undefendedPieceThreatCount = Bitboards::popcount(hangingPieces);
-        threatMap[side] |= hangingPieces;
+        // Calculate safety maps
+        safetyMap[side][PAWN] = attacks[side][ALL_PIECES] | ~attacks[enemy][ALL_PIECES];
+        safetyMap[side][KNIGHT] = ~attacks[enemy][ALL_PIECES] | 
+                                  ((board->pieces(side) & attacks[side][ALL_PIECES] | multipleAttacks[side][ALL_PIECES]) & ~attacks[enemy][PAWN]);
+        safetyMap[side][BISHOP] = safetyMap[side][KNIGHT];
+        safetyMap[side][ROOK] = safetyMap[side][KNIGHT] & ~attacks[enemy][KNIGHT] & ~attacks[enemy][BISHOP];
+        safetyMap[side][QUEEN] = safetyMap[side][ROOK] & ~attacks[enemy][ROOK];
 
-        // Calculate all piece threats together
-        threatCount[side] = pawnThreatCount + minorPieceThreatCount + rookThreatCount + undefendedPieceThreatCount;
-        int threatPoints = pawnThreatCount * PAWN_EXCHANGE_THREAT_POINTS + minorPieceThreatCount * MINOR_PIECE_EXCHANGE_THREAT_POINTS +
-                           rookThreatCount * ROOK_EXCHANGE_THREAT_POINTS + undefendedPieceThreatCount * UNDEFENDED_PIECE_THREAT_POINTS;
+        int threatPoints = 0;
+        threatCount[side] = 0;
+        threatMap[side] = 0;
+        for (int pt = EVALUATE_HNGING_PAWN_THREATS ? PAWN : KNIGHT; pt <= QUEEN; pt++) {
+            Bitboard threats = board->pieces(side, PieceType(pt)) & ~safetyMap[side][pt];
 
-        // Undefended pawn threats (requires some tests for it's utility)
-        if constexpr (EVALUATE_HNGING_PAWN_THREATS) {
-            int undefendedPawnThreatCount = Bitboards::popcount(ourPawns & undefendedAndAttacked);
-            // threatCount[side] += undefendedPawnThreatCount;
-            threatPoints += undefendedPawnThreatCount * UNDEFENDED_PAWN_THEAT_POINTS;
+            threatMap[side] |= threats;
+            threatPoints += Bitboards::popcount(threats) * THREAT_POINTS[pt];
+
+            if (pt != PAWN)
+                threatCount[side] += Bitboards::popcount(threats);
         }
-
-        // Mate threats
-        // ???
 
         add_eval<side, miscTest>(result, (threatCount[side] * threatPoints * Interpolation::interpolate_gs(THREAT_VALUE, stage)) >> 6, "Threats");
 
-        // Tempo bonus for side on move
+        // Tempo bonus
+        // -----------
+
         if (board->movingSide() == side)
             add_eval<side, miscTest>(result, Interpolation::interpolate_gs(TEMPO_BONUS, stage), "Tempo bonus");
 

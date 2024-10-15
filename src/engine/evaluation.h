@@ -32,12 +32,13 @@ namespace Evaluation {
         // Main evaluation function
         Value evaluate();
 
-        // Position info obtained after evaluation
-        int getThreatCount(Color side) const;             // Number of threats against given side
-        Bitboard getThreatMap(Color side) const;          // Bitboard of threatened pieces from given side
-
         // Change board
-        void setBoard(BoardConfig* board);
+        void setBoard(BoardConfig* board) { this->board = board; }
+
+        // Public API
+        int threatCount[COLOR_RANGE] = { 0 };
+        Bitboard threatMap[COLOR_RANGE] = { 0 };                    // Bitboards of all threatened pieces from given side
+        Bitboard safetyMap[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0 };  // Bitboards of safe squares (not threatened) for each type of piece
 
     private:
         // Evaluation components
@@ -90,10 +91,6 @@ namespace Evaluation {
         Bitboard kingArea[COLOR_RANGE] = { 0 };                 // King area consists of king position square and surrounding squares attacked by king
         Bitboard weakKingSpan[COLOR_RANGE] = { 0 };             // An area consisting of king area and second front span, that is not defended twice by ally pawns
 
-        // Threats
-        int threatCount[COLOR_RANGE] = { 0 };                   // Threats for side X means threats that side Y generates against X
-        Bitboard threatMap[COLOR_RANGE] = { 0 };
-
         // Other common properties
         int centralDensity = 0;
         int boardDensity = 0;
@@ -101,20 +98,9 @@ namespace Evaluation {
     };
 
 
-    inline int Evaluator::getThreatCount(Color side) const
-    {
-        return threatCount[side];
-    }
-
-    inline Bitboard Evaluator::getThreatMap(Color side) const
-    {
-        return threatMap[side];
-    }
-
-    inline void Evaluator::setBoard(BoardConfig* board)
-    {
-        this->board = board;
-    }
+    // -----------------
+    // Evaluator methods
+    // -----------------
 
     inline int Evaluator::countAttackers(Bitboard area, Color side, PieceType type) const
     {

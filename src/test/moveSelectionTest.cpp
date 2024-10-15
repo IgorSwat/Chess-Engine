@@ -23,13 +23,13 @@ namespace Testing {
 
         // Simple selection - start from quiet_checks
         selector.generateMoves<MoveGeneration::QUIET_CHECK>();
-        selector.setStrategy(MoveSelection::SIMPLE_ORDERING);
+        selector.strategy = MoveSelection::SIMPLE_ORDERING;
         std::cout << "Simple selection:\n";
         show_all_moves(&selector);
 
         // Standard ordering
         selector.generateMoves<MoveGeneration::CAPTURE>();
-        selector.setStrategy(MoveSelection::STANDARD_ORDERING);
+        selector.strategy = MoveSelection::STANDARD_ORDERING;
         std::cout << "\nStandard ordering:\n";
         show_all_moves(&selector);
     }
