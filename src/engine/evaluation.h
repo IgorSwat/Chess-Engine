@@ -35,6 +35,9 @@ namespace Evaluation {
         // Change board
         void setBoard(BoardConfig* board) { this->board = board; }
 
+        // Extra functionalities
+        bool isCreatingThreats(const Move& move) const;
+
         // Public API
         int threatCount[COLOR_RANGE] = { 0 };
         Bitboard threatMap[COLOR_RANGE] = { 0 };                    // Bitboards of all threatened pieces from given side

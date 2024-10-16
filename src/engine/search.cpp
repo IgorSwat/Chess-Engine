@@ -219,6 +219,10 @@ namespace Search {
         // ----------------------------------
 
         bool cascadeSelection = ssTop->ply >= 2;
+        // Prioritize aggresive moves, except for late endgames
+        if (virtualBoard.gameStage() > 80)
+            moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::THREAT_CREATION, MoveGeneration::QUIET_CHECK) |
+                                     MoveSelection::make_strategy(MoveSelection::THREAT_CREATION, MoveGeneration::QUIET);
         if (evaluator.threatCount[virtualBoard.movingSide()] > 0)
             moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::THREAT_EVASION, MoveGeneration::QUIET_CHECK) |
                                      MoveSelection::make_strategy(MoveSelection::THREAT_EVASION, MoveGeneration::QUIET);
@@ -359,7 +363,7 @@ namespace Search {
                 moveSelector.strategy = MoveSelection::STANDARD_ORDERING;
 
             move = moveSelector.selectNext(false);
-            while (move.see > 0) {
+            while (SEE::evaluate(&virtualBoard, move) > 0) {
                 // Delta pruning
                 if (ssTop->staticEval + move.see + DELTA_MARGIN < alpha && moveSelector.currGenType != MoveGeneration::CHECK_EVASION) {
                     if constexpr (node == ROOT_NODE)
@@ -406,7 +410,7 @@ namespace Search {
                 if (virtualBoard.isInCheck() ||
                     moveSelector.currGenType != MoveGeneration::CAPTURE && threats & move.from() ||
                     moveSelector.currGenType == MoveGeneration::CAPTURE &&
-                    ssTop->staticEval + EPSILON_MARGIN + move.see > alpha &&
+                    ssTop->staticEval + EPSILON_MARGIN + SEE::evaluate(&virtualBoard, move) > alpha &&
                     (threats & move.from() || attacks & threats)
                 ) {
                     virtualBoard.makeMove(move);

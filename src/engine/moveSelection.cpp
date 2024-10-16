@@ -55,13 +55,16 @@ Move MoveSelector::selectNext(bool cascade)
         // Adjust selection of next move according to most important flag (least significant bit)
         if (substrategy & MoveSelection::POSITIVE_SEE)
             move = selectMove(false, [this](Move& move) -> bool { return SEE::evaluate(board, move) > 0; });
-        else if (substrategy & MoveSelection::ZERO_SEE) {
-            move = this->seeChecked ? selectMove(this->legalityChecked, [this](const Move& move) -> bool {return move.see >= 0;}) :
-                                      selectMove(this->legalityChecked, [this](const Move& move) -> bool {return SEE::evaluate(board, move) >= 0;});
+        else if (substrategy & MoveSelection::ZERO_SEE)
+            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool {return SEE::evaluate(board, move) >= 0;});
+        else if (substrategy & MoveSelection::THREAT_CREATION) {
+            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool {
+                return SEE::evaluate(board, move) >= 0 && this->evaluator->isCreatingThreats(move); 
+            });
         }
         else if (substrategy & MoveSelection::THREAT_EVASION) {
             move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { 
-                return this->evaluator->threatMap[this->board->movingSide()] & move.from();
+                return SEE::evaluate(board, move) >= 0 && this->evaluator->threatMap[this->board->movingSide()] & move.from();
             });
         }
         else
@@ -69,9 +72,6 @@ Move MoveSelector::selectNext(bool cascade)
 
         // Checpoint 1 - selection phase adjustment
         if (move == Move::null() && substrategy) {
-            if (substrategy & 0x3)
-                this->seeChecked = true;
-
             // Remove LSB from substrategy to discard already finished selection phase
             substrategy &= (substrategy - 1);
             this->strategy &= MoveSelection::make_strategy(substrategy, this->currGenType);

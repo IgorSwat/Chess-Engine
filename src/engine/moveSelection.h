@@ -23,7 +23,8 @@ namespace MoveSelection {
 
     constexpr Substrategy POSITIVE_SEE = STRATEGY_BASE;
     constexpr Substrategy ZERO_SEE = STRATEGY_BASE << 1;
-    constexpr Substrategy THREAT_EVASION = STRATEGY_BASE << 2;
+    constexpr Substrategy THREAT_CREATION = STRATEGY_BASE << 2;
+    constexpr Substrategy THREAT_EVASION = STRATEGY_BASE << 3;
 
     // Complex strategies
     constexpr inline Strategy make_strategy(Substrategy substrategy, MoveGeneration::MoveGenType gen)
@@ -88,7 +89,6 @@ private:
     Move* sectionBegin;
     Move* sectionEnd;
     bool legalityChecked = false;
-    bool seeChecked = false;
 };
 
 
@@ -109,7 +109,6 @@ inline void MoveSelector::generateMoves()
     MoveGeneration::generate_moves<gen>(*board, moves);
     currGenType = gen;
     resetSelection();
-    seeChecked = false;
 }
 
 // Warning - use this one carefully!

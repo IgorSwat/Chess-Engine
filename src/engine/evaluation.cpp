@@ -11,9 +11,9 @@ namespace Evaluation {
     constexpr Bitboard FianchettoMap[COLOR_RANGE] = { 0x0000000000244281, 0x8142240000000000 };
 
     
-    // ---------------------
-    // Main Evaluation class
-    // ---------------- ----
+    // -----------------------------------
+    // Evaluator methods - main evaluation
+    // -----------------------------------
 
     template <Color side>
     void Evaluator::initCommonData()
@@ -604,6 +604,32 @@ namespace Evaluation {
         Value result = pawnsDiff1 + piecesDiff + pawnsDiff2 + kingAndMiscDiff;
 
         return adjustEval(result);
+    }
+
+
+    // -----------------------------------------
+    // Evaluator methods - extra functionalities
+    // -----------------------------------------
+
+    bool Evaluator::isCreatingThreats(const Move& move) const
+    {
+        if (move.isCapture())
+            return true;
+
+        Color side = board->movingSide();
+        Color enemy = ~side;
+        PieceType ptype = type_of(board->onSquare(move.from()));
+        Bitboard occ = board->pieces() ^ move.from() ^ move.to();
+        Bitboard att = Pieces::piece_attacks_d(ptype, move.to(), occ);
+
+        for (int type = PAWN; type <= QUEEN; type++) {
+            if (type != ptype && att & board->pieces(enemy, PieceType(type)) & (~attacks[enemy][ALL_PIECES]))
+                return true;
+            if (type > ptype && (ptype == PAWN || type != BISHOP) && att & board->pieces(enemy, PieceType(type)))
+                return true;
+        }
+
+        return false;
     }
 
 }

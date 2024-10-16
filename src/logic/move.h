@@ -3,6 +3,8 @@
 #include "types.h"
 #include <iostream>
 #include <iomanip>
+#include <limits>
+#include <numeric>
 
 
 // -------------------------
@@ -28,6 +30,8 @@ constexpr Movemask KNIGHT_PROMOTION_FLAG = 0x8;
 constexpr Movemask BISHOP_PROMOTION_FLAG = 0x9;
 constexpr Movemask ROOK_PROMOTION_FLAG = 0xa;
 constexpr Movemask QUEEN_PROMOTION_FLAG = 0xb;
+
+constexpr int16_t NO_SEE = -16000;
 
 
 // ----------
@@ -81,7 +85,7 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const Move& move);
 
 	// For optimization purposes, we store a calculated SEE value here.
-	int16_t see = 0;
+	int16_t see = NO_SEE;
 
 private:
 	Movemask m_move = 0;

@@ -29,12 +29,19 @@ namespace SEE {
 
 	inline int16_t evaluate(BoardConfig* board, Move& move)
 	{
-		move.see = evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN);
+		if (move == Move::null())
+			return 0;
+
+		if (move.see == NO_SEE)
+			move.see = evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN);
+
 		return move.see;
 	}
 
 	inline int16_t evaluate(BoardConfig* board, const Move& move)
 	{
-		return evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN);
+		return move == Move::null() ? 0 :
+			   move.see == NO_SEE ? evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN) :
+								    move.see;
 	}
 }
