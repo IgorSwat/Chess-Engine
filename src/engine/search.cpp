@@ -168,12 +168,15 @@ namespace Search {
         // ---------------------------------
         // 1. Generate moves according to current position, depth and strategy
 
-        MoveSelector moveSelector(&virtualBoard, &evaluator);
-        if (ssTop->ply < 2) {
-            moveSelector.generateMoves<MoveGeneration::LEGAL>();
+        MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
+            ssTop->ply < 2 ? MoveGeneration::LEGAL : 
+            virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE,
+            ssTop->ply < 2 ? MoveSelection::SIMPLE_ORDERING : MoveSelection::STANDARD_ORDERING, true
+        );
 
+        if (ssTop->ply < 2) {
             // Sort moves by static evaluation of the following position
-            MoveSelection::sort_moves(moveSelector, [this](const Move& move) -> int64_t {
+            moveSelector.sort([this](const EnhancedMove& move) -> int32_t {
                 this->virtualBoard.makeMove(move);
                 Value eval = -this->evaluate();
                 this->virtualBoard.undoLastMove();
@@ -183,20 +186,13 @@ namespace Search {
                 return 3LL * MAX_EVAL * SEE::evaluate(&this->virtualBoard, move) + eval;
             });
         }
-        else {
-            if (virtualBoard.isInCheck(virtualBoard.movingSide()))
-                moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
-            else
-                moveSelector.generateMoves<MoveGeneration::CAPTURE>();
-            moveSelector.strategy = MoveSelection::STANDARD_ORDERING;
-        }
 
         // Stage 6 - checkmate & stealmate detection
         // -----------------------------------------
         // 1. Detect checkmate and stealmate which result in terminal node
 
         // Detect mate, stealmate and other types of draw
-        if (!moveSelector.hasMoves()) {
+        if (!moveSelector.hasNext()) {
             Value score = virtualBoard.isInCheck() ? -MAX_EVAL : 0;      // Mate or stealmate
             tTable->set({
                 virtualBoard.hash(),
@@ -218,7 +214,6 @@ namespace Search {
         // Stage 7 - move ordering strategies
         // ----------------------------------
 
-        bool cascadeSelection = ssTop->ply >= 2;
         // Prioritize aggresive moves, except for late endgames
         if (virtualBoard.gameStage() > 80)
             moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::THREAT_CREATION, MoveGeneration::QUIET_CHECK) |
@@ -230,11 +225,11 @@ namespace Search {
         // Stage 8 - main search loop
         // --------------------------
 
-        Move move = moveSelector.selectNext(cascadeSelection);
+        EnhancedMove move = moveSelector.next();
         while (move != Move::null()) {
             // Avoid repeating of transposition table suggestion
             if (move == ttMove) {
-                move = moveSelector.selectNext(cascadeSelection);
+                move = moveSelector.next();
                 continue;
             }
 
@@ -246,7 +241,7 @@ namespace Search {
                 !move.isCapture() && !move.isPromotion() && !virtualBoard.isCheck(move) &&
                 ssTop->staticEval + FUTILITY_MARGIN < alpha) {
 
-                move = moveSelector.selectNext(cascadeSelection);
+                move = moveSelector.next();
                 continue;
             }
 
@@ -283,7 +278,7 @@ namespace Search {
                 }
             }
 
-            move = moveSelector.selectNext(cascadeSelection);
+            move = moveSelector.next();
         }
 
         // Save search results in transposition table
@@ -322,14 +317,12 @@ namespace Search {
                 return entry->score;
         }
 
-        MoveSelector moveSelector(&virtualBoard, &evaluator);
-        if (virtualBoard.isInCheck())
-            moveSelector.generateMoves<MoveGeneration::CHECK_EVASION>();
-        else
-            moveSelector.generateMoves<MoveGeneration::CAPTURE>();
+        MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
+                                             virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE,
+                                             MoveSelection::SIMPLE_ORDERING, true);
 
         // Detect mate, stealmate and other types of draw
-        if (!moveSelector.hasMoves()) {
+        if (!moveSelector.hasNext()) {
             Value score = virtualBoard.isInCheck() ? -MAX_EVAL : 0;      // Mate or stealmate
             tTable->set({
                 virtualBoard.hash(),
@@ -352,24 +345,27 @@ namespace Search {
         if (depth == 0)
             return ssTop->staticEval;
 
-        Move move;
+        EnhancedMove move;
 
         // Check all "good" captures which could boost the score near the alpha (upper bound) region
-        if (moveSelector.currGenType >= MoveGeneration::CAPTURE) {
+        if (moveSelector.phase() >= MoveGeneration::CAPTURE) {
+            // Do not go beyond captures
+            moveSelector.cascade = false;
+
             // Experimental - sort moves by SEE at initial quiescence depth
             if constexpr (node == ROOT_NODE)
-                moveSelector.sortCaptures();
+                moveSelector.sort([this](const Move& move) { return SEE::evaluate(&this->virtualBoard, move); }, EnhancementMode::PURE_SEE);
             else
                 moveSelector.strategy = MoveSelection::STANDARD_ORDERING;
 
-            move = moveSelector.selectNext(false);
-            while (SEE::evaluate(&virtualBoard, move) > 0) {
+            move = moveSelector.next();
+            while (SEE::evaluate_save(&virtualBoard, move) > 0) {
                 // Delta pruning
-                if (ssTop->staticEval + move.see + DELTA_MARGIN < alpha && moveSelector.currGenType != MoveGeneration::CHECK_EVASION) {
+                if (ssTop->staticEval + move.see() + DELTA_MARGIN < alpha && moveSelector.phase() != MoveGeneration::CHECK_EVASION) {
                     if constexpr (node == ROOT_NODE)
                         break;
                     else {
-                        move = moveSelector.selectNext(false);
+                        move = moveSelector.next();
                         continue;
                     }
                 }
@@ -388,7 +384,7 @@ namespace Search {
                         alpha = score;
                 }
                 
-                move = moveSelector.selectNext(false);
+                move = moveSelector.next();
             }
         }
 
@@ -397,19 +393,22 @@ namespace Search {
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
         if (ssTop->staticEval + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {
+            // Try checks and quiet moves after captures if needed
+            moveSelector.cascade = true;
+
             if constexpr (node != ROOT_NODE)
                 moveSelector.strategy = MoveSelection::SIMPLE_ORDERING;
 
             if (move == Move::null())
-                move = moveSelector.selectNext(true);
+                move = moveSelector.next();
             while (move != Move::null()) {
                 PieceType pType = type_of(virtualBoard.onSquare(move.to()));
                 Bitboard attacks = pType == NULL_TYPE ? 0 :
                                    pType == PAWN ? Pieces::pawn_attacks(~virtualBoard.movingSide(), move.to()) :
                                                    Pieces::piece_attacks_d(pType, move.to(), virtualBoard.pieces());
                 if (virtualBoard.isInCheck() ||
-                    moveSelector.currGenType != MoveGeneration::CAPTURE && threats & move.from() ||
-                    moveSelector.currGenType == MoveGeneration::CAPTURE &&
+                    moveSelector.phase() != MoveGeneration::CAPTURE && threats & move.from() ||
+                    moveSelector.phase() == MoveGeneration::CAPTURE &&
                     ssTop->staticEval + EPSILON_MARGIN + SEE::evaluate(&virtualBoard, move) > alpha &&
                     (threats & move.from() || attacks & threats)
                 ) {
@@ -428,7 +427,7 @@ namespace Search {
                     }
                 }
 
-                move = moveSelector.selectNext(true);
+                move = moveSelector.next();
             }
 
             return ssTop->score;

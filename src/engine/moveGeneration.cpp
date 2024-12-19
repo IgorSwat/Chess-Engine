@@ -263,7 +263,7 @@ namespace MoveGeneration {
 		else
 			generate_moves<PSEUDO_LEGAL>(board, moveList);
 
-		Move* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
+		EnhancedMove* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
 										 [&board](const Move& move) {return board.legalityCheckLight(move);});
 		moveList.setEnd(legalsEnd);
 	}

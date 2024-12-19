@@ -13,84 +13,26 @@ class MoveList
 {
 public:
 	// STL algorithms compatibility
-	Move* begin();
-	const Move* begin() const;
-	Move* end();
-	const Move* end() const;
+	EnhancedMove* begin() { return generatedMoves; }
+	const EnhancedMove* begin() const { return generatedMoves; }
+	EnhancedMove* end() { return endPtr; }
+	const EnhancedMove* end() const { return endPtr; }
 
-	void push_back(const Move& move);
-	void pop_back();
-	void clear();
-	void setEnd(Move* end);
-	std::size_t size() const;
+	void push_back(const EnhancedMove& move) { *endPtr = move; endPtr++; }
+	void pop_back() { endPtr--; }
+	void clear() { endPtr = generatedMoves; }	// Does not remove elements directly, just manipulates with range pointers
+	void setEnd(EnhancedMove* end) { endPtr = end; }
+	std::size_t size() const { return endPtr - generatedMoves; }
 
 	friend std::ostream& operator<<(std::ostream& os, const MoveList& moveList);
 
-	// Max possible number of different moves in a position
-	static constexpr int MAX_MOVES = 256;
+	// Upper bound number of different moves in a position
+	static constexpr int MAX_SIZE = 256;
 
 private:
-	Move generatedMoves[MAX_MOVES] = {};
-	Move* endPtr = generatedMoves;
+	EnhancedMove generatedMoves[MAX_SIZE] = {};
+	EnhancedMove* endPtr = generatedMoves;
 };
-
-
-// -----------------
-// STL compatibility
-// -----------------
-
-inline Move* MoveList::begin()
-{
-	return generatedMoves;
-}
-
-inline const Move* MoveList::begin() const
-{
-	return generatedMoves;
-}
-
-inline Move* MoveList::end()
-{
-	return endPtr;
-}
-
-inline const Move* MoveList::end() const
-{
-	return endPtr;
-}
-
-
-// -------------------
-// Vector-like methods
-// -------------------
-
-inline void MoveList::push_back(const Move& move)
-{
-	*endPtr = move;
-	endPtr++;
-}
-
-inline void MoveList::pop_back()
-{
-	endPtr--;
-}
-
-// It does not remove the elements, but rather sets end pointer to beginning for efficiency reasons
-inline void MoveList::clear()
-{
-	endPtr = generatedMoves;
-}
-
-// Used mainly for STL algorithms, which cannot directly remove the elements or manipulate the range
-inline void MoveList::setEnd(Move* end)
-{
-	endPtr = end;
-}
-
-inline std::size_t MoveList::size() const
-{
-	return endPtr - generatedMoves;
-}
 
 
 // -----------------------
@@ -104,6 +46,7 @@ namespace MoveGeneration {
 		QUIET_CHECK,	// Not a capture/promotion, but a direct check instead
 		CAPTURE,		// A capture or pawn promotion, since both affect the general material balance
 		CHECK_EVASION,
+		
 		LEGAL, 			// Collective generation of legal moves for testing purposes
 		PSEUDO_LEGAL,	// Collective generation of pseudo legal moves for either testing or search
 

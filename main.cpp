@@ -24,6 +24,7 @@ int main()
 	//tester.test(Testing::searchTest1);
 	tester.test(Testing::searchMultiTest);
 	//tester.test(Testing::seeTest);
+	//tester.test(Testing::moveSortingTest);
 
 	// ----------------
 	// Testing with GUI

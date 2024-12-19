@@ -25,23 +25,28 @@ namespace SEE {
 	// SEE methods
 	// -----------
 
-	int16_t evaluate(BoardConfig* board, Square from, Square to, PieceType promotionType = PAWN);
+	int16_t evaluate(const BoardConfig* board, Square from, Square to, PieceType promotionType = PAWN);
 
-	inline int16_t evaluate(BoardConfig* board, Move& move)
+	inline int16_t evaluate(const BoardConfig* board, const Move& move)
 	{
-		if (move == Move::null())
-			return 0;
-
-		if (move.see == NO_SEE)
-			move.see = evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN);
-
-		return move.see;
+		return evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN);
 	}
 
-	inline int16_t evaluate(BoardConfig* board, const Move& move)
+	inline int16_t evaluate(const BoardConfig* board, const EnhancedMove& move)
 	{
-		return move == Move::null() ? 0 :
-			   move.see == NO_SEE ? evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN) :
-								    move.see;
+		int16_t see = move.see();
+
+		return see == NO_SEE ? evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN) :
+							   see;
+	}
+
+	// Just as previous version, but this one modifies move index by setting it to calculated SEE value
+	inline int16_t evaluate_save(const BoardConfig* board, EnhancedMove& move)
+	{
+		if (move.see() == NO_SEE)
+			move.enhance(EnhancementMode::PURE_SEE, 
+						 evaluate(board, move.from(), move.to(), move.isPromotion() ? move.promotionType() : PAWN));
+		
+		return move.see();
 	}
 }

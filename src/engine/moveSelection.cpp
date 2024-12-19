@@ -1,99 +1,147 @@
 #include "moveSelection.h"
-#include <bitset>
+#include <algorithm>
 
 
-// ---------------------
-// Move selector methods
-// ---------------------
+namespace MoveSelection {
 
-Move MoveSelector::selectMove(bool reselection)
-{
-    while (sectionBegin != sectionEnd) {
-        Move move = *sectionBegin;
-        sectionBegin++;
+    // --------------------------------------------
+    // Selector methods - generator-style opertions
+    // --------------------------------------------
 
-        if (reselection || board->legalityCheckLight(move))
-            return move;
-    }
+    EnhancedMove Selector::next()
+    {
+        EnhancedMove* moveptr = nullptr;
 
-    return Move::null();
-}
+        while (true) {
+            // Extract bitset corresponding to current move generation phase
+            Substrategy substrategy = extract_substrategy(strategy, gen);
 
-template <typename Pred>
-Move MoveSelector::selectMove(bool reselection, Pred pred)
-{
-    while (sectionBegin != sectionEnd) {
-        Move move = *sectionBegin;
+            // Adjust selection of next move according to most important flag (least significant bit)
+            if (substrategy & POSITIVE_SEE)
+                moveptr = selectMove([this](EnhancedMove& move) -> bool { return SEE::evaluate_save(board, move) > 0; });
+            else if (substrategy & ZERO_SEE)
+                moveptr = selectMove([this](const EnhancedMove& move) -> bool {return SEE::evaluate(board, move) >= 0;});
+            else if (substrategy & THREAT_CREATION) {
+                moveptr = selectMove([this](const EnhancedMove& move) -> bool {
+                    return SEE::evaluate(board, move) >= 0 && this->evaluator->isCreatingThreats(move); 
+                });
+            }
+            else if (substrategy & THREAT_EVASION) {
+                moveptr = selectMove([this](const EnhancedMove& move) -> bool { 
+                    return SEE::evaluate(board, move) >= 0 && this->evaluator->threatMap[this->board->movingSide()] & move.from();
+                });
+            }
+            else
+                moveptr = selectMove();
+            
 
-        if (!reselection && !board->legalityCheckLight(move)) {
-            sectionBegin++;
-            continue;
-        }
+            // Checpoint 1 - selection phase adjustment
+            if (moveptr == nullptr && substrategy) {
+                // Remove LSB from substrategy to discard already finished selection phase
+                substrategy &= (substrategy - 1);
+                this->strategy &= make_strategy(substrategy, gen);
 
-        if (!pred(move)) {                 // Swap the move (partition step) with another not processed yet. The processed move may be used later.
-            sectionEnd--;
-            if (sectionBegin != sectionEnd)
-                std::swap(*sectionBegin, *sectionEnd);
-        }
-        else {                             // Move is legal and meets the assumptions
-            sectionBegin++;
-            return move;
-        }
-    }
-
-    return Move::null();
-}
-
-Move MoveSelector::selectNext(bool cascade)
-{
-    Move move;
-
-    while (true) {
-        // Extract bitset corresponding to current move generation phase
-        MoveSelection::Substrategy substrategy = MoveSelection::extract_substrategy(this->strategy, this->currGenType);
-
-        // Adjust selection of next move according to most important flag (least significant bit)
-        if (substrategy & MoveSelection::POSITIVE_SEE)
-            move = selectMove(false, [this](Move& move) -> bool { return SEE::evaluate(board, move) > 0; });
-        else if (substrategy & MoveSelection::ZERO_SEE)
-            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool {return SEE::evaluate(board, move) >= 0;});
-        else if (substrategy & MoveSelection::THREAT_CREATION) {
-            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool {
-                return SEE::evaluate(board, move) >= 0 && this->evaluator->isCreatingThreats(move); 
-            });
-        }
-        else if (substrategy & MoveSelection::THREAT_EVASION) {
-            move = selectMove(this->legalityChecked, [this](const Move& move) -> bool { 
-                return SEE::evaluate(board, move) >= 0 && this->evaluator->threatMap[this->board->movingSide()] & move.from();
-            });
-        }
-        else
-            move = selectMove(this->legalityChecked);
-
-        // Checpoint 1 - selection phase adjustment
-        if (move == Move::null() && substrategy) {
-            // Remove LSB from substrategy to discard already finished selection phase
-            substrategy &= (substrategy - 1);
-            this->strategy &= MoveSelection::make_strategy(substrategy, this->currGenType);
-
-            nextSelection();
-            continue;
-        }
-
-        // Checkpoint 2 - generation phae adjustment (if 'cascade' option selected)
-        if (move == Move::null() && cascade) {
-            if (this->currGenType == MoveGeneration::CAPTURE) {
-                generateMoves<MoveGeneration::QUIET_CHECK>();
+                nextSelection();
                 continue;
             }
-            if (this->currGenType == MoveGeneration::QUIET_CHECK) {
-                generateMoves<MoveGeneration::QUIET>();
+
+            // Checkpoint 2 - generation phae adjustment (if 'cascade' option selected)
+            if (moveptr == nullptr && cascade) {
+                gen = gen == MoveGeneration::CAPTURE ? MoveGeneration::QUIET_CHECK :
+                      gen == MoveGeneration::QUIET_CHECK ? MoveGeneration::QUIET : MoveGeneration::NONE;
+                
+                if (gen != MoveGeneration::NONE) {
+                    generateMoves();
+                    continue;
+                }
+            }
+
+            break;
+        }
+
+        return moveptr != nullptr ? *moveptr : Move::null();
+    }
+
+    bool Selector::hasNext()
+    {
+        Strategy tmp = strategy;
+
+        strategy = SIMPLE_ORDERING;
+        EnhancedMove move = next();
+
+        resetSelection();
+        strategy = tmp;
+
+        return move != Move::null();
+    }
+
+
+    // // -------------------------------------
+    // // Selector methods - sorting operations
+    // // -------------------------------------
+
+    void Selector::sort(const std::function<int32_t(const Move&)>& indexer, EnhancementMode mode)
+    {
+        // Perform sorting in place on remaining moves range
+
+        // Calculate indices
+        std::for_each(sectionBegin, sectionEnd, 
+                      [&indexer, mode](EnhancedMove& move) -> void { move.enhance(mode, indexer(move)); });
+                      
+        // Sort - descending order
+        std::sort(sectionBegin, sectionEnd,
+                  [](EnhancedMove& a, EnhancedMove& b) -> bool { return a.key() > b.key(); });
+    }
+
+
+    // // -----------------------------------
+    // // Selector methods - helper functions
+    // // -----------------------------------
+
+    void Selector::generateMoves()
+    {
+        auto generator = gen == MoveGeneration::QUIET ? MoveGeneration::generate_moves<MoveGeneration::QUIET> :
+                         gen == MoveGeneration::QUIET_CHECK ? MoveGeneration::generate_moves<MoveGeneration::QUIET_CHECK> :
+                         gen == MoveGeneration::CAPTURE ? MoveGeneration::generate_moves<MoveGeneration::CAPTURE> :
+                         gen == MoveGeneration::CHECK_EVASION ? MoveGeneration::generate_moves<MoveGeneration::CHECK_EVASION> :
+                         gen == MoveGeneration::PSEUDO_LEGAL ? MoveGeneration::generate_moves<MoveGeneration::PSEUDO_LEGAL> :
+                                                               MoveGeneration::generate_moves<MoveGeneration::LEGAL>;
+
+        moves.clear();
+        generator(*board, moves);
+        resetSelection();
+
+        if (gen == MoveGeneration::LEGAL)
+            legalityChecked = true;
+    }
+
+    template <typename... Predicates>
+    EnhancedMove* Selector::selectMove(Predicates... preds)
+    {
+        while (sectionBegin != sectionEnd) {
+            EnhancedMove& move = *sectionBegin;
+
+            // Discard illegal moves
+            if (!legalityChecked && !board->legalityCheckLight(move)) {
+                sectionBegin++;
                 continue;
+            }
+
+            // Check the predicates (additional trick if no predicate is specified)
+            if ((true && ... && preds(move))) {
+                sectionBegin++;
+                return &move;
+            }
+            else {
+                // Push the move to the end of the list (partition algorithm)
+                sectionEnd--;
+                if (sectionBegin != sectionEnd)
+                    std::swap(*sectionBegin, *sectionEnd);
             }
         }
 
-        break;
+        // If no move found
+        return nullptr;
     }
 
-    return move;
 }

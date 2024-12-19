@@ -31,7 +31,7 @@ namespace Search {
         INVALID_NODE = 0,
     };
 
-    constexpr Value MAX_EVAL = std::numeric_limits<Value>::max();   // Used as a checkmate evaluation and upper boundary for beta
+    constexpr Value MAX_EVAL = 1e4;   // Used as a checkmate evaluation and upper boundary for beta
     constexpr Value NO_EVAL = MAX_EVAL - 1;
 
 

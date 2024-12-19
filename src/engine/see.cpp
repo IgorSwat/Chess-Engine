@@ -11,7 +11,7 @@ namespace SEE {
 	// Helper functions
 	// ----------------
 
-	Bitboard lvp(BoardConfig* board, Color side, Bitboard area, PieceType &type)
+	Bitboard lvp(const BoardConfig* board, Color side, Bitboard area, PieceType &type)
 	{
 		for (type = PAWN; type <= KING; type = PieceType(type + 1))
 		{
@@ -27,8 +27,11 @@ namespace SEE {
 	// SEE methods
 	// -----------
 
-	int16_t evaluate(BoardConfig* board, Square from, Square to, PieceType promotionType)
+	int16_t evaluate(const BoardConfig* board, Square from, Square to, PieceType promotionType)
 	{
+		if (from == to)
+			return 0;
+
 		int16_t gain[MAX_DEPTH];
 		int depth = board->movingSide();
 		Bitboard mayXray = board->pieces() ^ board->pieces(KNIGHT) ^ board->pieces(KING);
