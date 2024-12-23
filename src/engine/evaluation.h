@@ -37,6 +37,7 @@ namespace Evaluation {
 
         // Extra functionalities
         bool isCreatingThreats(const Move& move) const;
+        bool isAvoidingThreats(const Move& move) const;
 
         // Public API
         int threatCount[COLOR_RANGE] = { 0 };

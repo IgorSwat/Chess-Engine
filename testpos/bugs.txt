@@ -1,8 +1,3 @@
-b6r/5k2/3p1N1p/qnp1pPp1/3nP1PP/2PPN3/3Q1K2/3B3R b - - 0 32
-    - hash: 4991324323410342009, pieces: 9295614863573002376
-    - At depth 6, search with TT shows different score than without TT
-    - Making a move and searching (without using TT entry) shows correct score, but TT entry shows different score
-
-
-    11481937667984448458
-    9223557200815333512
+r1bq2k1/ppppbrpp/8/4Pp1Q/4pB2/2N5/PPP2PPP/R3R1K1 w - - 2 15
+    - There is a bug leading to r1bq2k1/ppp2Qpp/8/5p2/4Nb2/4R3/PPP2PPP/R5K1 b - - 0 18 (Transposition table shows +0.46 when white loses a queen)
+    - Also Rxe4 is shown as good (?)

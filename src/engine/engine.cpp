@@ -33,6 +33,7 @@ Value Engine::evaluate(Search::Depth depth)
         const TranspositionTable::Entry* entry = tTable.probe(board->hash(), board->pieces());
 
         if (entry) {
+            std::cout << "Hash: " << entry->key << ", pieces: " << entry->pieces << "\n\n";
             std::cout << "\n|||||   Search results   |||||\n";
             std::cout << std::dec << "Score: " << Search::relative_score(entry->score, board);
             std::cout << ", Type: " << int(entry->typeOfNode) << ", Best move: " << entry->bestMove << "\n";

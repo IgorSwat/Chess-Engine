@@ -34,7 +34,7 @@ namespace MoveGeneration {
 		moveList.push_back(Move(from, to, knightPromoFlags));
 	}
 
-	template <MoveGenType gen, Color side>
+	template <Phase gen, Color side>
 	void generate_pawn_moves(const BoardConfig& board, Bitboard target, MoveList& moveList)
 	{
 		constexpr Color enemy = ~side;
@@ -123,7 +123,7 @@ namespace MoveGeneration {
 	}
 
 
-	template <MoveGenType gen, Color side, PieceType pieceType>
+	template <Phase gen, Color side, PieceType pieceType>
 	void generate_piece_moves(const BoardConfig& board, Bitboard target, MoveList& moveList)
 	{
 		constexpr Movemask flags = (gen == CAPTURE ? CAPTURE_FLAG : QUIET_MOVE_FLAG);
@@ -159,7 +159,7 @@ namespace MoveGeneration {
 
 	// Note that we do not consider whether some square is attacked by enemy (so illegal for the king)
 	// because it can be done afterwards in legality check
-	template <MoveGenType gen, Color side>
+	template <Phase gen, Color side>
 	void generate_king_moves(const BoardConfig& board, Bitboard target, MoveList& moveList)
 	{
 		Square from = board.kingPosition(side);
@@ -194,7 +194,7 @@ namespace MoveGeneration {
 	}
 
 
-	template <MoveGenType gen, Color side>
+	template <Phase gen, Color side>
 	void generate_side_moves(const BoardConfig& board, MoveList& moveList)
 	{
 		constexpr Color enemy = ~side;
@@ -239,7 +239,7 @@ namespace MoveGeneration {
 	// Main generators
 	// ---------------
 
-	template <MoveGenType gen>
+	template <Phase gen>
 	void generate_moves(const BoardConfig& board, MoveList& moveList)
 	{
 		if (board.movingSide() == WHITE)
@@ -255,8 +255,7 @@ namespace MoveGeneration {
 	template void generate_moves<PSEUDO_LEGAL>(const BoardConfig& board, MoveList& moveList);
 
 	// Specialization for legal moves generation (generate pseudo-legal and then check legality)
-	template <>
-	void generate_moves<LEGAL>(const BoardConfig& board, MoveList& moveList)
+	template <> void generate_moves<LEGAL>(const BoardConfig& board, MoveList& moveList)
 	{
 		if (board.isInCheck(board.movingSide()))
 			generate_moves<CHECK_EVASION>(board, moveList);
@@ -264,7 +263,7 @@ namespace MoveGeneration {
 			generate_moves<PSEUDO_LEGAL>(board, moveList);
 
 		EnhancedMove* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
-										 [&board](const Move& move) {return board.legalityCheckLight(move);});
+										 		 [&board](const Move& move) {return board.legalityCheckLight(move);});
 		moveList.setEnd(legalsEnd);
 	}
 
@@ -273,7 +272,6 @@ namespace MoveGeneration {
 	// Other generators
 	// ----------------
 
-	// Minimalistic move creator
 	Move create_pseudo_move(const BoardConfig& board, Square from, Square to)
 	{
 		Movemask mask = 0;

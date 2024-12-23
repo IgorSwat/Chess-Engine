@@ -169,12 +169,12 @@ namespace Search {
         // 1. Generate moves according to current position, depth and strategy
 
         MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
-            ssTop->ply < 2 ? MoveGeneration::LEGAL : 
-            virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE,
-            ssTop->ply < 2 ? MoveSelection::SIMPLE_ORDERING : MoveSelection::STANDARD_ORDERING, true
+            ssTop->ply < 3 ? MoveGeneration::LEGAL : 
+            virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE, 
+            true
         );
 
-        if (ssTop->ply < 2) {
+        if (ssTop->ply < 3) {
             // Sort moves by static evaluation of the following position
             moveSelector.sort([this](const EnhancedMove& move) -> int32_t {
                 this->virtualBoard.makeMove(move);
@@ -186,6 +186,8 @@ namespace Search {
                 return 3LL * MAX_EVAL * SEE::evaluate(&this->virtualBoard, move) + eval;
             });
         }
+        else
+            MoveSelection::improved_ordering(moveSelector);
 
         // Stage 6 - checkmate & stealmate detection
         // -----------------------------------------
@@ -215,12 +217,12 @@ namespace Search {
         // ----------------------------------
 
         // Prioritize aggresive moves, except for late endgames
-        if (virtualBoard.gameStage() > 80)
-            moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::THREAT_CREATION, MoveGeneration::QUIET_CHECK) |
-                                     MoveSelection::make_strategy(MoveSelection::THREAT_CREATION, MoveGeneration::QUIET);
-        if (evaluator.threatCount[virtualBoard.movingSide()] > 0)
-            moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::THREAT_EVASION, MoveGeneration::QUIET_CHECK) |
-                                     MoveSelection::make_strategy(MoveSelection::THREAT_EVASION, MoveGeneration::QUIET);
+        // if (virtualBoard.gameStage() > 80)
+        //     moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_CREATION, MoveGeneration::QUIET_CHECK) |
+        //                              MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_CREATION, MoveGeneration::QUIET);
+        // if (evaluator.threatCount[virtualBoard.movingSide()] > 0)
+        //     moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_EVASION, MoveGeneration::QUIET_CHECK) |
+        //                              MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_EVASION, MoveGeneration::QUIET);
         
         // Stage 8 - main search loop
         // --------------------------
@@ -319,7 +321,7 @@ namespace Search {
 
         MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
                                              virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE,
-                                             MoveSelection::SIMPLE_ORDERING, true);
+                                             true);
 
         // Detect mate, stealmate and other types of draw
         if (!moveSelector.hasNext()) {
@@ -356,7 +358,7 @@ namespace Search {
             if constexpr (node == ROOT_NODE)
                 moveSelector.sort([this](const Move& move) { return SEE::evaluate(&this->virtualBoard, move); }, EnhancementMode::PURE_SEE);
             else
-                moveSelector.strategy = MoveSelection::STANDARD_ORDERING;
+                MoveSelection::improved_ordering(moveSelector);
 
             move = moveSelector.next();
             while (SEE::evaluate_save(&virtualBoard, move) > 0) {
@@ -397,7 +399,7 @@ namespace Search {
             moveSelector.cascade = true;
 
             if constexpr (node != ROOT_NODE)
-                moveSelector.strategy = MoveSelection::SIMPLE_ORDERING;
+                MoveSelection::simple_ordering(moveSelector);
 
             if (move == Move::null())
                 move = moveSelector.next();

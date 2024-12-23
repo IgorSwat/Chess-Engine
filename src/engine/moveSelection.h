@@ -8,77 +8,91 @@
 
 namespace MoveSelection {
 
-    // ------------------------
-    // Selection behavior flags
-    // ------------------------
+    // -----------------
+    // Global parameters
+    // -----------------
 
-    // Selection strategy is defined as 64 bit integer, with 10 consecutive bits representing strategy for given generation phase
-    // For example, first 10 bits defines strategy for QUIET (moves) phase
-    using Strategy = std::uint64_t;
-    using Substrategy = Strategy;
+    constexpr int MAX_NO_BUCKETS = 5;
 
-    // Local strategies
-    constexpr Substrategy STRATEGY_BASE = 0x1;
-    constexpr Substrategy SUBSTRATEGY_MASK = 0x3ff;
-
-    constexpr Substrategy POSITIVE_SEE = STRATEGY_BASE;
-    constexpr Substrategy ZERO_SEE = STRATEGY_BASE << 1;
-    constexpr Substrategy THREAT_CREATION = STRATEGY_BASE << 2;
-    constexpr Substrategy THREAT_EVASION = STRATEGY_BASE << 3;
-
-    // Creating strategies
-    constexpr inline Strategy make_strategy(Substrategy substrategy, MoveGeneration::MoveGenType gen)
-    {
-        return substrategy << (gen - 1) * 10;
-    }
-
-    constexpr inline Substrategy extract_substrategy(Strategy strategy, MoveGeneration::MoveGenType gen)
-    {
-        return (strategy >> (gen - 1) * 10) & SUBSTRATEGY_MASK;
-    }
-
-    // Complex strategies
-    constexpr Strategy SIMPLE_ORDERING = 0;
-    constexpr Strategy STANDARD_ORDERING = 
-        make_strategy(POSITIVE_SEE | ZERO_SEE, MoveGeneration::CAPTURE) |
-        make_strategy(POSITIVE_SEE | ZERO_SEE, MoveGeneration::CHECK_EVASION);
-    
 
     // --------------
     // Selector class
     // --------------
 
+    // A generator-like class, which serves as intermediate layer between move generators and search crawlers
     class Selector
     {
     public:
         Selector(const BoardConfig* board, const Evaluation::Evaluator* evaluator = nullptr,
-                 MoveGeneration::MoveGenType gen = MoveGeneration::PSEUDO_LEGAL,
-                 MoveSelection::Strategy strategy = MoveSelection::SIMPLE_ORDERING,
+                 MoveGeneration::Phase gen = MoveGeneration::PSEUDO_LEGAL,
                  bool cascade = true)
-            : strategy(strategy), cascade(cascade), gen(gen),
-              board(board), evaluator(evaluator), moves(), sectionBegin(moves.begin()), sectionEnd(moves.end()) { generateMoves(); }
+            : board(board), evaluator(evaluator),
+              cascade(cascade), gen(gen), strategy(this) { generateMoves(); }
 
         // Generator-style opertions
-        EnhancedMove next();
+        EnhancedMove next(bool useStrategy = true);
         bool hasNext();
 
         // Sorting
         // - Indexer creates an integer (key) for given move
         void sort(const std::function<int32_t(const Move&)>& indexer, EnhancementMode mode = EnhancementMode::CUSTOM_SORTING);
 
-        // Getters
-        MoveGeneration::MoveGenType phase() const { return gen; }
+        // Getters and setters for private fields
+        MoveGeneration::Phase phase() const { return gen; }
 
-        // Customizable selector behavior
-        MoveSelection::Strategy strategy;
+        // Customizable selector behavior - phase change
+        // ---------------------------------------------
+
         bool cascade;
+
+        // Customizable selector behavior - selection strategy
+        // ---------------------------------------------------
+
+        class Strategy
+        {
+        public:
+            Strategy(const Selector* selector) : selector(selector) {}
+
+            // Type definitions
+            using Predicate = bool (Selector::*)(EnhancedMove&) const;
+            using DecisionList = LightList<Predicate, MAX_NO_BUCKETS - 1>;
+
+            // Dynamic rule change
+            void addRule(MoveGeneration::Phase phase, Predicate pred) { decisionLists[phase].push_back(pred); }
+            void clearRules(MoveGeneration::Phase phase) { decisionLists[phase].clear(); }
+            void clearRules() { for (DecisionList& list : decisionLists) list.clear(); }
+
+            // Assigns move to appropriate bucket based on defined rules
+            std::uint8_t evaluate(MoveGeneration::Phase phase, EnhancedMove& move) const;
+
+        private:
+            // Selector connection
+            const Selector* selector;
+
+            // Representation of linearized decision tree for each phase
+            DecisionList decisionLists[MoveGeneration::PHASE_RANGE];
+        } strategy;
+
+        // Selection predicates (selection strategy)
+        // -----------------------------------------
+
+        // Here is the list of all available selection predicates that can be applied in strategy class
+        // Complex conditions (in the form of condition_condition) require both conditions to be fullfilled
+        bool positiveSee(EnhancedMove& move) const { return SEE::evaluate_save(board, move) > 0; }
+        bool neutralSee(EnhancedMove& move) const { return SEE::evaluate_save(board, move) == 0; }
+        bool threatCreation(EnhancedMove& move) const { return evaluator->isCreatingThreats(move); }
+        bool threatEvasion(EnhancedMove& move) const { return evaluator->isAvoidingThreats(move); }
+        bool neutralSee_threatCreation(EnhancedMove& move) const { return SEE::evaluate_save(board, move) == 0 && 
+                                                                          evaluator->isCreatingThreats(move); }
+        bool neutralSee_ThreatEvasion(EnhancedMove& move) const { return SEE::evaluate_save(board, move) == 0 && 
+                                                                         evaluator->isAvoidingThreats(move); }
+
     
     private:
         // Helper functions
         void generateMoves();   // Generates moves according to current generation phase (gen)
-        void resetSelection() { sectionBegin = moves.begin(); sectionEnd = moves.end(); legalityChecked = false; }
-        void nextSelection() { sectionBegin = sectionEnd; sectionEnd = moves.end(); legalityChecked = true; }
-        template <typename... Predicates> EnhancedMove* selectMove(Predicates... preds);
+        void resetSection();    // Reset selector to the begin (first batch of moves)
+        void nextSection();     // Switch to the next batch of moves
 
         // Board connection
         const BoardConfig* board;
@@ -86,11 +100,32 @@ namespace MoveSelection {
         // Evaluator connection
         const Evaluation::Evaluator* evaluator;
 
+        // Current generation phase logic
+        MoveGeneration::Phase gen;
+
         // Move handling logic
         MoveList moves;
-        MoveGeneration::MoveGenType gen;
         EnhancedMove* sectionBegin;
         EnhancedMove* sectionEnd;
-        bool legalityChecked = false;
+        EnhancedMove* nextMove;
+
+        // Bucket is represented as a bitmask which determines the indices of moves belonging to given bucket
+        // Each bucket contains moves of given quality, starting from most appealing moves (first bucket) to least appealing (last bucket)
+        // Since buckets are only 64-bit in size, moves are divided into batches (1 batch = at most 64 moves)
+        using Bucket = std::uint64_t;
+
+        Bucket buckets[MAX_NO_BUCKETS] = { 0 };
+        std::uint8_t currentBucket = 0;
+        std::uint8_t currentBatch = 0;
     };
+
+
+    // ------------------------------------
+    // Predefined selection strategy makers
+    // ------------------------------------
+
+    void simple_ordering(Selector& selector);
+    void standard_ordering(Selector& selector);
+    void improved_ordering(Selector& selector);
+
 }

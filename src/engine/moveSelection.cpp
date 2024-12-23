@@ -1,5 +1,6 @@
 #include "moveSelection.h"
 #include <algorithm>
+#include <iterator>
 
 
 namespace MoveSelection {
@@ -8,95 +9,113 @@ namespace MoveSelection {
     // Selector methods - generator-style opertions
     // --------------------------------------------
 
-    EnhancedMove Selector::next()
+    EnhancedMove Selector::next(bool useStrategy)
     {
-        EnhancedMove* moveptr = nullptr;
-
         while (true) {
-            // Extract bitset corresponding to current move generation phase
-            Substrategy substrategy = extract_substrategy(strategy, gen);
-
-            // Adjust selection of next move according to most important flag (least significant bit)
-            if (substrategy & POSITIVE_SEE)
-                moveptr = selectMove([this](EnhancedMove& move) -> bool { return SEE::evaluate_save(board, move) > 0; });
-            else if (substrategy & ZERO_SEE)
-                moveptr = selectMove([this](const EnhancedMove& move) -> bool {return SEE::evaluate(board, move) >= 0;});
-            else if (substrategy & THREAT_CREATION) {
-                moveptr = selectMove([this](const EnhancedMove& move) -> bool {
-                    return SEE::evaluate(board, move) >= 0 && this->evaluator->isCreatingThreats(move); 
-                });
-            }
-            else if (substrategy & THREAT_EVASION) {
-                moveptr = selectMove([this](const EnhancedMove& move) -> bool { 
-                    return SEE::evaluate(board, move) >= 0 && this->evaluator->threatMap[this->board->movingSide()] & move.from();
-                });
-            }
-            else
-                moveptr = selectMove();
+            // Check if current bucket contains more moves
+            if (buckets[currentBucket])
+                return moves[Bitboards::pop_lsb(buckets[currentBucket]) + currentBatch * 64];
             
+            // If no moves are present in a bucket, try to find appropriate move in the remaining portion of current batch
+            // If you encounter moves from any other bucket, save them to speed up future selection
+            while (nextMove != sectionEnd) {
+                EnhancedMove& move = *nextMove;
 
-            // Checpoint 1 - selection phase adjustment
-            if (moveptr == nullptr && substrategy) {
-                // Remove LSB from substrategy to discard already finished selection phase
-                substrategy &= (substrategy - 1);
-                this->strategy &= make_strategy(substrategy, gen);
+                // Check legality of the move
+                if (!board->legalityCheckLight(move)) {
+                    nextMove++;
+                    continue;
+                }
 
-                nextSelection();
-                continue;
+                std::uint8_t bucketID = useStrategy ? strategy.evaluate(gen, move) : 0;
+                
+                if (bucketID == currentBucket)
+                    return *nextMove++;
+                else
+                    buckets[bucketID] |= 0x1ULL << std::distance(sectionBegin, nextMove++);
             }
 
-            // Checkpoint 2 - generation phae adjustment (if 'cascade' option selected)
-            if (moveptr == nullptr && cascade) {
+            // If we reach end of the batch without returning appropriate move, then the current bucket is empty and we should move on
+            currentBucket++;
+
+            // If we checked all the buckets, then it's time to change the batch
+            if (currentBucket == MAX_NO_BUCKETS)
+                nextSection();
+            
+            // If batch is empty, then there are no more moves to check
+            // Therefore we should either continue with next phase (cascade selection) or break and return null move (strict selection)
+            if (sectionBegin == sectionEnd) {
                 gen = gen == MoveGeneration::CAPTURE ? MoveGeneration::QUIET_CHECK :
                       gen == MoveGeneration::QUIET_CHECK ? MoveGeneration::QUIET : MoveGeneration::NONE;
                 
-                if (gen != MoveGeneration::NONE) {
+                if (cascade && gen != MoveGeneration::NONE)
                     generateMoves();
-                    continue;
-                }
+                else
+                    break;
             }
-
-            break;
         }
 
-        return moveptr != nullptr ? *moveptr : Move::null();
+        return Move::null();
     }
 
     bool Selector::hasNext()
     {
-        Strategy tmp = strategy;
+        std::uint8_t tmp_bucket = currentBucket;
 
-        strategy = SIMPLE_ORDERING;
-        EnhancedMove move = next();
+        currentBucket = 0;
+        EnhancedMove move = next(false);    // Equivalent to using SIMPLE_ORDERING
 
-        resetSelection();
-        strategy = tmp;
+        if (move == Move::null())
+            return false;
 
-        return move != Move::null();
+        // Since we use SIMPLE_ORDERING, we know that increment of nextMove was the last operation performed inside next() function
+        // Therefore, simple decrementation of the pointer ensures that move selection process is still valid
+        nextMove--;
+        currentBucket = tmp_bucket;
+
+        return true;
     }
 
 
-    // // -------------------------------------
-    // // Selector methods - sorting operations
-    // // -------------------------------------
+    // -------------------------------------
+    // Selector methods - sorting operations
+    // -------------------------------------
 
     void Selector::sort(const std::function<int32_t(const Move&)>& indexer, EnhancementMode mode)
     {
         // Perform sorting in place on remaining moves range
 
         // Calculate indices
-        std::for_each(sectionBegin, sectionEnd, 
+        std::for_each(nextMove, moves.end(), 
                       [&indexer, mode](EnhancedMove& move) -> void { move.enhance(mode, indexer(move)); });
                       
         // Sort - descending order
-        std::sort(sectionBegin, sectionEnd,
+        std::sort(nextMove, moves.end(),
                   [](EnhancedMove& a, EnhancedMove& b) -> bool { return a.key() > b.key(); });
     }
 
 
-    // // -----------------------------------
-    // // Selector methods - helper functions
-    // // -----------------------------------
+    // ---------------------------
+    // Selector methods - strategy 
+    // ---------------------------
+
+    std::uint8_t Selector::Strategy::evaluate(MoveGeneration::Phase phase, EnhancedMove& move) const
+    {
+        std::uint8_t bucket = 0;
+
+        for (const Predicate& pred : decisionLists[phase]) {
+            if ((selector->*pred)(move))
+                break;
+            bucket++;
+        }
+
+        return bucket;
+    }
+
+
+    // -----------------------------------
+    // Selector methods - helper functions
+    // -----------------------------------
 
     void Selector::generateMoves()
     {
@@ -109,39 +128,74 @@ namespace MoveSelection {
 
         moves.clear();
         generator(*board, moves);
-        resetSelection();
-
-        if (gen == MoveGeneration::LEGAL)
-            legalityChecked = true;
+        resetSection();
     }
 
-    template <typename... Predicates>
-    EnhancedMove* Selector::selectMove(Predicates... preds)
+    void Selector::resetSection()
     {
-        while (sectionBegin != sectionEnd) {
-            EnhancedMove& move = *sectionBegin;
+        sectionBegin = moves.begin();
+        sectionEnd = std::min(sectionBegin + 64, moves.end());
+        nextMove = sectionBegin;
 
-            // Discard illegal moves
-            if (!legalityChecked && !board->legalityCheckLight(move)) {
-                sectionBegin++;
-                continue;
-            }
+        currentBatch = 0;
+        currentBucket = 0;
+        std::fill(buckets, buckets + MAX_NO_BUCKETS, 0ULL);
+    }
 
-            // Check the predicates (additional trick if no predicate is specified)
-            if ((true && ... && preds(move))) {
-                sectionBegin++;
-                return &move;
-            }
-            else {
-                // Push the move to the end of the list (partition algorithm)
-                sectionEnd--;
-                if (sectionBegin != sectionEnd)
-                    std::swap(*sectionBegin, *sectionEnd);
-            }
-        }
+    void Selector::nextSection()
+    {
+        sectionBegin = sectionEnd;
+        sectionEnd = std::min(sectionEnd + 64, moves.end());
+        nextMove = sectionBegin;
 
-        // If no move found
-        return nullptr;
+        currentBatch++;
+        currentBucket = 0;
+        std::fill(buckets, buckets + MAX_NO_BUCKETS, 0ULL);
+    }
+
+
+    // ------------------------------------
+    // Predefined selection strategy makers
+    // ------------------------------------
+
+    void simple_ordering(Selector& selector)
+    {
+        selector.strategy.clearRules();
+    }
+
+    void standard_ordering(Selector& selector)
+    {
+        selector.strategy.clearRules();
+
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::positiveSee);
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::neutralSee);
+
+        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::positiveSee);
+        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::neutralSee);
+    }
+
+    void improved_ordering(Selector& selector)
+    {
+        selector.strategy.clearRules();
+
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::positiveSee);
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::neutralSee_ThreatEvasion);
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::neutralSee);
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::threatCreation);
+
+        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::positiveSee);
+        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::neutralSee_ThreatEvasion);
+        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::neutralSee);
+
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::neutralSee_threatCreation);
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::neutralSee_ThreatEvasion);
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::neutralSee);
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::threatCreation);
+
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::neutralSee_threatCreation);
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::neutralSee_ThreatEvasion);
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::neutralSee);
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::threatCreation);
     }
 
 }

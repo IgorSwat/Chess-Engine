@@ -21,12 +21,13 @@ namespace Testing {
         board.loadPosition(fen);
 
         // Simple selection - start from quiet_checks
-        MoveSelection::Selector selector(&board, nullptr, MoveGeneration::QUIET_CHECK, MoveSelection::SIMPLE_ORDERING);
+        MoveSelection::Selector selector(&board, nullptr, MoveGeneration::QUIET_CHECK);
         std::cout << "Simple selection:\n";
         show_all_moves(&selector);
 
         // Standard ordering
-        selector = MoveSelection::Selector(&board, nullptr, MoveGeneration::CAPTURE, MoveSelection::STANDARD_ORDERING);
+        selector = MoveSelection::Selector(&board, nullptr, MoveGeneration::CAPTURE);
+        MoveSelection::standard_ordering(selector);
         std::cout << "\nStandard ordering:\n";
         show_all_moves(&selector);
     }
