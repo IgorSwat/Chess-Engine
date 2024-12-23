@@ -618,7 +618,12 @@ namespace Evaluation {
 
         Color side = board->movingSide();
         Color enemy = ~side;
+
         PieceType ptype = type_of(board->onSquare(move.from()));
+
+        if (ptype == PAWN)
+            return Pieces::pawn_attacks(side, move.to()) & board->pieces(enemy, KNIGHT, BISHOP, ROOK, QUEEN);
+
         Bitboard occ = board->pieces() ^ move.from() ^ move.to();
         Bitboard att = Pieces::piece_attacks_d(ptype, move.to(), occ);
 
@@ -630,6 +635,11 @@ namespace Evaluation {
         }
 
         return false;
+    }
+
+    bool Evaluator::isAvoidingThreats(const Move& move) const
+    {
+        return threatMap[board->movingSide()] & move.from();
     }
 
 }

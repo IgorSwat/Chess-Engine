@@ -35,7 +35,7 @@ int main()
 
 	// // Testers
 	// std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
-	// Search::Depth depth = 8;
+	// Search::Depth depth = 7;
 	// gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
 	// gui->runTesters(true);
 
@@ -44,23 +44,18 @@ int main()
 	//tune(10, 10);
 
 	// BoardConfig board;
-	// board.loadPosition("r4rk1/pp3pp1/4p2p/1b1pP3/Nb1P4/1P2P3/1P3RPP/R3N1K1 w - - 0 18");
+	// board.loadPosition("r1b4r/1pp1k1p1/p2p3p/1NbB2Nq/3nP1nP/3Q4/PP3PP1/R1B1K2R w KQ - 0 14");
 	// std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&board);
 	// evaluator->evaluate();
 
-	// std::vector<Move> moves = {
-	// 	Move(SQ_A4, SQ_C5, QUIET_MOVE_FLAG),
-	// 	Move(SQ_A4, SQ_C3, QUIET_MOVE_FLAG),
-	// 	Move(SQ_E1, SQ_C2, QUIET_MOVE_FLAG),
-	// 	Move(SQ_E1, SQ_D3, QUIET_MOVE_FLAG),
-	// 	Move(SQ_A4, SQ_B6, QUIET_MOVE_FLAG),
-	// 	Move(SQ_E1, SQ_F3, QUIET_MOVE_FLAG),
-	// 	Move(SQ_A1, SQ_C1, QUIET_MOVE_FLAG),
-	// 	Move(SQ_G2, SQ_G4, DOUBLE_PAWN_PUSH_FLAG)
-	// };
+	// MoveSelection::Selector selector(&board, evaluator.get(), MoveGeneration::CAPTURE, MoveSelection::IMPROVED_ORDERING, true);
 
-	// for (Move move : moves) {
-	// 	std::cout << move << std::dec << ", threats? " << evaluator->isCreatingThreats(move) << "\n";
+	// selector.hasNext();
+
+	// Move move = selector.next();
+	// while (move != Move::null()) {
+	// 	std::cout << move << "\n";
+	// 	move = selector.next();
 	// }
 
 	return 0;

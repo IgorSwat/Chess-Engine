@@ -34,12 +34,18 @@ namespace SEE {
 
 		int16_t gain[MAX_DEPTH];
 		int depth = board->movingSide();
-		Bitboard mayXray = board->pieces() ^ board->pieces(KNIGHT) ^ board->pieces(KING);
+
+		PieceType attackedPiece = type_of(board->onSquare(to));
+		PieceType attackingPiece = type_of(board->onSquare(from));
+
 		Bitboard occ = board->pieces();
 		Bitboard fromSet = square_to_bb(from);
 		Bitboard attackdef = board->attackersToSquare(to, occ);
-		PieceType attackedPiece = type_of(board->onSquare(to));
-		PieceType attackingPiece = type_of(board->onSquare(from));
+		Bitboard mayXray = board->pieces() ^ board->pieces(KNIGHT) ^ board->pieces(KING);
+
+		// Special case - quiet pawn move
+		if (attackingPiece == PAWN && file_of(from) == file_of(to))
+			attackdef |= fromSet;
 
 		gain[depth] = PieceExchangeValue[attackedPiece] + PieceExchangeValue[promotionType] - PieceExchangeValue[PAWN];
 		do {
