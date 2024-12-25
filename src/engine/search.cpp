@@ -6,9 +6,9 @@
 
 namespace Search {
 
-    // -----------------------------
-    // Crawler methods - main search
-    // -----------------------------
+    // ----------------------------
+    // Crawler methods - public API
+    // ----------------------------
 
     Value Crawler::search(Depth depth)
     {
@@ -23,7 +23,12 @@ namespace Search {
         return score;
     }
 
-    template <NodeType node, bool nmpAvailable>
+
+    // -----------------------------
+    // Crawler methods - main search
+    // -----------------------------
+
+    template <Node node, bool nmpAvailable>
     Value Crawler::search(Value alpha, Value beta, Depth depth)
     {
         pushStack();
@@ -62,18 +67,19 @@ namespace Search {
 
         Move ttMove;
         const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
+
         if (entry) {
             if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE) {
                 std::cout << "[TestEngine]: found existing entry in T.Table: [score: " << std::dec << relative_score(entry->score, &virtualBoard);
                 std::cout << ", type: " << int(entry->typeOfNode) << ", best " << entry->bestMove << "]\n";
             }
 
-            if (entry->depth >= depth &&
-                (entry->typeOfNode & PV_NODE ||
-                 entry->typeOfNode == CUT_NODE && entry->score >= beta ||
-                 entry->typeOfNode == ALL_NODE && entry->score <= alpha))
+            if (entry->typeOfNode == TERMINAL_NODE ||
+                entry->depth >= depth && (entry->typeOfNode == PV_NODE || 
+                                          entry->typeOfNode == CUT_NODE && entry->score >= beta ||
+                                          entry->typeOfNode == ALL_NODE && entry->score <= alpha))
                 return entry->score;
-                
+
             ttMove = entry->bestMove;
             if (depth > 0 && ttMove != Move::null()) {
                 virtualBoard.makeMove(ttMove);
@@ -186,8 +192,6 @@ namespace Search {
                 return 3LL * MAX_EVAL * SEE::evaluate(&this->virtualBoard, move) + eval;
             });
         }
-        else
-            MoveSelection::improved_ordering(moveSelector);
 
         // Stage 6 - checkmate & stealmate detection
         // -----------------------------------------
@@ -216,24 +220,20 @@ namespace Search {
         // Stage 7 - move ordering strategies
         // ----------------------------------
 
-        // Prioritize aggresive moves, except for late endgames
-        // if (virtualBoard.gameStage() > 80)
-        //     moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_CREATION, MoveGeneration::QUIET_CHECK) |
-        //                              MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_CREATION, MoveGeneration::QUIET);
-        // if (evaluator.threatCount[virtualBoard.movingSide()] > 0)
-        //     moveSelector.strategy |= MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_EVASION, MoveGeneration::QUIET_CHECK) |
-        //                              MoveSelection::make_strategy(MoveSelection::NEGATIVE_SEE_THREAT_EVASION, MoveGeneration::QUIET);
+        if (ssTop->ply >= 3 && virtualBoard.gameStage() > 80)
+            MoveSelection::improved_ordering(moveSelector);
+        else if (ssTop->ply >= 3)
+            MoveSelection::standard_ordering(moveSelector);
+
+        // Avoid repeating of transposition table suggestion
+        if (ttMove != Move::null())
+            moveSelector.exclude(ttMove);
         
         // Stage 8 - main search loop
         // --------------------------
 
         EnhancedMove move = moveSelector.next();
         while (move != Move::null()) {
-            // Avoid repeating of transposition table suggestion
-            if (move == ttMove) {
-                move = moveSelector.next();
-                continue;
-            }
 
             // Stage 9 - futility pruning
             // --------------------------
@@ -302,7 +302,7 @@ namespace Search {
     // Crawler methods - quiescence search
     // -----------------------------------
 
-    template <NodeType node>
+    template <Node node>
     Value Crawler::quiescence(Value alpha, Value beta, Depth depth)
     {
         qs_nodes++;
@@ -312,10 +312,9 @@ namespace Search {
         
         if constexpr (node != ROOT_NODE) {
             const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
-            if (entry &&
-                (entry->typeOfNode & PV_NODE ||
-                 entry->typeOfNode == CUT_NODE && entry->score >= beta ||
-                 entry->typeOfNode == ALL_NODE && entry->score <= alpha))
+            if (entry && (entry->typeOfNode == PV_NODE || entry->typeOfNode == TERMINAL_NODE ||
+                          entry->typeOfNode == CUT_NODE && entry->score >= beta ||
+                          entry->typeOfNode == ALL_NODE && entry->score <= alpha))
                 return entry->score;
         }
 
@@ -390,8 +389,8 @@ namespace Search {
             }
         }
 
-        int noThreats = evaluator.threatCount[virtualBoard.movingSide()];
-        Bitboard threats = evaluator.threatMap[virtualBoard.movingSide()];
+        int noThreats = evaluator.e_countThreatsAgainst_c(virtualBoard.movingSide());
+        Bitboard threats = evaluator.e_threatsAgainst_c(virtualBoard.movingSide());
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
         if (ssTop->staticEval + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {

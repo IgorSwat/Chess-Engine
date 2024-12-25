@@ -539,7 +539,7 @@ namespace Evaluation {
 
         // Special endgames
         // Opposite color bishops endgame
-        if (stage == SINGLE_MINOR_VS_MINOR_ENDGAME && detectOppositeColorBishops()) {
+        if (stage == SINGLE_MINOR_VS_MINOR_ENDGAME && oppositeColorBishops_c()) {
             // In the case of such endgame we decrease the 
             Value adjustment = (pieceCount[WHITE][PAWN] - pieceCount[BLACK][PAWN]) * OPPOSITE_COLOR_BISHOPS_PAWN_ADJUSTMENT;
             eval -= adjustment;
@@ -607,11 +607,17 @@ namespace Evaluation {
     }
 
 
-    // -----------------------------------------
-    // Evaluator methods - extra functionalities
-    // -----------------------------------------
+    // --------------------------------------------
+    // Evaluator methods - additional position info
+    // --------------------------------------------
 
-    bool Evaluator::isCreatingThreats(const Move& move) const
+    bool Evaluator::oppositeColorBishops_c() const
+    {
+        return ((board->pieces(WHITE, BISHOP) & Board::LIGHT_SQUARES) && (board->pieces(BLACK, BISHOP) & Board::DARK_SQUARES) ||
+                (board->pieces(WHITE, BISHOP) & Board::DARK_SQUARES) && (board->pieces(BLACK, BISHOP) & Board::LIGHT_SQUARES));
+    }
+
+    bool Evaluator::e_isCreatingThreats_c(const Move& move) const
     {
         if (move.isCapture())
             return true;
@@ -637,9 +643,46 @@ namespace Evaluation {
         return false;
     }
 
-    bool Evaluator::isAvoidingThreats(const Move& move) const
+    bool Evaluator::e_isAvoidingThreats_c(const Move& move) const
     {
         return threatMap[board->movingSide()] & move.from();
+    }
+
+    bool Evaluator::e_isSafe_h(const Move& move) const
+    {
+        Piece piece = board->onSquare(move.from());
+
+        return safetyMap[color_of(piece)][type_of(piece)] & move.to();
+    }
+
+
+    // ------------------------------------
+    // Evaluator methods - helper functions
+    // ------------------------------------
+
+    template <Color side>
+    void Evaluator::updateProximity(Square sq, int ourFactor, int enemyFactor)
+    {
+        constexpr Color enemy = ~side;
+        proximityPoints[side] += Board::SquareDistance[sq][board->kingPosition(side)] * ourFactor;
+        proximityWages[side] += ourFactor;
+        proximityPoints[enemy] += Board::SquareDistance[sq][board->kingPosition(enemy)] * enemyFactor;
+        proximityWages[enemy] += enemyFactor;
+    }
+
+    template <Color side>
+    void Evaluator::updateKingAreaSafety(Square sq, Bitboard attacks, int attackFactor)
+    {
+        constexpr Color enemy = ~side;
+        Bitboard kingAreaAttacks = attacks & kingArea[enemy];
+        if (kingAreaAttacks) {                                      // Enemy king (offensive piece)
+            kingAreaAttackers[enemy]++;
+            kingAreaAttackPoints[enemy] += attackFactor * Bitboards::popcount(kingAreaAttacks);
+        }
+        else if (attacks & weakKingSpan[enemy])
+            kingAreaAttackers[enemy]++;
+        if (kingFrontSpans[side][0] & (attacks | sq))               // Our king (defensive piece)
+            kingAreaAttackers[side]--;
     }
 
 }

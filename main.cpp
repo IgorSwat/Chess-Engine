@@ -44,11 +44,12 @@ int main()
 	//tune(10, 10);
 
 	// BoardConfig board;
-	// board.loadPosition("r1b4r/1pp1k1p1/p2p3p/1NbB2Nq/3nP1nP/3Q4/PP3PP1/R1B1K2R w KQ - 0 14");
+	// board.loadPosition("rnbq1rk1/1p3pbp/3ppnp1/p1pP4/P1P5/2N1BNP1/1P2PPBP/R2QK2R w KQ - 0 10");
 	// std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&board);
 	// evaluator->evaluate();
 
-	// MoveSelection::Selector selector(&board, evaluator.get(), MoveGeneration::CAPTURE, MoveSelection::IMPROVED_ORDERING, true);
+	// MoveSelection::Selector selector(&board, evaluator.get(), MoveGeneration::CAPTURE, true);
+	// MoveSelection::improved_ordering(selector);
 
 	// selector.hasNext();
 

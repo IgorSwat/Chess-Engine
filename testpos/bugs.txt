@@ -1,3 +1,6 @@
-r1bq2k1/ppppbrpp/8/4Pp1Q/4pB2/2N5/PPP2PPP/R3R1K1 w - - 2 15
-    - There is a bug leading to r1bq2k1/ppp2Qpp/8/5p2/4Nb2/4R3/PPP2PPP/R5K1 b - - 0 18 (Transposition table shows +0.46 when white loses a queen)
-    - Also Rxe4 is shown as good (?)
+r4rk1/p2q1pbp/1p2p1pB/2p5/2P1b3/1P1P4/1P1Q1PPP/R4RK1 w - - 0 19
+    - A bug occuring in Rad1 line, showing Bxh6 as only -60 with best move Rda1 (???)
+    - Moves: Rad1 Bxh6 Rda1 Bxd3 f4 Bxf1 Qxd7 (losing a queen?)
+    - Position before Bxf1: 14781787240655281707, 7037386807969499745
+    - Position before Qxd7: 4444373371037563675, 7037386807968975457
+    - Position after Qxd7: (already quiescence)

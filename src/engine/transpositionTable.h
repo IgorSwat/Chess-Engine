@@ -16,7 +16,7 @@ public:
     struct Entry
     {
         Entry() : key(0ULL), pieces(0xffffffffffffffff), depth(0), score(0), bestMove(), typeOfNode(Search::INVALID_NODE), age(0) {}
-        Entry(std::uint64_t key, Bitboard pieces, Search::Depth depth, Value score, const Move& bestMove, Search::NodeType type, Search::Age age)
+        Entry(std::uint64_t key, Bitboard pieces, Search::Depth depth, Value score, const Move& bestMove, Search::Node type, Search::Age age)
             : key(key), pieces(pieces), depth(depth), score(score), bestMove(bestMove), typeOfNode(type), age(age) {}
 
         bool matches(std::uint64_t key, Bitboard pieces) const
@@ -29,7 +29,7 @@ public:
         Search::Depth depth;            // Search depth used to obtain the score
         Value score;                    // Evaluation of the position
         Move bestMove;                  // Best move for side being on move
-        Search::NodeType typeOfNode;    // Alpha-beta specyfic
+        Search::Node typeOfNode;        // Alpha-beta specyfic
         Search::Age age;                // Counted in halfmoves from starting position
     };
 

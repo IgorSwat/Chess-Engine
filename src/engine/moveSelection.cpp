@@ -21,8 +21,8 @@ namespace MoveSelection {
             while (nextMove != sectionEnd) {
                 EnhancedMove& move = *nextMove;
 
-                // Check legality of the move
-                if (!board->legalityCheckLight(move)) {
+                // Ignore illegal and excluded moves
+                if (!board->legalityCheckLight(move) || isExcluded(move)) {
                     nextMove++;
                     continue;
                 }
@@ -179,22 +179,22 @@ namespace MoveSelection {
         selector.strategy.clearRules();
 
         selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::positiveSee);
-        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::neutralSee_ThreatEvasion);
+        selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::neutralSee_threatEvasion);
         selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::neutralSee);
         selector.strategy.addRule(MoveGeneration::CAPTURE, &Selector::threatCreation);
 
         selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::positiveSee);
-        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::neutralSee_ThreatEvasion);
+        selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::neutralSee_threatEvasion);
         selector.strategy.addRule(MoveGeneration::CHECK_EVASION, &Selector::neutralSee);
 
-        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::neutralSee_threatCreation);
-        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::neutralSee_ThreatEvasion);
-        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::neutralSee);
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::safe_threatCreation);
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::safe_threatEvasion);
+        selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::safe);
         selector.strategy.addRule(MoveGeneration::QUIET_CHECK, &Selector::threatCreation);
 
-        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::neutralSee_threatCreation);
-        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::neutralSee_ThreatEvasion);
-        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::neutralSee);
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::safe_threatCreation);
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::safe_threatEvasion);
+        selector.strategy.addRule(MoveGeneration::QUIET, &Selector::safe);
         selector.strategy.addRule(MoveGeneration::QUIET, &Selector::threatCreation);
     }
 
