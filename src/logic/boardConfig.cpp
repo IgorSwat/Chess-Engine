@@ -457,77 +457,102 @@ Bitboard BoardConfig::attackersToSquare(Square sq, Color side, Bitboard occ) con
 // Legality checks
 // ---------------
 
-bool BoardConfig::legalityCheckLight(const Move& move) const
+bool BoardConfig::isLegal(const Move& move) const
 {
-	Square from = move.from();
-	Square to = move.to();
+	Square from = move.from(), to = move.to();
 	Piece piece = board[from];
+
 	Color side = color_of(piece);
 	Color enemy = ~side;
 
+	// Special case - enpassant
+	// It requires a check whether a move would create a discovered attack against our king
 	if (move.isEnpassant()) {
 		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
-		Square kingSq = kingSquare[side];
-		return !(Pieces::piece_attacks_s<BISHOP>(kingSq, occ) & pieces(enemy, BISHOP, QUEEN)) &&
-			!(Pieces::piece_attacks_s<ROOK>(kingSq, occ) & pieces(enemy, ROOK, QUEEN));
+		return !(Pieces::piece_attacks_s<BISHOP>(kingSquare[side], occ) & pieces(enemy, BISHOP, QUEEN)) &&
+			   !(Pieces::piece_attacks_s<ROOK>(kingSquare[side], occ) & pieces(enemy, ROOK, QUEEN));
 	}
 
+	// Special case - castle
 	if (move.isCastle()) {
 		Direction dir = to > from ? EAST : WEST;
+
+		// King can't castle via attacked squares
 		return !attackersToSquare(from + dir, enemy, pieces()) &&
-			!attackersToSquare(to, enemy, pieces());
+			   !attackersToSquare(to, enemy, pieces());
 	}
 
 	if (type_of(piece) == KING)
 		return !attackersToSquare(to, enemy, pieces() ^ from);
 
+	// Finally, check for pins
 	return !(pinnedPieces(side) & from) || Board::aligned(kingSquare[side], to, from);
 }
 
-bool BoardConfig::legalityCheckFull(const Move& move) const
+bool BoardConfig::isPseudolegal(const Move& move) const
 {
-	Square from = move.from();
-	Square to = move.to();
+	Square from = move.from(), to = move.to();
 	Piece piece = board[from];
-	Color side = color_of(piece);
 
-	// Target square cannot be already occupied by friendly piece
-	if (pieces(side) & to) 
+	// There has to be a piece on starting square of the move
+	if (piece == NO_PIECE)
+		return false;
+	
+	Color side = color_of(piece);
+	Color enemy = ~side;
+
+	if (side != movingSide())
 		return false;
 
-	// Special case 1 - enpassant
-	if (move.isEnpassant()) {
-		if (!(Board::AdjacentRankSquares[enpassantSquare()] & from) || file_of(enpassantSquare()) != file_of(to)) 
+	// If target square is not empty, it cannot be occupied by friendly piece and move has to be capture
+	if (board[to] != NO_PIECE && (!move.isCapture() || color_of(board[to]) == side))
+		return false;
+
+	// If target square is empty, then move cannot be a capture
+	if (board[to] == NO_PIECE && move.isCapture() && !move.isEnpassant())
+		return false;
+
+	// Ensure that move is a check evasion if the side is in check
+	if (isInCheck(side)) {
+		// Piece moves
+		if (type_of(piece) != KING) {
+			// A piece move can never be a check evasion in case of double check
+			if (!Bitboards::single_populated(posInfo->checkers))
+				return false;
+
+			Square checkSquare = Bitboards::lsb(posInfo->checkers);
+			if (to != checkSquare && !Board::aligned(kingSquare[side], to, checkSquare))
+				return false;
+		}
+		// King moves
+		else if (attackersToSquare(to, enemy, pieces() ^ from))
 			return false;
-		Bitboard occ = (pieces() ^ enpassantSquare() ^ from) | to;
-		return !attackersToSquare(kingSquare[side], ~side, occ) ||
-			(checkingPieces() && ((Bitboards::single_populated(checkingPieces())) && enpassantSquare() == Bitboards::lsb(checkingPieces())));
 	}
 
-	// Special case 2 - castle
+	// Special case - castle
 	if (move.isCastle()) {
 		CastleType castleType = make_castle_type(side, to > from ? KINGSIDE_CASTLE : QUEENSIDE_CASTLE);
-		if (!hasCastlingRight(castleType)) return false;
-		if (!isCastlingPathClear(castleType)) return false;
-		Direction dir = (castleType & KINGSIDE_CASTLE) ? EAST : WEST;
-		return attackersToSquare(from + dir, ~side, pieces()) == 0 &&
-			attackersToSquare(to, ~side, pieces()) == 0 && !isInCheck(side);
+		
+		if (!hasCastlingRight(castleType) || !isCastlingPathClear(castleType) || isInCheck(side))
+			return false;
 	}
+	// Special case - pawn moves
+	else if (type_of(piece) == PAWN) {
+		Direction forward = side == WHITE ? NORTH : SOUTH;
+		Bitboard secondRank = side == WHITE ? Board::RANK_2 : Board::RANK_7;
 
-	// Eliminate moves that violetes piece moving rules
-	if ((type_of(piece) == PAWN && !Pieces::in_pawn_range(side, from, to) && !(Pieces::pawn_attacks(side, from) & to)) ||
-		(type_of(piece) != PAWN && !Pieces::in_piece_range(type_of(piece), from, to)))
+		if (!(move.isEnpassant() && enpassantSquare() != INVALID_SQUARE &&
+				Board::AdjacentRankSquares[enpassantSquare()] & from && to == enpassantSquare() + forward) &&			// Enpassant														// Enpassant
+			!(move.isCapture() && !move.isEnpassant() && Pieces::pawn_attacks(side, from) & to) &&												// Capture
+			!(to == from + forward && board[to] == NO_PIECE) &&															// 1-push
+			!(to == from + forward + forward && !(Board::Paths[from][to] & (pieces() ^ from)) && secondRank & from))	// 2-push
+			return false;
+	}
+	// Common moves - moving correctness
+	else if (!(Pieces::piece_attacks_d(type_of(piece), from, pieces()) & to))
 		return false;
-
-	if (type_of(piece) == KING)
-		return !attackersToSquare(to, ~side, pieces() ^ from);	// The "to" square cannot be in check after king move
-
-	// Handle any other moves
-	Square kingSq = kingSquare[side];
-	if (checkingPieces() && !Bitboards::single_populated(checkingPieces())) return false;			// Double check blocks any other pieces than king
-	if (checkingPieces() && to != Bitboards::lsb(checkingPieces()) && !Board::aligned(kingSq, Bitboards::lsb(checkingPieces()), to)) return false;
-	Bitboard between = Board::Paths[from][to] & (~from) & (~to);
-	return !(between & pieces()) && (!(pinnedPieces(side) & from) || Board::aligned(kingSq, to, from));
+	
+	return true;
 }
 
 

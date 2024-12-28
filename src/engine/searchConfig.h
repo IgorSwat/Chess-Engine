@@ -28,6 +28,13 @@ constexpr Value MAX_EVAL = 1e4;
 constexpr Value NO_EVAL = MAX_EVAL + 1;
 
 
+// --------------------------------------------
+// Search parameters - move ordering heuristics
+// --------------------------------------------
+
+constexpr int MAX_NO_KILLERS = 2;
+
+
 // -------------------------------------
 // Search parameters - null move pruning
 // -------------------------------------

@@ -17,6 +17,11 @@ namespace Search {
         if (depth == 0)
             return evaluate();
 
+        // Before launching main search, reset all the necessary search stack data
+        for (int i = 0; i < MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1; i++) {
+            std::fill(searchStack[i].killers, searchStack[i].killers + MAX_NO_KILLERS, Move::null());
+        }
+
         Value score = search<ROOT_NODE, false>(-MAX_EVAL, MAX_EVAL, std::min(depth, static_cast<Depth>(MAX_SEARCH_DEPTH)));
         ssTop = searchStack;
 
@@ -81,7 +86,7 @@ namespace Search {
                 return entry->score;
 
             ttMove = entry->bestMove;
-            if (depth > 0 && ttMove != Move::null()) {
+            if (depth > 0 && ttMove != Move::null() && virtualBoard.fullLegalityTest(ttMove)) {
                 virtualBoard.makeMove(ttMove);
                 Value score = -search<PV_NODE, true>(-beta, -alpha, depth - 1);
                 virtualBoard.undoLastMove();
@@ -97,6 +102,9 @@ namespace Search {
                         CUT_NODE,
                         virtualBoard.halfmovesPlain()
                     }, rootAge);
+
+                    if (!ttMove.isCapture() && !ttMove.isPromotion() || SEE::evaluate(&virtualBoard, ttMove) < 0)
+                        saveKiller(ttMove);
 
                     return score;
                 }
@@ -229,11 +237,44 @@ namespace Search {
         if (ttMove != Move::null())
             moveSelector.exclude(ttMove);
         
+        // Exclude killer moves, since we already try them "out of order"
+        for (int i = 0; i < MAX_NO_KILLERS; i++) {
+            if (ssTop->killers[i] != Move::null())
+                moveSelector.exclude(ssTop->killers[i]);
+        }
+        
         // Stage 8 - main search loop
         // --------------------------
 
-        EnhancedMove move = moveSelector.next();
-        while (move != Move::null()) {
+        // Flow control variables
+        int nextKiller = 0;
+
+        EnhancedMove move;
+
+        while (true) {
+            move = moveSelector.next();
+
+            if (move == Move::null())
+                break;
+
+            // Stage 9 - killer move heuristic
+            // -------------------------------
+            
+            // We consider killer moves right after winning captures
+            if (nextKiller < MAX_NO_KILLERS && SEE::evaluate(&virtualBoard, move) <= 0) {
+                const Move& killer = ssTop->killers[nextKiller];
+
+                // Check legality of the killer move (full check, since killer might not even be pseudolegal in current position)
+                if (killer != Move::null() && virtualBoard.fullLegalityTest(killer)) {
+                    // Switch to the killer move
+                    move = killer;
+
+                    // Let's save generated move for later use
+                    moveSelector.restoreLastMove();
+                }
+
+                nextKiller++;
+            }
 
             // Stage 9 - futility pruning
             // --------------------------
@@ -241,12 +282,9 @@ namespace Search {
 
             if (depth == 1 && !virtualBoard.isInCheck() &&
                 !move.isCapture() && !move.isPromotion() && !virtualBoard.isCheck(move) &&
-                ssTop->staticEval + FUTILITY_MARGIN < alpha) {
-
-                move = moveSelector.next();
+                ssTop->staticEval + FUTILITY_MARGIN < alpha)
                 continue;
-            }
-
+            
             // Make move and evaluate further
             virtualBoard.makeMove(move);
             Value score = -search<PV_NODE, true>(-beta, -alpha, depth - 1);
@@ -267,6 +305,10 @@ namespace Search {
                     CUT_NODE,
                     virtualBoard.halfmovesPlain()
                 }, rootAge);
+
+                if (!move.isCapture() && !move.isPromotion() || SEE::evaluate(&virtualBoard, move) < 0)
+                    saveKiller(move);
+
                 return score;
             }
 
@@ -279,8 +321,6 @@ namespace Search {
                     ssTop->node = PV_NODE;
                 }
             }
-
-            move = moveSelector.next();
         }
 
         // Save search results in transposition table

@@ -33,29 +33,31 @@ int main()
 	// GUI::Textures::load_textures();		// Initialize textures
 	// std::unique_ptr<GUI::BoardController> gui = std::make_unique<GUI::BoardController>();	// Create gui object
 
-	// // Testers
-	// std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
-	// Search::Depth depth = 7;
-	// gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
-	// gui->runTesters(true);
+	// Testers
+	//std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
+	//Search::Depth depth = 7;
+	//gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
+	//gui->runTesters(true);
 
-	// gui->run();		// Run GUI
+	//gui->run();		// Run GUI
 
 	//tune(10, 10);
 
 	// BoardConfig board;
-	// board.loadPosition("rnbq1rk1/1p3pbp/3ppnp1/p1pP4/P1P5/2N1BNP1/1P2PPBP/R2QK2R w KQ - 0 10");
+	// board.loadPosition("r1bq2k1/ppppbrpp/8/3NPp1Q/4pB2/8/PPP2PPP/R3R1K1 b - - 3 15");
+
+	// std::cout << board.fullLegalityTest(Move(SQ_G7, SQ_G5, DOUBLE_PAWN_PUSH_FLAG)) << "\n";
+
 	// std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&board);
 	// evaluator->evaluate();
 
 	// MoveSelection::Selector selector(&board, evaluator.get(), MoveGeneration::CAPTURE, true);
 	// MoveSelection::improved_ordering(selector);
 
-	// selector.hasNext();
-
 	// Move move = selector.next();
 	// while (move != Move::null()) {
-	// 	std::cout << move << "\n";
+	// 	if (!board.fullLegalityTest(move))
+	// 		std::cout << "XD\n";
 	// 	move = selector.next();
 	// }
 

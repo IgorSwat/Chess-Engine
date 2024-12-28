@@ -75,7 +75,7 @@ namespace GUI {
 				// Update board image
 				auto [move, afterPromotion] = boardImage.update(event, mousePos, &board);
 				if (move != Move::null()) {
-					bool legal = board.legalityCheckFull(move);
+					bool legal = board.fullLegalityTest(move);
 					if (legal && move.isPromotion() && !afterPromotion)
 						boardImage.setupPromotionScreen(move);
 					else if (legal) {

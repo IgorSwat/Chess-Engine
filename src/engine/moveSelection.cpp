@@ -13,8 +13,10 @@ namespace MoveSelection {
     {
         while (true) {
             // Check if current bucket contains more moves
-            if (buckets[currentBucket])
-                return moves[Bitboards::pop_lsb(buckets[currentBucket]) + currentBatch * 64];
+            if (buckets[currentBucket]) {
+                lastMoveID = Bitboards::pop_lsb(buckets[currentBucket]);
+                return moves[lastMoveID + currentBatch * 64];
+            }
             
             // If no moves are present in a bucket, try to find appropriate move in the remaining portion of current batch
             // If you encounter moves from any other bucket, save them to speed up future selection
@@ -22,15 +24,17 @@ namespace MoveSelection {
                 EnhancedMove& move = *nextMove;
 
                 // Ignore illegal and excluded moves
-                if (!board->legalityCheckLight(move) || isExcluded(move)) {
+                if (!board->isLegal(move) || isExcluded(move)) {
                     nextMove++;
                     continue;
                 }
 
                 std::uint8_t bucketID = useStrategy ? strategy.evaluate(gen, move) : 0;
                 
-                if (bucketID == currentBucket)
+                if (bucketID == currentBucket) {
+                    lastMoveID = std::distance(sectionBegin, nextMove);
                     return *nextMove++;
+                }
                 else
                     buckets[bucketID] |= 0x1ULL << std::distance(sectionBegin, nextMove++);
             }
@@ -58,7 +62,7 @@ namespace MoveSelection {
         return Move::null();
     }
 
-    bool Selector::hasNext()
+    bool Selector::hasNext(bool test)
     {
         std::uint8_t tmp_bucket = currentBucket;
 

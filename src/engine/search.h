@@ -3,6 +3,7 @@
 #include "moveSelection.h"
 #include "evaluation.h"
 #include "searchConfig.h"
+#include <algorithm>
 #include <numeric>
 
 
@@ -90,6 +91,7 @@ namespace Search {
 
         // Search stack handlers
         void pushStack();
+        void saveKiller(const Move& move);
 
         // Virtual board
         BoardConfig virtualBoard;
@@ -118,6 +120,9 @@ namespace Search {
             Value score = -MAX_EVAL;
             Node node = ALL_NODE;
             Move bestMove = Move::null();
+
+            // Killer heuristic data
+            Move killers[MAX_NO_KILLERS] = {};
         };
 
         SearchInfo searchStack[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1] = {};
@@ -137,6 +142,12 @@ namespace Search {
         ssTop->node = ALL_NODE;
         ssTop->eval = ssTop->staticEval = NO_EVAL;
         ssTop->bestMove = Move::null();
+    }
+
+    inline void Crawler::saveKiller(const Move& move)
+    {
+        std::rotate(ssTop->killers, ssTop->killers + MAX_NO_KILLERS - 1, ssTop->killers + MAX_NO_KILLERS);
+        ssTop->killers[0] = move;
     }
 
 }

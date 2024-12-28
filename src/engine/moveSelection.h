@@ -33,7 +33,10 @@ namespace MoveSelection {
 
         // Generator-style opertions
         EnhancedMove next(bool useStrategy = true);
-        bool hasNext();
+        bool hasNext(bool test = true);
+
+        // Restoring last generated move
+        void restoreLastMove() { if (currentBucket != MAX_NO_BUCKETS) buckets[currentBucket] |= 0x1ULL << lastMoveID; }
 
         // Excluding moves
         void exclude(const Move& move) { excluded.push_back(move); }
@@ -130,6 +133,9 @@ namespace MoveSelection {
         Bucket buckets[MAX_NO_BUCKETS] = { 0 };
         std::uint8_t currentBucket = 0;
         std::uint8_t currentBatch = 0;
+        
+        // A relative index to current batch
+        std::uint8_t lastMoveID = 0;
     };
 
 

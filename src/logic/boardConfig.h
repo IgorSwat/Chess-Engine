@@ -90,9 +90,12 @@ public:
 	Bitboard pinnedPieces(Color side) const;	// Returns the pinned pieces of given color.
 	Bitboard pinningPieces(Color side) const;	// Returns the pieces of opposite color pinning pieces of given color.
 
-	// Move property issues
-	bool legalityCheckLight(const Move& move) const;	// For interactions with move generator, should be used ONLY for moves generated with movegen
-	bool legalityCheckFull(const Move& move) const;		// For interactions with GUI & external move source, should be used for external moves
+	// Move properties - legality checks
+	bool isLegal(const Move& move) const;			// Decides whether a pseudolegal move is legal (mostly about pins)
+	bool isPseudolegal(const Move& move) const;		// Decides whether move is pseudolegal
+	bool fullLegalityTest(const Move& move) const { return isPseudolegal(move) && isLegal(move); }
+
+	// Move properties - others
 	bool isCheck(const Move& move) const;
 
 	// Move-counting issues & others
@@ -225,7 +228,7 @@ inline bool BoardConfig::isCastlingPathClear(CastleType castle) const
 
 inline bool BoardConfig::isInCheck(Color side) const
 {
-	return side == sideOnMove && posInfo->checkers != 0;
+	return side == sideOnMove && posInfo->checkers;
 }
 
 inline bool BoardConfig::isInCheck() const

@@ -263,7 +263,7 @@ namespace MoveGeneration {
 			generate_moves<PSEUDO_LEGAL>(board, moveList);
 
 		EnhancedMove* legalsEnd = std::partition(moveList.begin(), moveList.end(), 
-										 		 [&board](const Move& move) {return board.legalityCheckLight(move);});
+										 		 [&board](const Move& move) {return board.isLegal(move);});
 		moveList.setEnd(legalsEnd);
 	}
 
@@ -285,7 +285,9 @@ namespace MoveGeneration {
 		if (board.onSquare(to) != NO_PIECE && color_of(board.onSquare(to)) != color_of(piece))
 			mask |= CAPTURE_FLAG;
 		if (type_of(piece) == PAWN) {
-			if (file_of(from) != file_of(to) && board.onSquare(to) == NO_PIECE)
+			Direction forward = color_of(piece) == WHITE ? NORTH : SOUTH;
+
+			if (file_of(from) != file_of(to) && to == board.enpassantSquare() + forward)
 				mask |= ENPASSANT_FLAG;
 			else if ((rank_of(to) - rank_of(from)) % 2 == 0)
 				mask |= DOUBLE_PAWN_PUSH_FLAG;
