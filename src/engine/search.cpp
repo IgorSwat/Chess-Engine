@@ -74,6 +74,7 @@ namespace Search {
         const TranspositionTable::Entry* entry = tTable->probe(virtualBoard.hash(), virtualBoard.pieces());
 
         if (entry) {
+            // Debug info
             if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE) {
                 std::cout << "[TestEngine]: found existing entry in T.Table: [score: " << std::dec << relative_score(entry->score, &virtualBoard);
                 std::cout << ", type: " << int(entry->typeOfNode) << ", best " << entry->bestMove << "]\n";
@@ -103,7 +104,7 @@ namespace Search {
                         virtualBoard.halfmovesPlain()
                     }, rootAge);
 
-                    if (!ttMove.isCapture() && !ttMove.isPromotion() || SEE::evaluate(&virtualBoard, ttMove) < 0)
+                    if (ttMove.isQuiet() || SEE::evaluate(&virtualBoard, ttMove) < 0)
                         saveKiller(ttMove);
 
                     return score;
@@ -237,12 +238,6 @@ namespace Search {
         if (ttMove != Move::null())
             moveSelector.exclude(ttMove);
         
-        // Exclude killer moves, since we already try them "out of order"
-        for (int i = 0; i < MAX_NO_KILLERS; i++) {
-            if (ssTop->killers[i] != Move::null())
-                moveSelector.exclude(ssTop->killers[i]);
-        }
-        
         // Stage 8 - main search loop
         // --------------------------
 
@@ -265,12 +260,15 @@ namespace Search {
                 const Move& killer = ssTop->killers[nextKiller];
 
                 // Check legality of the killer move (full check, since killer might not even be pseudolegal in current position)
-                if (killer != Move::null() && virtualBoard.fullLegalityTest(killer)) {
+                if (killer != Move::null() && killer != move && virtualBoard.fullLegalityTest(killer)) {
+                    // Let's save generated move for later use
+                    moveSelector.restoreLastMove();
+
                     // Switch to the killer move
                     move = killer;
 
-                    // Let's save generated move for later use
-                    moveSelector.restoreLastMove();
+                    // Exclude killer move from selection to avoid repeating the same move later
+                    moveSelector.exclude(killer);
                 }
 
                 nextKiller++;
@@ -306,7 +304,7 @@ namespace Search {
                     virtualBoard.halfmovesPlain()
                 }, rootAge);
 
-                if (!move.isCapture() && !move.isPromotion() || SEE::evaluate(&virtualBoard, move) < 0)
+                if (move.isQuiet() || SEE::evaluate(&virtualBoard, move) < 0)
                     saveKiller(move);
 
                 return score;

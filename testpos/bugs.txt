@@ -1,6 +1,4 @@
-r4rk1/p2q1pbp/1p2p1pB/2p5/2P1b3/1P1P4/1P1Q1PPP/R4RK1 w - - 0 19
-    - A bug occuring in Rad1 line, showing Bxh6 as only -60 with best move Rda1 (???)
-    - Moves: Rad1 Bxh6 Rda1 Bxd3 f4 Bxf1 Qxd7 (losing a queen?)
-    - Position before Bxf1: 14781787240655281707, 7037386807969499745
-    - Position before Qxd7: 4444373371037563675, 7037386807968975457
-    - Position after Qxd7: (already quiescence)
+r2qk2r/1p2npbp/p1n1p1p1/2Pp4/N2P2P1/4BB1P/PP3P2/R2Q1RK1 b kq - 0 14
+- A bug at depth 8: after h5 Nb6 hxg4 hxg4 Qc7 Re1 Nxd4 Bxd4 Qh7 it says it is mate (but it's not)
+- even at r3k2r/1pq1npb1/pNn1p1p1/2Pp4/3P2P1/4BB2/PP3P2/R2Q1RK1 w kq - 1 17 should work
+- 8a2dc11ce5c8c72, 9172530c4820a359

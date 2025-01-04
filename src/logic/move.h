@@ -18,9 +18,10 @@ constexpr int MOVEMASK_SIZE = 16;
 constexpr Movemask SPECIAL1_FLAG = 0x1;
 constexpr Movemask SPECIAL2_FLAG = 0x2;
 constexpr Movemask CAPTURE_FLAG = 0x4;
-constexpr Movemask EXTENDED_CAPTURE_FLAG = 0x4000;
 constexpr Movemask PROMOTION_FLAG = 0x8;
+constexpr Movemask EXTENDED_CAPTURE_FLAG = 0x4000;
 constexpr Movemask EXTENDED_PROMOTION_FLAG = 0x8000;
+constexpr Movemask NON_QUIET_MASK = EXTENDED_CAPTURE_FLAG | EXTENDED_PROMOTION_FLAG;
 
 constexpr Movemask QUIET_MOVE_FLAG = 0x0;
 constexpr Movemask DOUBLE_PAWN_PUSH_FLAG = 0x1;
@@ -76,6 +77,7 @@ public:
 	MoveType type() const { return MOVES_BY_FLAG[flags()]; }
 	bool isCapture() const { return m_move & EXTENDED_CAPTURE_FLAG; }
 	bool isPromotion() const { return m_move & EXTENDED_PROMOTION_FLAG; }
+	bool isQuiet() const { return !(m_move & NON_QUIET_MASK); }
 	bool isDoublePawnPush() const { return flags() == DOUBLE_PAWN_PUSH_FLAG; }
 	bool isEnpassant() const { return flags() == ENPASSANT_FLAG; }
 	bool isCastle() const { return flags() == KINGSIDE_CASTLE_FLAG || flags() == QUEENSIDE_CASTLE_FLAG; }

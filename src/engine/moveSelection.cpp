@@ -14,8 +14,16 @@ namespace MoveSelection {
         while (true) {
             // Check if current bucket contains more moves
             if (buckets[currentBucket]) {
-                lastMoveID = Bitboards::pop_lsb(buckets[currentBucket]);
-                return moves[lastMoveID + currentBatch * 64];
+                const std::uint8_t index = Bitboards::pop_lsb(buckets[currentBucket]);
+                const EnhancedMove& move = moves[index + currentBatch * 64];
+
+                // Check for the case where move is excluded after some selection already being done
+                if (!isExcluded(move)) {
+                    lastMoveID = index;
+                    return move;
+                }
+                else
+                    continue;
             }
             
             // If no moves are present in a bucket, try to find appropriate move in the remaining portion of current batch

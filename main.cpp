@@ -33,13 +33,13 @@ int main()
 	// GUI::Textures::load_textures();		// Initialize textures
 	// std::unique_ptr<GUI::BoardController> gui = std::make_unique<GUI::BoardController>();	// Create gui object
 
-	// Testers
-	//std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
-	//Search::Depth depth = 7;
-	//gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
-	//gui->runTesters(true);
+	// // Testers
+	// std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
+	// Search::Depth depth = 7;
+	// gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
+	// gui->runTesters(true);
 
-	//gui->run();		// Run GUI
+	// gui->run();		// Run GUI
 
 	//tune(10, 10);
 
