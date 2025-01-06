@@ -2,7 +2,12 @@
 
 #include <cinttypes>
 #include <cctype>
+#include <iostream>
 
+
+// -------------------
+// Bitboard definition
+// -------------------
 
 using Bitboard = uint64_t;
 
@@ -90,6 +95,13 @@ inline Bitboard operator^=(Bitboard& bb, Square sq)
 {
 	bb ^= square_to_bb(sq);
 	return bb;
+}
+
+inline std::ostream& operator<<(std::ostream& os, Square sq)
+{
+	os << char('a' + file_of(sq)) << char('1' + rank_of(sq));
+
+	return os;
 }
 
 

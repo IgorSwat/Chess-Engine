@@ -2,7 +2,7 @@
 
 #include "moveSelection.h"
 #include "evaluation.h"
-#include "searchConfig.h"
+#include "history.h"
 #include <algorithm>
 #include <numeric>
 
@@ -59,12 +59,12 @@ namespace Search {
     class Crawler
     {
     public:
-        Crawler(TranspositionTable* tTable) 
-            : virtualBoard(), evaluator(&this->virtualBoard), tTable(tTable), 
+        Crawler(TranspositionTable* tTable, History* history) 
+            : virtualBoard(), evaluator(&this->virtualBoard), tTable(tTable), history(history),
               ssTop(searchStack) {}
 
         // Position setup
-        void setPosition(BoardConfig* board) { virtualBoard.loadPosition(*board); rootAge = virtualBoard.halfmovesPlain(); }
+        void setPosition(const BoardConfig* board) { virtualBoard.loadPosition(*board); rootAge = virtualBoard.halfmovesPlain(); }
         void setPosition(const std::string& fen) { virtualBoard.loadPosition(fen); rootAge = virtualBoard.halfmovesPlain(); }
 
         // Position getters
@@ -101,6 +101,9 @@ namespace Search {
 
         // Transposition table connection
         TranspositionTable* tTable;
+
+        // History table connection
+        History* history;
 
         // Root position details
         Age rootAge = 0;

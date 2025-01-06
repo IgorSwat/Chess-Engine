@@ -26,13 +26,18 @@ namespace MoveSelection {
     {
     public:
         Selector(const BoardConfig* board, const Evaluation::Evaluator* evaluator = nullptr,
-                 MoveGeneration::Phase gen = MoveGeneration::PSEUDO_LEGAL,
-                 bool cascade = true)
+                 MoveGeneration::Phase gen = MoveGeneration::PSEUDO_LEGAL)
             : board(board), evaluator(evaluator),
-              cascade(cascade), gen(gen), strategy(this) { generateMoves(); }
+              gen(gen), strategy(this) { generateMoves(); }
+
+        // Selector behavior - generation phase switch strategy
+        // - STRICT: Select moves only from current generation phase
+        // - PARTIAL_CASCADE: Similar to STRICT, but changes the generation phase after first null move return (it works once per phase)
+        // - FULL_CASCADE: Always changes generation phase and continues selection if there are no more moves from current phase
+        enum Mode : std::uint8_t { STRICT = 0, PARTIAL_CASCADE, FULL_CASCADE };
 
         // Generator-style opertions
-        EnhancedMove next(bool useStrategy = true);
+        EnhancedMove next(Mode mode = FULL_CASCADE, bool useStrategy = true);
         bool hasNext(bool test = true);
 
         // Restoring last generated move
@@ -48,11 +53,6 @@ namespace MoveSelection {
 
         // Getters and setters for private fields
         MoveGeneration::Phase phase() const { return gen; }
-
-        // Customizable selector behavior - phase change
-        // ---------------------------------------------
-
-        bool cascade;
 
         // Customizable selector behavior - selection strategy
         // ---------------------------------------------------

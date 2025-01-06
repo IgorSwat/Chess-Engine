@@ -10,11 +10,17 @@
 void Engine::setPosition(BoardConfig* board)
 {
     crawler.setPosition(board);
+
+    // Reset shared resources
+    history.reset();
 }
 
 void Engine::setPosition(const std::string& fen)
 {
     crawler.setPosition(fen);
+
+    // Reset shared resources
+    history.reset();
 }
 
 // Returns a relative score - to transform it back to absolute score you need to apply relative_score() again
@@ -38,6 +44,9 @@ Value Engine::evaluate(Search::Depth depth)
             std::cout << std::dec << "Score: " << Search::relative_score(entry->score, board);
             std::cout << ", Type: " << int(entry->typeOfNode) << ", Best move: " << entry->bestMove << "\n";
         }
+
+        // showHistory();
+
         return score;
     }
     
@@ -69,4 +78,16 @@ Value Engine::iterativeDeepening(Search::Depth depth)
 const TranspositionTable* Engine::transpositionTable() const
 {
     return &tTable;
+}
+
+// TMP
+void Engine::showHistory() const
+{
+    for (int i = 0; i < PIECE_RANGE; i++) {
+        std::cout << "Piece " << i << ":\n";
+        for (int sq = 0; sq < SQUARE_RANGE; sq++) {
+            if (history.score(Piece(i), Square(sq)) != 0)
+                std::cout << "\t" << Square(sq) << ": " << history.score(Piece(i), Square(sq)) << "\n";
+        }
+    }
 }

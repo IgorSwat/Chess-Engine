@@ -9,7 +9,7 @@ namespace MoveSelection {
     // Selector methods - generator-style opertions
     // --------------------------------------------
 
-    EnhancedMove Selector::next(bool useStrategy)
+    EnhancedMove Selector::next(Mode mode, bool useStrategy)
     {
         while (true) {
             // Check if current bucket contains more moves
@@ -59,10 +59,11 @@ namespace MoveSelection {
             if (sectionBegin == sectionEnd) {
                 gen = gen == MoveGeneration::CAPTURE ? MoveGeneration::QUIET_CHECK :
                       gen == MoveGeneration::QUIET_CHECK ? MoveGeneration::QUIET : MoveGeneration::NONE;
-                
-                if (cascade && gen != MoveGeneration::NONE)
+
+                if (mode != STRICT && gen != MoveGeneration::NONE)
                     generateMoves();
-                else
+                
+                if (mode != FULL_CASCADE || gen == MoveGeneration::NONE)
                     break;
             }
         }
@@ -75,7 +76,7 @@ namespace MoveSelection {
         std::uint8_t tmp_bucket = currentBucket;
 
         currentBucket = 0;
-        EnhancedMove move = next(false);    // Equivalent to using SIMPLE_ORDERING
+        EnhancedMove move = next(FULL_CASCADE, false);    // Equivalent to using SIMPLE_ORDERING
 
         if (move == Move::null())
             return false;

@@ -34,6 +34,9 @@ constexpr Value NO_EVAL = MAX_EVAL + 1;
 
 constexpr int MAX_NO_KILLERS = 2;
 
+constexpr int MAX_HISTORY = 1e7;
+constexpr int HISTORY_FACTOR = 25;
+constexpr int MAX_NO_STORED_QUIETS = 64;
 
 // -------------------------------------
 // Search parameters - null move pruning

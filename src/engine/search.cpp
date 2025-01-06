@@ -104,8 +104,13 @@ namespace Search {
                         virtualBoard.halfmovesPlain()
                     }, rootAge);
 
+                    // Killer heuristic update
                     if (ttMove.isQuiet() || SEE::evaluate(&virtualBoard, ttMove) < 0)
                         saveKiller(ttMove);
+                    
+                    // History heuristic update
+                    if (ttMove.isQuiet())
+                        history->update(&virtualBoard, ttMove, HISTORY_FACTOR * depth * depth);
 
                     return score;
                 }
@@ -149,7 +154,7 @@ namespace Search {
         if constexpr (false && nmpAvailable) {
             // Null move pruning failes in zugzwang, so we want to avoid using it in late endgames, where zugzwang positions are most common.
             if (!virtualBoard.isInCheck() && virtualBoard.gameStage() > Evaluation::SINGLE_ROOK_VS_ROOK_ENDGAME) {
-                int threats = evaluator.threatCount[virtualBoard.movingSide()];
+                int threats = evaluator.e_countThreatsAgainst_c(virtualBoard.movingSide());
                 Value betterEval = ssTop->eval != NO_EVAL ? ssTop->eval : ssTop->staticEval;
 
                 if (depth > 1 && threats == 0 && betterEval - NPM_ACTIVATION_THRESHOLD > beta) {
@@ -184,12 +189,11 @@ namespace Search {
         // 1. Generate moves according to current position, depth and strategy
 
         MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
-            ssTop->ply < 3 ? MoveGeneration::LEGAL : 
-            virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE, 
-            true
+            ssTop->ply < 1 ? MoveGeneration::LEGAL : 
+            virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE
         );
 
-        if (ssTop->ply < 3) {
+        if (ssTop->ply < 1) {
             // Sort moves by static evaluation of the following position
             moveSelector.sort([this](const EnhancedMove& move) -> int32_t {
                 this->virtualBoard.makeMove(move);
@@ -242,14 +246,24 @@ namespace Search {
         // --------------------------
 
         // Flow control variables
+        EnhancedMove move;
         int nextKiller = 0;
 
-        EnhancedMove move;
+        // Quiets historical list (history heuristic)
+        LightList<Move, MAX_NO_STORED_QUIETS> quiets;
+
+        if (ttMove != Move::null())
+            quiets.push_back(ttMove);
 
         while (true) {
-            move = moveSelector.next();
+            move = moveSelector.next(MoveSelection::Selector::PARTIAL_CASCADE);
 
-            if (move == Move::null())
+            if (move == Move::null() && (moveSelector.phase() == MoveGeneration::QUIET_CHECK || 
+                                         moveSelector.phase() == MoveGeneration::QUIET)) {
+                moveSelector.sort([this](const Move& move) -> int32_t { return this->history->score(&this->virtualBoard, move); });
+                continue;
+            }
+            else if (move == Move::null())
                 break;
 
             // Stage 9 - killer move heuristic
@@ -304,11 +318,24 @@ namespace Search {
                     virtualBoard.halfmovesPlain()
                 }, rootAge);
 
+                // Killer heuristic update
                 if (move.isQuiet() || SEE::evaluate(&virtualBoard, move) < 0)
                     saveKiller(move);
+                
+                // History heuristic update
+                if (move.isQuiet()) {
+                    // Give bonus for move that caused cut-off
+                    history->update(&virtualBoard, move, HISTORY_FACTOR * depth * depth);
+
+                    // Give penalty for all previously searched quiet moves
+                    for (const Move& quiet : quiets)
+                        history->update(&virtualBoard, quiet, -HISTORY_FACTOR * depth * depth * depth / (ssTop->ply + 1));
+                }
 
                 return score;
             }
+            else if (move.isQuiet() && quiets.size() < MAX_NO_STORED_QUIETS)
+                quiets.push_back(move);
 
             // PV node - a move that is better for moving side than previous best one
             if (score > ssTop->score) {
@@ -357,8 +384,7 @@ namespace Search {
         }
 
         MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
-                                             virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE,
-                                             true);
+                                             virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE);
 
         // Detect mate, stealmate and other types of draw
         if (!moveSelector.hasNext()) {
@@ -388,23 +414,20 @@ namespace Search {
 
         // Check all "good" captures which could boost the score near the alpha (upper bound) region
         if (moveSelector.phase() >= MoveGeneration::CAPTURE) {
-            // Do not go beyond captures
-            moveSelector.cascade = false;
-
             // Experimental - sort moves by SEE at initial quiescence depth
             if constexpr (node == ROOT_NODE)
                 moveSelector.sort([this](const Move& move) { return SEE::evaluate(&this->virtualBoard, move); }, EnhancementMode::PURE_SEE);
             else
                 MoveSelection::improved_ordering(moveSelector);
 
-            move = moveSelector.next();
+            move = moveSelector.next(MoveSelection::Selector::STRICT);
             while (SEE::evaluate_save(&virtualBoard, move) > 0) {
                 // Delta pruning
                 if (ssTop->staticEval + move.see() + DELTA_MARGIN < alpha && moveSelector.phase() != MoveGeneration::CHECK_EVASION) {
                     if constexpr (node == ROOT_NODE)
                         break;
                     else {
-                        move = moveSelector.next();
+                        move = moveSelector.next(MoveSelection::Selector::STRICT);
                         continue;
                     }
                 }
@@ -423,7 +446,7 @@ namespace Search {
                         alpha = score;
                 }
                 
-                move = moveSelector.next();
+                move = moveSelector.next(MoveSelection::Selector::STRICT);
             }
         }
 
@@ -432,14 +455,11 @@ namespace Search {
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
         if (ssTop->staticEval + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {
-            // Try checks and quiet moves after captures if needed
-            moveSelector.cascade = true;
-
             if constexpr (node != ROOT_NODE)
                 MoveSelection::simple_ordering(moveSelector);
 
             if (move == Move::null())
-                move = moveSelector.next();
+                move = moveSelector.next(MoveSelection::Selector::FULL_CASCADE);
             while (move != Move::null()) {
                 PieceType pType = type_of(virtualBoard.onSquare(move.to()));
                 Bitboard attacks = pType == NULL_TYPE ? 0 :
@@ -466,7 +486,7 @@ namespace Search {
                     }
                 }
 
-                move = moveSelector.next();
+                move = moveSelector.next(MoveSelection::Selector::FULL_CASCADE);
             }
 
             return ssTop->score;

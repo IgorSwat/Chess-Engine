@@ -12,7 +12,7 @@
 class Engine
 {
 public:
-    Engine() : tTable(), crawler(&this->tTable) {}
+    Engine() : crawler(&this->tTable, &this->history) {}
 
     // Setup
     void setPosition(BoardConfig* board);
@@ -25,9 +25,14 @@ public:
     // Getters
     const TranspositionTable* transpositionTable() const;
 
+    // [TESTING PURPOSES]
+    // TMP
+    void showHistory() const;
+
 private:
     // Shared modules
     TranspositionTable tTable;
+    Search::History history;
 
     // Search crawlers
     Search::Crawler crawler;    // For now we use 1 crawler as we use only 1 thread on search
