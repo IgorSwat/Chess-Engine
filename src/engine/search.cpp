@@ -189,11 +189,11 @@ namespace Search {
         // 1. Generate moves according to current position, depth and strategy
 
         MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
-            ssTop->ply < 1 ? MoveGeneration::LEGAL : 
+            ssTop->ply == 0 ? MoveGeneration::LEGAL : 
             virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE
         );
 
-        if (ssTop->ply < 1) {
+        if (ssTop->ply == 0) {
             // Sort moves by static evaluation of the following position
             moveSelector.sort([this](const EnhancedMove& move) -> int32_t {
                 this->virtualBoard.makeMove(move);
@@ -229,20 +229,8 @@ namespace Search {
 
         if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE)
             std::cout << "Analyzing the following moves:\n";
-
-        // Stage 7 - move ordering strategies
-        // ----------------------------------
-
-        if (ssTop->ply >= 3 && virtualBoard.gameStage() > 80)
-            MoveSelection::improved_ordering(moveSelector);
-        else if (ssTop->ply >= 3)
-            MoveSelection::standard_ordering(moveSelector);
-
-        // Avoid repeating of transposition table suggestion
-        if (ttMove != Move::null())
-            moveSelector.exclude(ttMove);
         
-        // Stage 8 - main search loop
+        // Stage 7 - main search loop
         // --------------------------
 
         // Flow control variables
@@ -252,21 +240,54 @@ namespace Search {
         // Quiets historical list (history heuristic)
         LightList<Move, MAX_NO_STORED_QUIETS> quiets;
 
-        if (ttMove != Move::null())
-            quiets.push_back(ttMove);
+        if (ttMove != Move::null()) {
+            moveSelector.exclude(ttMove);
+
+            if (ttMove.isQuiet())
+                quiets.push_back(ttMove);
+        }
 
         while (true) {
+
+            // Stage 8 - move ordering strategies
+            // ----------------------------------
+
+            if (move == Move::null() && moveSelector.phase() == MoveGeneration::CAPTURE) {
+                moveSelector.sort([this](const Move& move) -> int32_t {
+                    return 1 * SEE::evaluate(&this->virtualBoard, move) +
+                           64 * this->evaluator.e_isAvoidingThreats_c(move);
+                });
+            }
+
+            else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET_CHECK) {
+                moveSelector.sort([this, depth](const Move& move) -> int32_t {
+                    return 1 * this->history->score(&this->virtualBoard, move) +
+                           24 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move) +
+                           64 * (this->ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
+                           128 * (this->ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
+                });
+            }
+
+            else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET) {
+                moveSelector.sort([this, depth](const Move& move) -> int32_t {
+                    return 1 * this->history->score(&this->virtualBoard, move) +
+                           32 * (ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move) +
+                           32 * (ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
+                           128 * (ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
+                });
+            }
+
+            // Stage 9 - move probe
+            // --------------------
+
             move = moveSelector.next(MoveSelection::Selector::PARTIAL_CASCADE);
 
-            if (move == Move::null() && (moveSelector.phase() == MoveGeneration::QUIET_CHECK || 
-                                         moveSelector.phase() == MoveGeneration::QUIET)) {
-                moveSelector.sort([this](const Move& move) -> int32_t { return this->history->score(&this->virtualBoard, move); });
+            if (move == Move::null() && moveSelector.phase() != MoveGeneration::NONE)
                 continue;
-            }
             else if (move == Move::null())
                 break;
 
-            // Stage 9 - killer move heuristic
+            // Stage 10 - killer move heuristic
             // -------------------------------
             
             // We consider killer moves right after winning captures
@@ -288,7 +309,7 @@ namespace Search {
                 nextKiller++;
             }
 
-            // Stage 9 - futility pruning
+            // Stage 11 - futility pruning
             // --------------------------
             // 1. Discard quiet moves with no perspective of raising alpha
 

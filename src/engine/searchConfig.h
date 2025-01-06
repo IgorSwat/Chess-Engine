@@ -28,13 +28,15 @@ constexpr Value MAX_EVAL = 1e4;
 constexpr Value NO_EVAL = MAX_EVAL + 1;
 
 
-// --------------------------------------------
-// Search parameters - move ordering heuristics
-// --------------------------------------------
+// ---------------------------------
+// Search parameters - move ordering
+// ---------------------------------
 
+// Killer heuristic
 constexpr int MAX_NO_KILLERS = 2;
 
-constexpr int MAX_HISTORY = 1e7;
+// History heuristic
+constexpr int MAX_HISTORY = 1e6;
 constexpr int HISTORY_FACTOR = 25;
 constexpr int MAX_NO_STORED_QUIETS = 64;
 
