@@ -22,9 +22,10 @@ int main()
 	
 	//tester.test(Testing::perftMovegenTestEndgamePos, Testing::perftMovegenTestMidgamePos2, Testing::pinsAndChecksTest);
 	//tester.test(Testing::searchTest1);
-	tester.test(Testing::searchMultiTest);
+	//tester.test(Testing::searchMultiTest);
 	//tester.test(Testing::seeTest);
 	//tester.test(Testing::moveSortingTest);
+	tester.test(Testing::search_quality_test);
 
 	// ----------------
 	// Testing with GUI

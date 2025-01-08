@@ -8,11 +8,11 @@ namespace Testing {
 	// PGN parsing tester class
 	// ------------------------
 
-    class PgnParsingTester : public PgnParser
+    class PgnParsingTester : public Utilities::Parsing::PgnParser
     {
     public:
         PgnParsingTester(const std::string& pgnFilePath, BoardConfig* board, std::initializer_list<Move> expectedMoves)
-            : PgnParser(pgnFilePath, board), expectedMoves(expectedMoves), currentMoveIt(this->expectedMoves.begin()) {}
+            : Utilities::Parsing::PgnParser(pgnFilePath, board), expectedMoves(expectedMoves), currentMoveIt(this->expectedMoves.begin()) {}
 
         bool processNext() override
         {
@@ -20,7 +20,7 @@ namespace Testing {
             {
                 assert(parseToNextMove());
                 std::string notation = parseMove();
-                Move move = moveFromNotation(notation);
+                Move move = Utilities::Parsing::parse_move(*board, notation);
 
                 assert(move == *currentMoveIt);
                 std::cout << "Succesfully parsed: " << move << "\n";
@@ -35,7 +35,7 @@ namespace Testing {
 
         void reset() override
         {
-            PgnParser::reset();
+            Utilities::Parsing::PgnParser::reset();
             currentMoveIt = expectedMoves.begin();
         }
 

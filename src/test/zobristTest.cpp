@@ -11,14 +11,14 @@ namespace Testing {
 	// Zobrist tester class
 	// --------------------
 
-	class PgnZobristTester : public PgnParser
+	class PgnZobristTester : public Utilities::Parsing::PgnParser
 	{
 	public:
-		PgnZobristTester(const std::string& pgnFilePath, BoardConfig* board) : PgnParser(pgnFilePath, board) {}
+		PgnZobristTester(const std::string& pgnFilePath, BoardConfig* board) : Utilities::Parsing::PgnParser(pgnFilePath, board) {}
 
 		bool processNext() override {
 			// Try to load new move
-			if (!PgnParser::processNext())
+			if (!Utilities::Parsing::PgnParser::processNext())
 				return false;
 
 			// Compare statically and dynamically generated zobrist hash

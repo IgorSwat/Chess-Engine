@@ -1,3 +1,5 @@
+#pragma once
+
 #include "searchConfig.h"
 #include "../logic/boardConfig.h"
 #include <algorithm>
@@ -19,6 +21,8 @@ namespace Search {
         using Score = std::int32_t;
 
         void reset() { for (int i = 0; i < PIECE_RANGE; i++) std::fill(table[i], table[i] + SQUARE_RANGE, 0); }
+        void flatten() { for (int i = 0; i < PIECE_RANGE; i++) for (int j = 0; j < SQUARE_RANGE; j++) table[i][j] /= 2; }
+
         void update(Piece piece, Square to, Score bonus) {
             Score clamped = std::clamp(bonus, -MAX_HISTORY, MAX_HISTORY);
             table[piece][to] += clamped - table[piece][to] * std::abs(clamped) / MAX_HISTORY;   // History gravity formula

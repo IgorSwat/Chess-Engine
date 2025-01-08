@@ -8,6 +8,7 @@
 
 namespace Utilities {
     
-    std::string readFile(const std::string &filePath);
+    // Loads file to memory and converts to string representation
+    std::string read_file(const std::string &filePath);
     
 }

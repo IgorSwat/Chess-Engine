@@ -13,6 +13,7 @@ void Engine::setPosition(BoardConfig* board)
 
     // Reset shared resources
     history.reset();
+    //history.flatten();
 }
 
 void Engine::setPosition(const std::string& fen)
@@ -21,6 +22,7 @@ void Engine::setPosition(const std::string& fen)
 
     // Reset shared resources
     history.reset();
+    //history.flatten();
 }
 
 // Returns a relative score - to transform it back to absolute score you need to apply relative_score() again

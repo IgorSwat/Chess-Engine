@@ -104,4 +104,5 @@ namespace Testing {
 	// Search tests
 	void searchTest1();
 	void searchMultiTest();
+	void search_quality_test();
 }

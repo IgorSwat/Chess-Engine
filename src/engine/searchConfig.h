@@ -13,7 +13,7 @@ enum SearchMode {
     STATS
 };
 
-constexpr SearchMode SEARCH_MODE = STATS;
+constexpr SearchMode SEARCH_MODE = STANDARD;
 
 
 // ---------------------------------

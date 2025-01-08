@@ -1,5 +1,6 @@
 #include "test.h"
 #include "../engine/engine.h"
+#include "../utilities/parsing.h"
 #include <fstream>
 #include <chrono>
 #include <memory>
@@ -89,7 +90,7 @@ namespace Testing {
             "8/4kbp1/5p2/5Q1p/8/8/5K2/8 w - - 1 51",                                    // Endgame position, complex
         };
 
-        const Search::Depth depth = 8;
+        const Search::Depth depth = 7;
 
         int id = 0;
         for (const std::string& fen : positions) {
@@ -102,6 +103,75 @@ namespace Testing {
             engine->evaluate(depth);
             std::cout << "\n";
         }
+    }
+
+    void search_quality_test()
+    {
+        // Each case is a (position, moves) pair, where moves is a list of moves and points associated with them
+        // Engine can score max 10 points for pointing out given move as the best in the position
+        // If best move is not mentioned on appropriate list, then it scores 0 points
+
+        BoardConfig board;
+        std::unique_ptr<Engine> engine = std::make_unique<Engine>();
+        
+        std::ifstream file("testpos/search-quality-test.txt");
+
+        const Search::Depth depth = 7;
+
+        int totalScore = 0, maxPossibleScore = 0, totalTests = 0;
+        std::chrono::duration<double> totalSearchTime;
+
+        while (!file.eof()) {
+            totalTests++;
+            maxPossibleScore += 10;
+
+            int noMoves;
+            file >> noMoves;
+
+            std::string fen;
+            file.get();
+            std::getline(file, fen);
+
+            board.loadPosition(fen);
+            engine->setPosition(&board);
+
+            auto start = std::chrono::steady_clock::now();
+            engine->evaluate(depth);
+            auto end = std::chrono::steady_clock::now();
+
+            const TranspositionTable::Entry* entry = engine->transpositionTable()->probe(board.hash(), board.pieces());
+
+            if (entry == nullptr)
+                maxPossibleScore -= 10;
+            else
+                totalSearchTime += (end - start);
+
+            std::string moveNotation;
+            int score;
+            bool accepted = false;
+
+            for (int i = 0; i < noMoves; i++) {
+                file >> moveNotation;
+                file >> score;
+                
+                Move move = Utilities::Parsing::parse_move(board, moveNotation);
+
+                if (i == 0 && entry != nullptr)
+                    std::cout << std::dec << "Test " << totalTests << "  |  best: " << move << "  |  found: " << entry->bestMove << "\n";
+                else if (i == 0 && entry == nullptr)
+                    std::cout << std::dec << "Test " << totalTests << ": no transposition table entry available\n";
+
+                if (!accepted && entry != nullptr && move == entry->bestMove) {
+                    totalScore += score;
+                    accepted = true;
+                }
+            }
+        }
+
+        std::cout << std::dec << "---------------------------------------------------\n";
+        std::cout << "Test cases: " << totalTests << "\n";
+        std::cout << "Total score: " << totalScore << "/" << maxPossibleScore << " (" << totalScore * 100 / maxPossibleScore << "%)\n";
+        std::cout << "Total search time: " << totalSearchTime.count() << " seconds \n";
     }
 
 }

@@ -3,7 +3,7 @@
 
 namespace Utilities {
 
-    std::string readFile(const std::string &filePath)
+    std::string read_file(const std::string &filePath)
     {
         std::ifstream file(filePath); // File is automatically closed by ifstream's destructor
         if (!file.is_open())

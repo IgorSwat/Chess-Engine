@@ -271,9 +271,17 @@ namespace Search {
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET) {
                 moveSelector.sort([this, depth](const Move& move) -> int32_t {
                     return 1 * this->history->score(&this->virtualBoard, move) +
-                           32 * (ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move) +
-                           32 * (ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
-                           128 * (ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
+                           32 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move) +
+                           32 * (this->ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
+                           128 * (this->ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
+                });
+            }
+
+            else if (move == Move::null() && moveSelector.phase() == MoveGeneration::CHECK_EVASION) {
+                moveSelector.sort([this, depth](const Move& move) -> int32_t {
+                    return 10000 * SEE::evaluate(&this->virtualBoard, move) +
+                           1 * this->history->score(&this->virtualBoard, move) +
+                           64 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move);
                 });
             }
 
@@ -288,7 +296,7 @@ namespace Search {
                 break;
 
             // Stage 10 - killer move heuristic
-            // -------------------------------
+            // --------------------------------
             
             // We consider killer moves right after winning captures
             if (nextKiller < MAX_NO_KILLERS && SEE::evaluate(&virtualBoard, move) <= 0) {
@@ -310,7 +318,7 @@ namespace Search {
             }
 
             // Stage 11 - futility pruning
-            // --------------------------
+            // ---------------------------
             // 1. Discard quiet moves with no perspective of raising alpha
 
             if (depth == 1 && !virtualBoard.isInCheck() &&
