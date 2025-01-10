@@ -285,9 +285,6 @@ namespace Search {
                 });
             }
 
-            // Stage 9 - move probe
-            // --------------------
-
             move = moveSelector.next(MoveSelection::Selector::PARTIAL_CASCADE);
 
             if (move == Move::null() && moveSelector.phase() != MoveGeneration::NONE)
@@ -295,7 +292,7 @@ namespace Search {
             else if (move == Move::null())
                 break;
 
-            // Stage 10 - killer move heuristic
+            // Stage 9 - killer move heuristic
             // --------------------------------
             
             // We consider killer moves right after winning captures
@@ -317,13 +314,16 @@ namespace Search {
                 nextKiller++;
             }
 
-            // Stage 11 - futility pruning
+            // Stage 10 - futility pruning
             // ---------------------------
-            // 1. Discard quiet moves with no perspective of raising alpha
+            // - Discard quiet moves with no perspective of raising alpha
+            // - Since from depth 2 each side can make only 1 move, we can treat depth 2 the same as depth 1 with exception for zugzwang
 
-            if (depth == 1 && !virtualBoard.isInCheck() &&
-                !move.isCapture() && !move.isPromotion() && !virtualBoard.isCheck(move) &&
-                ssTop->staticEval + FUTILITY_MARGIN < alpha)
+            Value margin = depth == 1 ? FUTILITY_MARGIN_I : FUTILITY_MARGIN_II;
+
+            if (depth <= 2 &&
+                ssTop->staticEval + margin < alpha &&
+                !virtualBoard.isInCheck() && move.isQuiet() && !virtualBoard.isCheck(move))
                 continue;
             
             // Make move and evaluate further

@@ -37,7 +37,7 @@ constexpr int MAX_NO_KILLERS = 2;
 
 // History heuristic
 constexpr int MAX_HISTORY = 1e6;
-constexpr int HISTORY_FACTOR = 25;
+constexpr int HISTORY_FACTOR = 5;
 constexpr int MAX_NO_STORED_QUIETS = 64;
 
 // -------------------------------------
@@ -60,7 +60,8 @@ constexpr bool ALLOW_LMR = false;
 // Search parameters - futility pruning
 // ------------------------------------
 
-constexpr Value FUTILITY_MARGIN = 150;
+constexpr Value FUTILITY_MARGIN_I = 150;    // For depth 1
+constexpr Value FUTILITY_MARGIN_II = 350;   // For depth 2
 
 
 // ----------------------------------------------
