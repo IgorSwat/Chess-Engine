@@ -90,10 +90,10 @@ namespace Board {
 		return Paths[sq1][sq2];
 	}
 
-	// Important note: we assume that from is the first square in line, that means either from < to1 < to2 or from < to1 < to2
-	inline bool aligned(Square from, Square to1, Square to2)
+	// Mid needs to be between from and to
+	inline bool aligned(Square from, Square mid, Square to)
 	{
-		return (Paths[from][to2] & to1) || (Paths[from][to1] & to2);
+		return Paths[from][to] & mid;
 	}
 
 

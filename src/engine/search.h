@@ -90,8 +90,17 @@ namespace Search {
         Value evaluate() { return relative_score(evaluator.evaluate(), &virtualBoard); }
 
         // Search stack handlers
-        void pushStack();
-        void saveKiller(const Move& move);
+        void pushStack() {
+            ++ssTop;
+
+            ssTop->ply = (ssTop - 1)->ply + 1;
+            ssTop->score = -MAX_EVAL;
+            ssTop->node = ALL_NODE;
+            ssTop->eval = ssTop->staticEval = NO_EVAL;
+            ssTop->bestMove = Move::null();
+
+            ssTop->captureCounter = ssTop->checkCounter = ssTop->defaultCounter = 0;
+        }
 
         // Virtual board
         BoardConfig virtualBoard;
@@ -126,31 +135,21 @@ namespace Search {
 
             // Killer heuristic data
             Move killers[MAX_NO_KILLERS] = {};
+
+            // LMR related data
+            uint8_t captureCounter = 0;
+            uint8_t checkCounter = 0;
+            uint8_t defaultCounter = 0;     // Quiet moves & aggregative phases (check evasion, legal)
+
+            // Public helper hmethods
+            void saveKiller(const Move& move) {
+                std::rotate(killers, killers + MAX_NO_KILLERS - 1, killers + MAX_NO_KILLERS);
+                killers[0] = move;
+            }
         };
 
         SearchInfo searchStack[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1] = {};
         SearchInfo* ssTop;
     };
-
-
-    // ---------------
-    // Crawler methods
-    // ---------------
-
-    inline void Crawler::pushStack()
-    {
-        ++ssTop;
-        ssTop->ply = (ssTop - 1)->ply + 1;
-        ssTop->score = -MAX_EVAL;
-        ssTop->node = ALL_NODE;
-        ssTop->eval = ssTop->staticEval = NO_EVAL;
-        ssTop->bestMove = Move::null();
-    }
-
-    inline void Crawler::saveKiller(const Move& move)
-    {
-        std::rotate(ssTop->killers, ssTop->killers + MAX_NO_KILLERS - 1, ssTop->killers + MAX_NO_KILLERS);
-        ssTop->killers[0] = move;
-    }
 
 }

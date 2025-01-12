@@ -106,7 +106,7 @@ namespace Search {
 
                     // Killer heuristic update
                     if (ttMove.isQuiet() || SEE::evaluate(&virtualBoard, ttMove) < 0)
-                        saveKiller(ttMove);
+                        ssTop->saveKiller(ttMove);
                     
                     // History heuristic update
                     if (ttMove.isQuiet())
@@ -123,6 +123,11 @@ namespace Search {
                         ssTop->node = PV_NODE;
                     }
                 }
+
+                // Update move counters
+                if (!ttMove.isQuiet())                  ssTop->captureCounter++;
+                else if (virtualBoard.isCheck(ttMove))  ssTop->checkCounter++;
+                else                                    ssTop->defaultCounter++;
             }
 
             ssTop->eval = entry->score;
@@ -186,14 +191,15 @@ namespace Search {
 
         // Stage 5 - Initial move generation
         // ---------------------------------
-        // 1. Generate moves according to current position, depth and strategy
+        // - Generate moves according to current position, depth and strategy
+        // - Sort moves by evaluation at initial depth (root node)
 
         MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
-            ssTop->ply == 0 ? MoveGeneration::LEGAL : 
+            node == ROOT_NODE ? MoveGeneration::LEGAL : 
             virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE
         );
 
-        if (ssTop->ply == 0) {
+        if constexpr (node == ROOT_NODE) {
             // Sort moves by static evaluation of the following position
             moveSelector.sort([this](const EnhancedMove& move) -> int32_t {
                 this->virtualBoard.makeMove(move);
@@ -205,6 +211,11 @@ namespace Search {
                 return 3LL * MAX_EVAL * SEE::evaluate(&this->virtualBoard, move) + eval;
             });
         }
+
+        // Update move counters
+        // - If current phase is aggregative (legal or check evasion), then we should count moves only with default counter
+        if (moveSelector.phase() == MoveGeneration::LEGAL || moveSelector.phase() == MoveGeneration::CHECK_EVASION)
+            ssTop->defaultCounter += ssTop->captureCounter + ssTop->checkCounter;
 
         // Stage 6 - checkmate & stealmate detection
         // -----------------------------------------
@@ -237,6 +248,11 @@ namespace Search {
         EnhancedMove move;
         int nextKiller = 0;
 
+        // LMR variables
+        uint8_t* currentCounter = &ssTop->defaultCounter;
+        uint8_t noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
+        float currentPhaseFactor = LMR_DEFAULT_FACTOR;
+
         // Quiets historical list (history heuristic)
         LightList<Move, MAX_NO_STORED_QUIETS> quiets;
 
@@ -257,6 +273,10 @@ namespace Search {
                     return 1 * SEE::evaluate(&this->virtualBoard, move) +
                            64 * this->evaluator.e_isAvoidingThreats_c(move);
                 });
+
+                currentCounter = &ssTop->captureCounter;
+                noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
+                currentPhaseFactor = LMR_CAPTURE_FACTOR;
             }
 
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET_CHECK) {
@@ -266,6 +286,10 @@ namespace Search {
                            64 * (this->ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
                            128 * (this->ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
                 });
+
+                currentCounter = &ssTop->checkCounter;
+                noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
+                currentPhaseFactor = LMR_CHECK_FACTOR;
             }
 
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET) {
@@ -275,6 +299,10 @@ namespace Search {
                            32 * (this->ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
                            128 * (this->ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
                 });
+
+                currentCounter = &ssTop->defaultCounter;
+                noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
+                currentPhaseFactor = LMR_QUIET_FACTOR;
             }
 
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::CHECK_EVASION) {
@@ -283,6 +311,10 @@ namespace Search {
                            1 * this->history->score(&this->virtualBoard, move) +
                            64 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move);
                 });
+
+                currentCounter = &ssTop->defaultCounter;
+                noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
+                currentPhaseFactor = LMR_CHECK_EVASION_FACTOR;
             }
 
             move = moveSelector.next(MoveSelection::Selector::PARTIAL_CASCADE);
@@ -292,8 +324,12 @@ namespace Search {
             else if (move == Move::null())
                 break;
 
+            uint8_t* counter = currentCounter;
+
             // Stage 9 - killer move heuristic
             // --------------------------------
+
+            bool useKiller = false;
             
             // We consider killer moves right after winning captures
             if (nextKiller < MAX_NO_KILLERS && SEE::evaluate(&virtualBoard, move) <= 0) {
@@ -301,6 +337,8 @@ namespace Search {
 
                 // Check legality of the killer move (full check, since killer might not even be pseudolegal in current position)
                 if (killer != Move::null() && killer != move && virtualBoard.fullLegalityTest(killer)) {
+                    useKiller = true;
+
                     // Let's save generated move for later use
                     moveSelector.restoreLastMove();
 
@@ -309,6 +347,13 @@ namespace Search {
 
                     // Exclude killer move from selection to avoid repeating the same move later
                     moveSelector.exclude(killer);
+
+                    // Change move counters
+                    if (moveSelector.phase() == MoveGeneration::CAPTURE || moveSelector.phase() == MoveGeneration::QUIET_CHECK) {
+                        counter = !killer.isQuiet() ?            &ssTop->captureCounter :
+                                  virtualBoard.isCheck(killer) ? &ssTop->checkCounter :
+                                                                 &ssTop->defaultCounter;
+                    }
                 }
 
                 nextKiller++;
@@ -325,14 +370,32 @@ namespace Search {
                 ssTop->staticEval + margin < alpha &&
                 !virtualBoard.isInCheck() && move.isQuiet() && !virtualBoard.isCheck(move))
                 continue;
+
+            // Stage 11 -late move reduction
+            // -----------------------------
+
+            Depth reduction = 1;
+
+            if (ALLOW_LMR && depth > 2 && !useKiller) {
+                float reductionIndex = float(*counter) * currentPhaseFactor / (LMR_UNIFIER / currentPhaseFactor + noMovesEstimate);
+
+                reduction = 1 + std::min(1.f, lmr_function(reductionIndex)) * (float(depth) / 2 - 1);
+            }
             
             // Make move and evaluate further
             virtualBoard.makeMove(move);
-            Value score = -search<PV_NODE, true>(-beta, -alpha, depth - 1);
+            Value score = -search<PV_NODE, true>(-beta, -alpha, depth - reduction);
+
+            if (reduction > 1 && score > alpha) {
+                score = -search<PV_NODE, true>(-beta, -alpha, depth - 1);
+                ssTop--;
+            }
+
             virtualBoard.undoLastMove();
             ssTop--;
 
             if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE)
+                //std::cout << move << std::dec << " -> reduction: " << int(reduction) << "\n";
                 std::cout << move << std::dec << " -> [score: " << relative_score(score, &virtualBoard) << "]\n";
 
             // Beta cut-off: an enemy would never allow a line worse than beta to occur
@@ -349,7 +412,7 @@ namespace Search {
 
                 // Killer heuristic update
                 if (move.isQuiet() || SEE::evaluate(&virtualBoard, move) < 0)
-                    saveKiller(move);
+                    ssTop->saveKiller(move);
                 
                 // History heuristic update
                 if (move.isQuiet()) {
@@ -375,6 +438,9 @@ namespace Search {
                     ssTop->node = PV_NODE;
                 }
             }
+
+            // Update move counters
+            (*counter)++;
         }
 
         // Save search results in transposition table

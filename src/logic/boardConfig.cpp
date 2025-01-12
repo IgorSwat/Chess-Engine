@@ -486,7 +486,8 @@ bool BoardConfig::isLegal(const Move& move) const
 		return !attackersToSquare(to, enemy, pieces() ^ from);
 
 	// Finally, check for pins
-	return !(pinnedPieces(side) & from) || Board::aligned(kingSquare[side], to, from);
+	return !(pinnedPieces(side) & from) || Board::aligned(kingSquare[side], from, to) || 
+										   Board::aligned(kingSquare[side], to, from);
 }
 
 bool BoardConfig::isPseudolegal(const Move& move) const
@@ -500,6 +501,7 @@ bool BoardConfig::isPseudolegal(const Move& move) const
 	
 	Color side = color_of(piece);
 	Color enemy = ~side;
+	Direction forward = side == WHITE ? NORTH : SOUTH;
 
 	if (side != movingSide())
 		return false;
@@ -521,7 +523,9 @@ bool BoardConfig::isPseudolegal(const Move& move) const
 				return false;
 
 			Square checkSquare = Bitboards::lsb(posInfo->checkers);
-			if (to != checkSquare && !Board::aligned(kingSquare[side], to, checkSquare))
+			if (to != checkSquare && 
+				(!move.isEnpassant() || to != enpassantSquare() + forward) &&
+				!Board::aligned(kingSquare[side], to, checkSquare))
 				return false;
 		}
 		// King moves
@@ -538,7 +542,6 @@ bool BoardConfig::isPseudolegal(const Move& move) const
 	}
 	// Special case - pawn moves
 	else if (type_of(piece) == PAWN) {
-		Direction forward = side == WHITE ? NORTH : SOUTH;
 		Bitboard secondRank = side == WHITE ? Board::RANK_2 : Board::RANK_7;
 
 		if (!(move.isEnpassant() && enpassantSquare() != INVALID_SQUARE &&
@@ -548,6 +551,9 @@ bool BoardConfig::isPseudolegal(const Move& move) const
 			!(to == from + forward + forward && !(Board::Paths[from][to] & (pieces() ^ from)) && secondRank & from))	// 2-push
 			return false;
 	}
+	// Common moves - special flags must be 0
+	else if (move.flags() & 0xb)
+		return false;
 	// Common moves - moving correctness
 	else if (!(Pieces::piece_attacks_d(type_of(piece), from, pieces()) & to))
 		return false;

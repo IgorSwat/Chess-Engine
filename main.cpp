@@ -52,15 +52,5 @@ int main()
 	// std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&board);
 	// evaluator->evaluate();
 
-	// MoveSelection::Selector selector(&board, evaluator.get(), MoveGeneration::CAPTURE, true);
-	// MoveSelection::improved_ordering(selector);
-
-	// Move move = selector.next();
-	// while (move != Move::null()) {
-	// 	if (!board.fullLegalityTest(move))
-	// 		std::cout << "XD\n";
-	// 	move = selector.next();
-	// }
-
 	return 0;
 }

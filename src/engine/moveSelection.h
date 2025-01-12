@@ -53,6 +53,7 @@ namespace MoveSelection {
 
         // Getters and setters for private fields
         MoveGeneration::Phase phase() const { return gen; }
+        uint8_t size() const { return uint8_t(moves.size()); }
 
         // Customizable selector behavior - selection strategy
         // ---------------------------------------------------

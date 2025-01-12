@@ -266,7 +266,8 @@ inline bool BoardConfig::isCheck(const Move& move) const
 	Square from = move.from();
 	Square to = move.to();
 	return (posInfo->checkArea[type_of(board[from])] & to) ||
-		   ((posInfo->discoveries[sideOnMove] & from) && !Board::aligned(kingSquare[~sideOnMove], to, from));
+		   ((posInfo->discoveries[sideOnMove] & from) && !Board::aligned(kingSquare[~sideOnMove], to, from) &&
+		   												 !Board::aligned(kingSquare[~sideOnMove], from, to));
 }
 
 
