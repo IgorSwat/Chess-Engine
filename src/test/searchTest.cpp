@@ -90,7 +90,7 @@ namespace Testing {
             "8/4kbp1/5p2/5Q1p/8/8/5K2/8 w - - 1 51",                                    // Endgame position, complex
         };
 
-        const Search::Depth depth = 7;
+        const Search::Depth depth = 11;
 
         int id = 0;
         for (const std::string& fen : positions) {
@@ -116,7 +116,7 @@ namespace Testing {
         
         std::ifstream file("testpos/search-quality-test.txt");
 
-        const Search::Depth depth = 7;
+        const Search::Depth depth = 11;
 
         int totalScore = 0, maxPossibleScore = 0, totalTests = 0;
         std::chrono::duration<double> totalSearchTime;

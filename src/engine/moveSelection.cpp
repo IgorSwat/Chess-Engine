@@ -1,4 +1,4 @@
-#include "moveSelection.h"
+#include "search.h"
 #include <algorithm>
 #include <iterator>
 
@@ -209,6 +209,24 @@ namespace MoveSelection {
         selector.strategy.addRule(MoveGeneration::QUIET, &Selector::safe_threatEvasion);
         selector.strategy.addRule(MoveGeneration::QUIET, &Selector::safe);
         selector.strategy.addRule(MoveGeneration::QUIET, &Selector::threatCreation);
+    }
+
+
+    // ----------------------------
+    // Predefined sorting functions
+    // ----------------------------
+
+    void evaluation_sort(Selector& selector, BoardConfig& board, Evaluation::Evaluator& evaluator)
+    {
+        selector.sort([&board, &evaluator](const EnhancedMove& move) -> int32_t {
+            board.makeMove(move);
+            Value eval = -Search::relative_score(evaluator.evaluate(), &board);;
+            board.undoLastMove();
+
+            // This makes SEE a primary sorting parameter
+            // Static evaluation is considered only when SEE of two moves is equal
+            return 3LL * MAX_EVAL * SEE::evaluate(&board, move) + eval;
+        });
     }
 
 }

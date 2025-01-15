@@ -35,7 +35,7 @@ Value Engine::evaluate(Search::Depth depth)
         return iterativeDeepening(depth);
     
     if constexpr (SEARCH_MODE == TRACE) {
-        Value score = crawler.search(depth);
+        Value score = iterativeDeepening(depth, true);
 
         const BoardConfig* board = crawler.getPosition();
         const TranspositionTable::Entry* entry = tTable.probe(board->hash(), board->pieces());
@@ -69,11 +69,17 @@ Value Engine::evaluate(Search::Depth depth)
     }
 }
 
-Value Engine::iterativeDeepening(Search::Depth depth)
+Value Engine::iterativeDeepening(Search::Depth depth, bool trace)
 {
     Value result = 0;
-    for (Search::Depth d = 1; d <= depth; d++)
+    for (Search::Depth d = 1; d <= depth; d++) {
         result = crawler.search(d);
+
+        // DEBUG
+        if (trace) {
+            if (d != depth) system("cls");
+        }
+    }
     return result;
 }
 

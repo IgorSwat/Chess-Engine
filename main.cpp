@@ -36,7 +36,7 @@ int main()
 
 	// // Testers
 	// std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
-	// Search::Depth depth = 7;
+	// Search::Depth depth = 11;
 	// gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
 	// gui->runTesters(true);
 

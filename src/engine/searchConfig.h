@@ -37,7 +37,7 @@ constexpr int MAX_NO_KILLERS = 2;
 
 // History heuristic
 constexpr int MAX_HISTORY = 1e6;
-constexpr int HISTORY_FACTOR = 5;
+constexpr int HISTORY_FACTOR = 20;
 constexpr int MAX_NO_STORED_QUIETS = 64;
 
 // -------------------------------------
@@ -53,14 +53,14 @@ constexpr int NPM_ACTIVATION_THRESHOLD = 20;    // TODO: remove it
 // Search parameters - late move reductions
 // ----------------------------------------
 
-constexpr bool ALLOW_LMR = false;
+constexpr bool ALLOW_LMR = true;
 
 const Interpolation::NormalizedSigmoid lmr_function = Interpolation::NormalizedSigmoid(1.55f, 4.2f, 0.6f);
 
 constexpr float LMR_DEFAULT_FACTOR = 2.4f;
 constexpr float LMR_CAPTURE_FACTOR = 2.0f;
-constexpr float LMR_CHECK_FACTOR = 1.5f;
-constexpr float LMR_CHECK_EVASION_FACTOR = 1.0f;
+constexpr float LMR_CHECK_FACTOR = 1.8f;
+constexpr float LMR_CHECK_EVASION_FACTOR = 0.7f;
 constexpr float LMR_QUIET_FACTOR = 3.0f;
 
 constexpr float LMR_UNIFIER = 4.0f;

@@ -148,4 +148,12 @@ namespace MoveSelection {
     void standard_ordering(Selector& selector);
     void improved_ordering(Selector& selector);
 
+
+    // ----------------------------
+    // Predefined sorting functions
+    // ----------------------------
+
+    // Sorts moves by 1) SEE 2) Static evaluation
+    void evaluation_sort(Selector& selector, BoardConfig& board, Evaluation::Evaluator& evaluator);
+
 }

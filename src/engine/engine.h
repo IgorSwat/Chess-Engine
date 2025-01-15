@@ -20,7 +20,7 @@ public:
 
     // Main functionalities
     Value evaluate(Search::Depth depth = 0);    // No iterative deepening as for now. By default returns a static eval (depth 0)
-    Value iterativeDeepening(Search::Depth depth);
+    Value iterativeDeepening(Search::Depth depth, bool trace = false);
 
     // Getters
     const TranspositionTable* transpositionTable() const;

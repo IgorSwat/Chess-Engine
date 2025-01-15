@@ -150,6 +150,9 @@ namespace Search {
 
         SearchInfo searchStack[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1] = {};
         SearchInfo* ssTop;
+
+        // LMR variables
+        bool useLMR = false;
     };
 
 }
