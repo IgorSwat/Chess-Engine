@@ -1,6 +1,7 @@
 #pragma once
 
 #include "evaluationConfig.h"
+#include "interpolation.h"
 
 
 // ---------------------------------------
@@ -36,17 +37,8 @@ constexpr Value NO_EVAL = MAX_EVAL + 1;
 constexpr int MAX_NO_KILLERS = 2;
 
 // History heuristic
-constexpr int MAX_HISTORY = 1e6;
-constexpr int HISTORY_FACTOR = 20;
-constexpr int MAX_NO_STORED_QUIETS = 64;
-
-// -------------------------------------
-// Search parameters - null move pruning
-// -------------------------------------
-
-constexpr int NPM_MAX_USAGES = 0;               // Maximum number of available null move usages inside one branch
-constexpr int NPM_CHECK_MIN_DEPTH = 0;          // A minimum depth at which null move needs to pass `eval > beta` check to be applied
-constexpr int NPM_ACTIVATION_THRESHOLD = 20;    // TODO: remove it
+constexpr int MAX_HISTORY = 1e7;
+constexpr int HISTORY_FACTOR = 16;
 
 
 // ----------------------------------------

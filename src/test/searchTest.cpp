@@ -116,7 +116,7 @@ namespace Testing {
         
         std::ifstream file("testpos/search-quality-test.txt");
 
-        const Search::Depth depth = 11;
+        const Search::Depth depth = 15;
 
         int totalScore = 0, maxPossibleScore = 0, totalTests = 0;
         std::chrono::duration<double> totalSearchTime;

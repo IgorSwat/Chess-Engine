@@ -15,7 +15,7 @@ namespace Search {
     // Type definitions
     // ----------------
 
-    using Depth = std::uint8_t;
+    using Depth = std::int8_t;
     using Age = std::uint16_t;
 
     // Describes search node in following terms:
@@ -60,8 +60,9 @@ namespace Search {
     {
     public:
         Crawler(TranspositionTable* tTable, History* history) 
-            : virtualBoard(), evaluator(&this->virtualBoard), tTable(tTable), history(history),
-              ssTop(searchStack) {}
+            : virtualBoard(), tTable(tTable), history(history),
+              ssTop(searchStack) 
+              { for (int i = 0; i < MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH; i++) evaluators[i].connect(&virtualBoard); }
 
         // Position setup
         void setPosition(const BoardConfig* board) { virtualBoard.loadPosition(*board); rootAge = virtualBoard.halfmovesPlain(); }
@@ -87,7 +88,7 @@ namespace Search {
         Value quiescence(Value alpha, Value beta, Depth depth);
 
         // Static evaluation
-        Value evaluate() { return relative_score(evaluator.evaluate(), &virtualBoard); }
+        Value evaluate(Depth depth = 0) { return relative_score(evaluators[depth].evaluate(), &virtualBoard); }
 
         // Search stack handlers
         void pushStack() {
@@ -105,8 +106,8 @@ namespace Search {
         // Virtual board
         BoardConfig virtualBoard;
 
-        // Evaluator
-        Evaluation::Evaluator evaluator;
+        // Evaluator(s)
+        Evaluation::Evaluator evaluators[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH];
 
         // Transposition table connection
         TranspositionTable* tTable;
@@ -151,8 +152,8 @@ namespace Search {
         SearchInfo searchStack[MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH + 1] = {};
         SearchInfo* ssTop;
 
-        // LMR variables
         bool useLMR = false;
+        bool useNPM = false;
     };
 
 }

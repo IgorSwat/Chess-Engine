@@ -66,9 +66,9 @@ namespace Evaluation {
     constexpr int MAX_CENTRAL_DENSITY = 16;
 
     constexpr Value KNIGHT_POSITION_DENSITY[MAX_CENTRAL_DENSITY + 1] = {
-        -30, -25, -20, -15, -10, -5, 0, 5,
-        10, 15, 20, 25, 30, 35, 40, 45,
-        50
+        -20, -17, -14, -10, -6, -5, 0, 3,
+        5, 8, 11, 15, 20, 25, 30, 35,
+        40
     };
     constexpr IValue KNIGHT_PAWN_SPREAD[8] = { {0, 30}, {0, 28}, {0, 25}, {0, 22}, {0, 17}, {0, 12}, {0, 6}, {0, 0} };
 

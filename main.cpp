@@ -36,7 +36,7 @@ int main()
 
 	// // Testers
 	// std::unique_ptr<Engine> engine = std::make_unique<Engine>();	// Create engine
-	// Search::Depth depth = 11;
+	// Search::Depth depth = 15;
 	// gui->addTester(std::make_unique<SearchPrinter>(engine.get(), true, depth));
 	// gui->runTesters(true);
 
@@ -45,12 +45,27 @@ int main()
 	//tune(10, 10);
 
 	// BoardConfig board;
-	// board.loadPosition("r1bq2k1/ppppbrpp/8/3NPp1Q/4pB2/8/PPP2PPP/R3R1K1 b - - 3 15");
+	// board.loadPosition("r5k1/1R3pp1/p7/n1rP2p1/P7/1B4PP/5PK1/7R w - - 3 34");
 
-	// std::cout << board.fullLegalityTest(Move(SQ_G7, SQ_G5, DOUBLE_PAWN_PUSH_FLAG)) << "\n";
+	// Evaluation::Evaluator evaluator(&board);
+	// evaluator.evaluate();
 
-	// std::unique_ptr<Evaluation::Evaluator> evaluator = std::make_unique<Evaluation::Evaluator>(&board);
-	// evaluator->evaluate();
+	// MoveSelection::Selector selector(&board, &evaluator, MoveGeneration::QUIET);
+
+	// selector.sort([&board, &evaluator](const Move& move) -> int32_t {
+    //                        return 32 * evaluator.e_isAvoidingThreats_c(move) +
+    //                        32 * evaluator.e_isCreatingThreats_c(move) +
+    //                        128 * evaluator.e_isSafe_h(move);
+    //             });
+
+	// while (true) {
+	// 	EnhancedMove move = selector.next(MoveSelection::Selector::STRICT);
+
+	// 	if (move == Move::null())
+	// 		break;
+
+	// 	std::cout << move << std::dec << ", value: " << move.key() << "\n";
+	// }
 
 	return 0;
 }

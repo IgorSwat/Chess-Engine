@@ -23,8 +23,8 @@ namespace Search {
         }
 
         // Decide on whether to use LMR heuristic or not
-        useLMR = ALLOW_LMR;
-        //useLMR = ALLOW_LMR && depth > 3;  // Needs history heuristic to be fixed...
+        useLMR = ALLOW_LMR && depth > 5;
+        useNPM = depth > 5;
 
         Value score = search<ROOT_NODE, false>(-MAX_EVAL, MAX_EVAL, std::min(depth, static_cast<Depth>(MAX_SEARCH_DEPTH)));
         ssTop = searchStack;
@@ -95,7 +95,12 @@ namespace Search {
                 // DEBUG
                 if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE)
                     std::cout << ttMove << std::dec << " -> reduction: " << 1 << " | history: " << 
-                                           history->score(&virtualBoard, ttMove) <<"\n";
+                                           history->history(&virtualBoard, ttMove) <<", trials: " <<
+                                           history->count(&virtualBoard, ttMove) << ", Hscore: " <<
+                                           history->score(&virtualBoard, ttMove) << "\n";
+
+                // Update move counters
+                history->update_t(&virtualBoard, ttMove);
 
                 virtualBoard.makeMove(ttMove);
                 Value score = -search<PV_NODE, true>(-beta, -alpha, depth - 1);
@@ -119,7 +124,7 @@ namespace Search {
                     
                     // History heuristic update
                     if (ttMove.isQuiet())
-                        history->update(&virtualBoard, ttMove, HISTORY_FACTOR * depth * depth);
+                        history->update_h(&virtualBoard, ttMove, HISTORY_FACTOR * depth * depth);
 
                     return score;
                 }
@@ -155,7 +160,8 @@ namespace Search {
         // 1. Statically evaluate current position
         // 2. Use obtained knowledge to improve further move ordering and apply various heuristics (Futility Pruning, etc.)
         
-        ssTop->staticEval = evaluate();
+        const Depth evID = MAX_QUIESCENCE_DEPTH + depth;
+        ssTop->staticEval = evaluate(evID);
 
         // Stage 4 - NMP (Null Move Pruning) heuristic
         // -------------------------------------------
@@ -165,36 +171,30 @@ namespace Search {
 
         // Note: Since it is used before stealmate condition check, it might make some bugs in extremaly rare positions.
         //       Luckily it does not affect checkmate positions, since it cannot be used when side on move is in check.
-        if constexpr (false && nmpAvailable) {
-            // Null move pruning failes in zugzwang, so we want to avoid using it in late endgames, where zugzwang positions are most common.
-            if (!virtualBoard.isInCheck() && virtualBoard.gameStage() > Evaluation::SINGLE_ROOK_VS_ROOK_ENDGAME) {
-                int threats = evaluator.e_countThreatsAgainst_c(virtualBoard.movingSide());
-                Value betterEval = ssTop->eval != NO_EVAL ? ssTop->eval : ssTop->staticEval;
+        if (nmpAvailable && useNPM && !virtualBoard.isInCheck() &&
+            virtualBoard.gameStage() > Evaluation::SINGLE_ROOK_VS_ROOK_ENDGAME &&
+            (ssTop->eval != NO_EVAL ? ssTop->eval : ssTop->staticEval) >= beta) {
+            // Null move
+            virtualBoard.makeNullMove();
 
-                if (depth > 1 && threats == 0 && betterEval - NPM_ACTIVATION_THRESHOLD > beta) {
-                    virtualBoard.makeNullMove();
+            Value score = -search<NON_PV_NODE, false>(-beta, -beta + 1, depth - 4);
 
-                    Value score = -search<NON_PV_NODE, false>(-beta, -beta + 1, depth - 1);
-                    ssTop--;
+            virtualBoard.undoNullMove();
+            ssTop--;
 
-                    // If score already exceeds beta (with side on move playing one move less), then beta-cutoff is almost sure
-                    if (score >= beta) {
-                        virtualBoard.undoNullMove();
-                        tTable->set({
-                            virtualBoard.hash(),
-                            virtualBoard.pieces(),
-                            depth,
-                            score,  // score
-                            Move::null(),
-                            CUT_NODE,
-                            virtualBoard.halfmovesPlain()
-                        }, rootAge);
+            // If score already exceeds beta (with side on move playing one move less), then beta-cutoff is almost sure
+            if (score >= beta) {
+                tTable->set({
+                    virtualBoard.hash(),
+                    virtualBoard.pieces(),
+                    depth,
+                    score,  // score
+                    Move::null(),
+                    CUT_NODE,
+                    virtualBoard.halfmovesPlain()
+                }, rootAge);
 
-                        return score;
-                    }
-
-                    virtualBoard.undoNullMove();
-                }
+                return score;
             }
         }
 
@@ -203,7 +203,7 @@ namespace Search {
         // - Generate moves according to current position, depth and strategy
         // - Sort moves by evaluation at initial depth (root node)
 
-        MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
+        MoveSelection::Selector moveSelector(&virtualBoard, &evaluators[evID],
             virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE
         );
 
@@ -248,15 +248,8 @@ namespace Search {
         uint8_t noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
         float currentPhaseFactor = LMR_DEFAULT_FACTOR;
 
-        // Quiets historical list (history heuristic)
-        LightList<Move, MAX_NO_STORED_QUIETS> quiets;
-
-        if (ttMove != Move::null()) {
+        if (ttMove != Move::null())
             moveSelector.exclude(ttMove);
-
-            if (ttMove.isQuiet())
-                quiets.push_back(ttMove);
-        }
 
         while (true) {
 
@@ -264,9 +257,11 @@ namespace Search {
             // ----------------------------------
 
             if (move == Move::null() && moveSelector.phase() == MoveGeneration::CAPTURE) {
-                moveSelector.sort([this](const Move& move) -> int32_t {
+                moveSelector.sort([this, evID](const Move& move) -> int32_t {
                     return 1 * SEE::evaluate(&this->virtualBoard, move) +
-                           64 * this->evaluator.e_isAvoidingThreats_c(move);
+                           32 * this->virtualBoard.isCheck(move) +
+                           16 * this->evaluators[evID].e_isThreateningKing_h(move) +
+                           12 * this->evaluators[evID].e_isAvoidingThreats_c(move);
                 });
 
                 currentCounter = &ssTop->captureCounter;
@@ -275,12 +270,9 @@ namespace Search {
             }
 
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET_CHECK) {
-                moveSelector.sort([this, depth](const Move& move) -> int32_t {
-                    return 1 * this->history->score(&this->virtualBoard, move) +
-                           24 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move) +
-                           64 * (this->ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
-                           128 * (this->ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
-                    });
+                moveSelector.sort([this, depth, evID](const Move& move) -> int32_t {
+                    return 1 * this->history->score(&this->virtualBoard, move);
+                });
 
                 currentCounter = &ssTop->checkCounter;
                 noMovesEstimate = std::ceil(float(moveSelector.size()) * 4.f / 5.f);
@@ -288,11 +280,8 @@ namespace Search {
             }
 
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::QUIET) {
-                moveSelector.sort([this, depth](const Move& move) -> int32_t {
-                    return 1 * this->history->score(&this->virtualBoard, move) +
-                           32 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move) +
-                           32 * (this->ssTop->ply + depth) * this->evaluator.e_isCreatingThreats_c(move) +
-                           128 * (this->ssTop->ply + depth) * this->evaluator.e_isSafe_h(move);
+                moveSelector.sort([this, evID](const Move& move) -> int32_t {
+                    return 1 * this->history->score(&this->virtualBoard, move);
                 });
 
                 currentCounter = &ssTop->defaultCounter;
@@ -301,10 +290,9 @@ namespace Search {
             }
 
             else if (move == Move::null() && moveSelector.phase() == MoveGeneration::CHECK_EVASION) {
-                moveSelector.sort([this, depth](const Move& move) -> int32_t {
+                moveSelector.sort([this, depth, evID](const Move& move) -> int32_t {
                     return 10000 * SEE::evaluate(&this->virtualBoard, move) +
-                           1 * this->history->score(&this->virtualBoard, move) +
-                           64 * (this->ssTop->ply + depth) * this->evaluator.e_isAvoidingThreats_c(move);
+                           1 * this->history->score(&this->virtualBoard, move);
                 });
 
                 currentCounter = &ssTop->defaultCounter;
@@ -377,6 +365,9 @@ namespace Search {
                 reduction = 1 + std::min(1.f, lmr_function(reductionIndex)) * (float(depth) / 2 - 1);
             }
             
+            // Update move counters
+            history->update_t(&virtualBoard, move);
+
             // Make move and evaluate further
             virtualBoard.makeMove(move);
             Value score = -search<PV_NODE, true>(-beta, -alpha, depth - reduction);
@@ -391,7 +382,9 @@ namespace Search {
 
             if constexpr (SEARCH_MODE == TRACE && node == ROOT_NODE)
                 std::cout << move << std::dec << " -> reduction: " << int(reduction) << " | history: " << 
-                                     history->score(&virtualBoard, move) <<"\n";
+                                           history->history(&virtualBoard, move) <<", trials: " <<
+                                           history->count(&virtualBoard, move) << ", Hscore: " <<
+                                           history->score(&virtualBoard, move) << "\n";
                 //std::cout << move << std::dec << " -> [score: " << relative_score(score, &virtualBoard) << "]\n";
 
             // Beta cut-off: an enemy would never allow a line worse than beta to occur
@@ -411,19 +404,11 @@ namespace Search {
                     ssTop->saveKiller(move);
                 
                 // History heuristic update
-                if (move.isQuiet()) {
-                    // Give bonus for move that caused cut-off
-                    history->update(&virtualBoard, move, HISTORY_FACTOR * depth * depth);
-
-                    // Give penalty for all previously searched quiet moves
-                    for (const Move& quiet : quiets)
-                        history->update(&virtualBoard, quiet, -HISTORY_FACTOR * depth * depth * depth / (ssTop->ply + 1));
-                }
+                if (move.isQuiet())
+                    history->update_h(&virtualBoard, move, HISTORY_FACTOR * depth * depth);
 
                 return score;
             }
-            else if (move.isQuiet() && quiets.size() < MAX_NO_STORED_QUIETS)
-                quiets.push_back(move);
 
             // PV node - a move that is better for moving side than previous best one
             if (score > ssTop->score) {
@@ -450,12 +435,9 @@ namespace Search {
             virtualBoard.halfmovesPlain()
         }, rootAge);
 
-        if (ssTop->bestMove != Move::null() && ssTop->bestMove.isQuiet()) {
-            for (const Move& quiet : quiets)
-                if (quiet != ssTop->bestMove) 
-                    history->update(&virtualBoard, quiet, -HISTORY_FACTOR * depth * depth / int(quiets.size() - 1));
-            history->update(&virtualBoard, ssTop->bestMove, HISTORY_FACTOR * depth * depth);
-        }
+        // TODO: remove ssTop_ply != 0 condition ???
+        if (ssTop->bestMove != Move::null() && ssTop->bestMove.isQuiet() && ssTop->ply != 0)
+            history->update_h(&virtualBoard, ssTop->bestMove, HISTORY_FACTOR * depth * depth);
 
         return ssTop->score;
     }
@@ -481,7 +463,8 @@ namespace Search {
                 return entry->score;
         }
 
-        MoveSelection::Selector moveSelector(&virtualBoard, &evaluator,
+        const Depth evID = depth;
+        MoveSelection::Selector moveSelector(&virtualBoard, &evaluators[evID],
                                              virtualBoard.isInCheck() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE);
 
         // Detect mate, stealmate and other types of draw
@@ -548,8 +531,8 @@ namespace Search {
             }
         }
 
-        int noThreats = evaluator.e_countThreatsAgainst_c(virtualBoard.movingSide());
-        Bitboard threats = evaluator.e_threatsAgainst_c(virtualBoard.movingSide());
+        int noThreats = evaluators[evID].e_countThreatsAgainst_c(virtualBoard.movingSide());
+        Bitboard threats = evaluators[evID].e_threatsAgainst_c(virtualBoard.movingSide());
 
         // Consider moving threatened pieces or capture attacking pieces to stabilize
         if (ssTop->staticEval + EPSILON_MARGIN > alpha && (noThreats > 1 || virtualBoard.isInCheck())) {

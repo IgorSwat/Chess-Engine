@@ -490,6 +490,7 @@ namespace Evaluation {
         safetyMap[side][BISHOP] = safetyMap[side][KNIGHT];
         safetyMap[side][ROOK] = safetyMap[side][KNIGHT] & ~attacks[enemy][KNIGHT] & ~attacks[enemy][BISHOP];
         safetyMap[side][QUEEN] = safetyMap[side][ROOK] & ~attacks[enemy][ROOK];
+        safetyMap[side][KING] = ~attacks[enemy][ALL_PIECES];
 
         int threatPoints = 0;
         threatCount[side] = 0;
@@ -653,6 +654,13 @@ namespace Evaluation {
         Piece piece = board->onSquare(move.from());
 
         return safetyMap[color_of(piece)][type_of(piece)] & move.to();
+    }
+
+    bool Evaluator::e_isThreateningKing_h(const Move& move) const
+    {
+        Color enemy = ~board->movingSide();
+
+        return (kingArea[enemy] | weakKingSpan[enemy]) & move.to();
     }
 
 

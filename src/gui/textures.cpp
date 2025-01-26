@@ -21,6 +21,7 @@ namespace GUI {
 		const std::string BACK = TEXTURES_ROOT + "back.png";
 		const std::string REFRESH = TEXTURES_ROOT + "refresh.png";
 		const std::string UPLOAD = TEXTURES_ROOT + "upload.png";
+		const std::string X = TEXTURES_ROOT + "x.png";
 
 		const std::string SQUARES = TEXTURES_ROOT + "squares.png";
 		const std::string WKING = TEXTURES_ROOT + "Wking.png";
@@ -42,7 +43,7 @@ namespace GUI {
 		};
 
 		const std::string BUTTON_TEXTURE_NAMES[int(ButtonType::BUTTON_TYPE_RANGE)] = {
-			"", "back", "refresh", "upload"
+			"", "back", "refresh", "upload", "x"
 		};
 
 		// ---------------
@@ -67,6 +68,7 @@ namespace GUI {
 			load_texture("back", BACK);
 			load_texture("refresh", REFRESH);
 			load_texture("upload", UPLOAD);
+			load_texture("x", X);
 
 			load_texture("squares", SQUARES);
 			load_texture("Wking", WKING);

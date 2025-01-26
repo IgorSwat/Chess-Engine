@@ -35,12 +35,13 @@ namespace GUI {
 		  inputBar(sf::Vector2f((WINDOW_WIDTH - INPUT_BAR_WIDTH) / 2.f, WINDOW_HEIGHT - INPUT_BAR_HEIGHT),
 		  		   sf::Vector2f(INPUT_BAR_WIDTH, INPUT_BAR_HEIGHT), INPUT_FONT_SIZE)   
 	{
-		board.loadPosition("88/1p5p/8/p3k3/2P3p1/1PK3P1/P6P/n7 w - - 0 40");
+		board.loadPosition("3r3k/p1p4p/1p3p2/5p2/4b3/1P6/1PP3PP/3R1RK1 b - - 0 1");
 		window.setFramerateLimit(60);
 
 		navbar.addButton(RoundedButton(ButtonType::BACK, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
 		navbar.addButton(RoundedButton(ButtonType::RESET, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
 		navbar.addButton(RoundedButton(ButtonType::LOAD, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
+		navbar.addButton(RoundedButton(ButtonType::X, NAV_BUTTON_SIZE, NAV_BUTTON_ROUND));
 
 		sf::Cursor cursor;
 		if (cursor.loadFromSystem(sf::Cursor::Hand))
@@ -108,6 +109,9 @@ namespace GUI {
 							boardImage.loadPosition(&board);
 							runTesters(true);
 						}
+						break;
+					case ButtonType::X:
+						inputBar.clear();
 						break;
 					default:
 						break;

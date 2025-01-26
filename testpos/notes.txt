@@ -1,0 +1,24 @@
+Depth 10:
+---------
+Test cases: 58
+Total score: 424/580 (73%) (428)
+Total search time: 38.6543 seconds
+
+Depth 11:
+---------
+Test cases: 58
+Total score: 451/580 (77%) (457)
+Total search time: 83.9015 seconds
+
+Depth 12:
+---------
+Test cases: 58
+Total score: 435/580 (75%) (442)
+Total search time: 178.653 seconds
+
+
+Bug 1:
+- r3kb1r/2q2ppp/pp2p3/3bP3/P1PN4/3n2Q1/3B1PPP/R3R1K1 w kq - 0 18
+- No piece on g7 (move is g7 -> f8)
+- Line: cxd5 (tt) Qc4 (tt) Re4 (tt) Nc5 (tt) Nxe6 Nxe4 (tt) Nxg7 (tt) Bxg7 (tt) Qxg7 O-O-O (tt) Qf8 (bug)
+- Actual bug move: Qf6 (m2934) before Qf8

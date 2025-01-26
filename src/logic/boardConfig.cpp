@@ -409,6 +409,7 @@ void BoardConfig::makeNullMove()
 
 	// Fill in other state fields with previous values
 	posInfo->castlingRights = posInfo->prev->castlingRights;
+	posInfo->enpassantSquare = INVALID_SQUARE;
 	std::copy(posInfo->prev->discoveries, posInfo->prev->discoveries + COLOR_RANGE, posInfo->discoveries);
 	std::copy(posInfo->prev->pinned, posInfo->prev->pinned + COLOR_RANGE, posInfo->pinned);
 	std::copy(posInfo->prev->pinners, posInfo->prev->pinners + COLOR_RANGE, posInfo->pinners);

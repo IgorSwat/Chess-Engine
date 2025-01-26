@@ -14,7 +14,11 @@ namespace Evaluation {
     class Evaluator
     {
     public:
-        Evaluator(const BoardConfig* board) : board(board) {}
+        Evaluator() = default;
+        Evaluator(BoardConfig* board) : board(board) {}
+
+        // Setting board connection
+        void connect(BoardConfig* board) { this->board = board; }
 
         // Main evaluation functions
         Value evaluate();
@@ -29,6 +33,7 @@ namespace Evaluation {
         bool e_isCreatingThreats_c(const Move& move) const;
         bool e_isAvoidingThreats_c(const Move& move) const;
         bool e_isSafe_h(const Move& move) const;
+        bool e_isThreateningKing_h(const Move& move) const;     // We consider move (capture) a threat if it lands in extended king zone
 
     private:
         // Evaluation components
@@ -49,7 +54,7 @@ namespace Evaluation {
         template <Color side> void updateKingAreaSafety(Square sq, Bitboard attacks, int attackFactor);
 
         // Board connection
-        const BoardConfig* board;
+        BoardConfig* board;
 
         // Stage & material imbalance
         std::uint16_t stage = GAME_STAGE_MAX_VALUE;

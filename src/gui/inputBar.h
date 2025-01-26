@@ -14,6 +14,7 @@ namespace GUI {
     public:
         InputBar(sf::Vector2f pos, sf::Vector2f size, unsigned charSize = 0);
 
+        void clear() { input = ""; updateText(); }
         void update(const sf::Event& event, sf::Vector2i mousePos);
         void updateTimer();     // Needs to be called in main loop, before rendering
 

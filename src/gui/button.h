@@ -13,9 +13,10 @@ namespace GUI {
         BACK = 1,
         RESET,
         LOAD,
+        X,
 
         NONE = 0,
-        BUTTON_TYPE_RANGE = 4
+        BUTTON_TYPE_RANGE = 5
     };
 
 

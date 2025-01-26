@@ -2,7 +2,6 @@
 
 #include "searchConfig.h"
 #include "../logic/boardConfig.h"
-#include <algorithm>
 
 
 namespace Search {
@@ -12,28 +11,45 @@ namespace Search {
     // -------------
 
     // History heuristic is a dynamic move ordering algorithm, that focuses on amount of cut-offs cused by quiet moves in search tree
-    // History container works similarly to transposition table and should be shared among engine's crawlers
+    // History container works similarly to transposition scores and should be shared among engine's crawlers
     class History
     {
     public:
         History() = default;
 
-        using Score = std::int32_t;
+        using Score = int32_t;
 
-        void reset() { for (int i = 0; i < PIECE_RANGE; i++) std::fill(table[i], table[i] + SQUARE_RANGE, 0); }
-        void flatten() { for (int i = 0; i < PIECE_RANGE; i++) for (int j = 0; j < SQUARE_RANGE; j++) table[i][j] /= 2; }
+        // Global modifiers
+        void reset();
+        void flatten(int factor = 1);   // History aging
 
-        void update(Piece piece, Square to, Score bonus) {
+        // Local modifiers
+        // - <name>_t stands for trial table update, and <name>_h for history table update
+        void update_t(Piece piece, Square to) { trials[piece][to]++; }
+        void update_t(const BoardConfig* board, const Move& move) { update_t(board->onSquare(move.from()), move.to()); }
+        void update_h(Piece piece, Square to, Score bonus) {
             Score clamped = std::clamp(bonus, -MAX_HISTORY, MAX_HISTORY);
-            table[piece][to] += clamped - table[piece][to] * std::abs(clamped) / MAX_HISTORY;   // History gravity formula
+            scores[piece][to] += clamped - scores[piece][to] * std::abs(clamped) / MAX_HISTORY;   // History gravity formula
         }
-        void update(const BoardConfig* board, const Move& move, Score bonus) { update(board->onSquare(move.from()), move.to(), bonus); }
+        void update_h(const BoardConfig* board, const Move& move, Score bonus) { update_h(board->onSquare(move.from()), move.to(), bonus); }
 
-        Score score(Piece piece, Square to) const { return table[piece][to]; }
+        // Getters
+        // - count() returns only raw trial count for given move
+        // - history() returns only raw history score for given move
+        // - score() returns combined score from relative history formula (history & trials)
+        Score count(Piece piece, Square to) const { return trials[piece][to]; }
+        Score count(const BoardConfig* board, const Move& move) const { return count(board->onSquare(move.from()), move.to()); }
+        Score history(Piece piece, Square to) const { return scores[piece][to]; }
+        Score history(const BoardConfig* board, const Move& move) const { return history(board->onSquare(move.from()), move.to()); }
+        Score score(Piece piece, Square to) const { 
+            Score cnt = count(piece, to) + 1;   // Add 1 to prevent division by 0
+            return scores[piece][to] * std::log2(cnt) / cnt;
+        }
         Score score(const BoardConfig* board, const Move& move) const { return score(board->onSquare(move.from()), move.to()); }
 
     private:
-        Score table[PIECE_RANGE][SQUARE_RANGE] = { 0 };
+        Score trials[PIECE_RANGE][SQUARE_RANGE] = { 0 };      // A count of tries of given move inside search tree
+        Score scores[PIECE_RANGE][SQUARE_RANGE] = { 0 };      // A history scores for given move indexed with butterfly
     };
 
 }
