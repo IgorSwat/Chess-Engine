@@ -101,12 +101,12 @@ namespace Evaluation {
         // - NOTE: at least one set() needs to be called at the start of network usage
         // - NOTE: update() does not really update accumulators - it only ensures, that position will be updated in the future (before evaluation)
         // - WARNING: update() assumes, that move has not been made yet (must be called before board.make_move())
-        void set(const Board::Board& board);
-        void update(const Board::Board& board, const Move& move);
+        void set(const Board& board);
+        void update(const Board& board, const Move& move);
         void undo_state() { m_curr_ply = std::max(0, m_curr_ply - 1); m_last_ready_ply = std::min(m_last_ready_ply, m_curr_ply); }
 
         // Forward pass
-        int32_t forward(const Board::Board& board);
+        int32_t forward(const Board& board);
 
     private:
         // Helper functions - lazy update handlers

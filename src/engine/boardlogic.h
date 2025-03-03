@@ -10,7 +10,7 @@
     - Contains helper functions and tables for game rule aspects such as castling
 */
 
-namespace Board {
+namespace Chessboard {
 
     // ---------------------
 	// Board logic - general

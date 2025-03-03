@@ -186,7 +186,7 @@ namespace Pieces {
     template <Color side>
     constexpr inline Bitboard pawn_attacks(Bitboard pawns)
     {
-        Bitboard ar_squares = (pawns & Board::NOT_FILE_A) >> 1 | (pawns & Board::NOT_FILE_H) << 1;
+        Bitboard ar_squares = (pawns & Chessboard::NOT_FILE_A) >> 1 | (pawns & Chessboard::NOT_FILE_H) << 1;
 
         return side == WHITE ? Bitboards::shift_s<NORTH>(ar_squares) :
                                Bitboards::shift_s<SOUTH>(ar_squares);
@@ -202,10 +202,10 @@ namespace Pieces {
 
     constexpr inline Bitboard knight_attacks(Bitboard knights)
     {
-        Bitboard l1 = (knights & Board::NOT_FILE_A) >> 1;
-		Bitboard l2 = (knights & Board::NOT_FILE_AB) >> 2;
-		Bitboard r1 = (knights & Board::NOT_FILE_H) << 1;
-		Bitboard r2 = (knights & Board::NOT_FILE_GH) << 2;
+        Bitboard l1 = (knights & Chessboard::NOT_FILE_A) >> 1;
+		Bitboard l2 = (knights & Chessboard::NOT_FILE_AB) >> 2;
+		Bitboard r1 = (knights & Chessboard::NOT_FILE_H) << 1;
+		Bitboard r2 = (knights & Chessboard::NOT_FILE_GH) << 2;
 
 		Bitboard h1 = l1 | r1;
 		Bitboard h2 = l2 | r2;
@@ -215,7 +215,7 @@ namespace Pieces {
 
     constexpr inline Bitboard king_attacks(Bitboard kings)
     {
-        Bitboard att = (kings & Board::NOT_FILE_H) << 1 | (kings & Board::NOT_FILE_A) >> 1;
+        Bitboard att = (kings & Chessboard::NOT_FILE_H) << 1 | (kings & Chessboard::NOT_FILE_A) >> 1;
         
         kings |= att;
         att |= (kings << 8) | (kings >> 8);

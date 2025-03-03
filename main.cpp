@@ -9,7 +9,7 @@ int main()
     // Initialization stage
     // --------------------
 
-    Board::initialize_board_space();
+    Chessboard::initialize_board_space();
     Pieces::initialize_attack_tables();
     Zobrist::initialize_zobrist_numbers();
     // ....

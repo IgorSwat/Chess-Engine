@@ -102,8 +102,8 @@ namespace Pieces {
         for (int sq = 0; sq < SQUARE_RANGE; sq++) {
             // Since attack maps do not change if we put any blockers on edge files or ranks, we can extract them
             // to make index smaller
-            Bitboard edges = ((Board::RANK_1 | Board::RANK_8) & ~Board::rank(rank_of(Square(sq)))) |
-							 ((Board::FILE_A | Board::FILE_H) & ~Board::file(file_of(Square(sq))));
+            Bitboard edges = ((Chessboard::RANK_1 | Chessboard::RANK_8) & ~Chessboard::rank(rank_of(Square(sq)))) |
+							 ((Chessboard::FILE_A | Chessboard::FILE_H) & ~Chessboard::file(file_of(Square(sq))));
 			Bitboard mask = attack_calc(Square(sq), 0) & ~edges;
 
             Magic& m = magics[sq];

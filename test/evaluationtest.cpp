@@ -10,7 +10,7 @@ namespace Testing {
     // This test focuses on correctness of set() method, followed by forward pass
     REGISTER_TEST(nnue_static_load_test)
     {
-        Board::Board board;
+        Board board;
         std::unique_ptr<Evaluation::NNUE> nnue = std::make_unique<Evaluation::NNUE>();
 
         // Load network parameters
@@ -39,7 +39,7 @@ namespace Testing {
     // This test focuses on correctness of dynamic update of NNUE, trying to simulate real search-tree situations
     REGISTER_TEST(nnue_dynamic_change_test)
     {
-        Board::Board board;
+        Board board;
         std::unique_ptr<Evaluation::NNUE> nnue = std::make_unique<Evaluation::NNUE>();
 
         // Load network parameters

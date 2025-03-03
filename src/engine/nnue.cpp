@@ -38,7 +38,7 @@ namespace Evaluation {
     // NNUE - network updates - static
     // -------------------------------
 
-    void NNUE::set(const Board::Board& board)
+    void NNUE::set(const Board& board)
     {
         // Reset state pointers
         m_curr_ply = 0;
@@ -78,7 +78,7 @@ namespace Evaluation {
     // NNUE - network updates - dynamic
     // --------------------------------
 
-    void NNUE::update(const Board::Board& board, const Move& move)
+    void NNUE::update(const Board& board, const Move& move)
     {
         // Step 1 - get rid of all entries in updates stack
         updates[m_curr_ply].clear();
@@ -229,7 +229,7 @@ namespace Evaluation {
     // NNUE - forward pass
     // -------------------
 
-    int32_t NNUE::forward(const Board::Board& board)
+    int32_t NNUE::forward(const Board& board)
     {
         __m256i v_eval = _mm256_setzero_si256();
 

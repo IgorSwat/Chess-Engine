@@ -1,6 +1,8 @@
 #pragma once
 
 #include "types.h"
+#include "../utilities/sarray.h"
+#include <optional>
 
 
 /*
@@ -74,9 +76,9 @@ namespace Moves {
     }
 
 
-    // ----------
-    // Move class
-    // ----------
+    // ------------------
+    // Moves - plain move
+    // ------------------
 
     // The primary idea behind the following class is to provide an useful abstraction for chess move
     // - It only covers the logic behind chess move, does not contain any additional info about move
@@ -120,12 +122,72 @@ namespace Moves {
     };
 
 
-    // --------------------
-    // Null move definition
-    // --------------------
+    // ---------------------
+    // Moves - enhanced move
+    // ---------------------
+
+    // Enhancement definition
+    // - Enhancement is some additional information about move, embedded together with Move object itself
+    // - It could be some evaluation performed on a move (like SEE), or just a custom number which serves as a sorting index
+    enum class Enhancement : uint8_t {
+        PURE_SEE = 1,
+        CUSTOM_SORTING,
+
+        NONE = 0
+    };
+
+    // Enhanced move
+    // - Decorator pattern: move + additional info about the move
+    // - Enables sorting move lists with this kind of moves in place
+    class EnhancedMove : public Move
+    {
+    public:
+        // Allow to construct enchancement move object from plain move object
+        EnhancedMove() = default;
+        EnhancedMove(Square from, Square to, Flags flags) : Move(from, to, flags) {}
+	    EnhancedMove(const Move& move) : Move(move) {}
+        EnhancedMove& operator=(const Move& other) { m_move = other.raw(); return *this; }
+
+        // A convenient setter which makes sure that both enhancement type and enhancement key are set together
+	    void enhance(Enhancement enhancement, int32_t value) { m_enhancement = enhancement; m_key = value; }
+
+        // Standard getters
+        int32_t key() const { return m_key; }
+        Enhancement enhancement() const { return m_enhancement; }
+
+        // Specialized getters
+        // - Return key value only if enhancement matches correctly to the one provided as argument
+        std::optional<int32_t> see() const { return m_enhancement == Enhancement::PURE_SEE ? std::make_optional(m_key) : std::nullopt; }
+
+    private:
+        Enhancement m_enhancement = Enhancement::NONE;      // Enchancement type
+        int32_t m_key = 0;                                  // Enchancement value
+    };
+
+    // Useful type alias for shorten name
+    using EMove = EnhancedMove;
+
+
+    // -------------------------------------
+    // Moves - other definitions - null move
+    // -------------------------------------
 
     // Since we know that mask 0 indicates an invalid move, we can use it to represent null move
     // - In exact terms, we represent null move as a quiet move from A1 to A1
     inline constexpr Move null;
 
+
+    // -------------------------------------
+    // Moves - other definitions - move list
+    // -------------------------------------
+
+    // Move list is basically a stable array of arbitrary size than contains given types of moves (could be plain Move objects, or more advanced ones)
+    // - By default 256 is a maximal size (the biggest known amount of legal moves is any chess position is 218, but we round to the power of 2)
+    template <typename MoveT = Move, unsigned size = 256>
+    using List = StableArray<MoveT, size>;
+
 }
+
+// Share commong usages from Moves namespace
+using Moves::Move;
+using Moves::EMove;

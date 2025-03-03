@@ -14,7 +14,7 @@
     - Requires initialization (initialize_board_space) before use to work properly
 */
 
-namespace Board {
+namespace Chessboard {
 
     // -------------------------------
 	// Board geometry - initialization

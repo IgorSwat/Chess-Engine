@@ -11,7 +11,7 @@ namespace Testing {
 
     REGISTER_TEST(see_test)
     {
-        Board::Board board;
+        Board board;
 
         // Position 1
         board.load_position("1k1r4/1pp4p/p7/4p3/8/P5P1/1PP4P/2K1R3 w - - 0 1");

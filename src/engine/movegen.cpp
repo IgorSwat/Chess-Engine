@@ -10,8 +10,8 @@ namespace MoveGeneration {
 
     // Helper function - promotion generator
     // - Since one pawn promotion can generate 4 different moves, we group it together in one helper function
-    template <bool capture>
-	void generate_promotions(Square from, Square to, Moves::List& movelist)
+    template <bool capture, typename MoveT>
+	void generate_promotions(Square from, Square to, Moves::List<MoveT>& movelist)
 	{
         using namespace Moves;
 
@@ -22,15 +22,15 @@ namespace MoveGeneration {
 		movelist.push_back(Move(from, to, capture ? CAPTURE_FLAG | KNIGHT_PROMOTION_FLAG : KNIGHT_PROMOTION_FLAG));
 	}
 
-    template <Mode mode, Color side>
-    void generate_pawn_moves(const Board::Board& board, Bitboard target, Moves::List& movelist)
+    template <Mode mode, Color side, typename MoveT>
+    void generate_pawn_moves(const Board& board, Bitboard target, Moves::List<MoveT>& movelist)
     {
         // Compile time properties
         constexpr Color enemy = ~side;
 
-        constexpr Bitboard third_rank = side == WHITE ? Board::RANK_3 : Board::RANK_6;
-        constexpr Bitboard penultimate_rank = side == WHITE ? Board::RANK_7 : Board::RANK_2;
-        constexpr Bitboard last_rank = side == WHITE ? Board::RANK_8 : Board::RANK_1;
+        constexpr Bitboard third_rank = side == WHITE ? Chessboard::RANK_3 : Chessboard::RANK_6;
+        constexpr Bitboard penultimate_rank = side == WHITE ? Chessboard::RANK_7 : Chessboard::RANK_2;
+        constexpr Bitboard last_rank = side == WHITE ? Chessboard::RANK_8 : Chessboard::RANK_1;
 
         constexpr Direction forward = side == WHITE ? NORTH : SOUTH;
         constexpr Direction forward_left = side == WHITE ? NORTH_WEST : SOUTH_WEST;
@@ -99,7 +99,7 @@ namespace MoveGeneration {
 			// Enpassant
             // WARNING: original condition: gen != CHECK_EVASION || target & board.enpassantSquare()
 			if (target & board.enpassant_square()) {
-				Bitboard enpassant_candidates = pawns_not_on_7th & Board::adjacent_rank_squares(board.enpassant_square());
+				Bitboard enpassant_candidates = pawns_not_on_7th & Chessboard::adjacent_rank_squares(board.enpassant_square());
 				Square to = board.enpassant_square() + forward;
 
                 // Extract single moves from move maps
@@ -137,8 +137,8 @@ namespace MoveGeneration {
     // Move generation - collective - king moves
     // -----------------------------------------
 
-    template <Mode mode, Color side>
-    void generate_king_moves(const Board::Board& board, Bitboard target, Moves::List& movelist)
+    template <Mode mode, Color side, typename MoveT>
+    void generate_king_moves(const Board& board, Bitboard target, Moves::List<MoveT>& movelist)
     {
         // There can be only 1 king of given color on the board, so we can determine from square
         Square from = board.king_position(side);
@@ -171,8 +171,8 @@ namespace MoveGeneration {
     // ------------------------------------------------
 
     // Knight, bishop, rook and queen moves are easy to generate, since there are no special moves related to those piece types
-    template <Mode mode, Color side, PieceType ptype>
-    void generate_piece_moves(const Board::Board& board, Bitboard target, Moves::List& movelist)
+    template <Mode mode, Color side, PieceType ptype, typename MoveT>
+    void generate_piece_moves(const Board& board, Bitboard target, Moves::List<MoveT>& movelist)
     {
         Bitboard pieces = board.pieces(side, ptype);
 
@@ -206,8 +206,8 @@ namespace MoveGeneration {
     // Move generation - collective - side moves
     // -----------------------------------------
 
-    template <Mode mode, Color side>
-    void generate_side_moves(const Board::Board& board, Moves::List& movelist)
+    template <Mode mode, Color side, typename MoveT>
+    void generate_side_moves(const Board& board, Moves::List<MoveT>& movelist)
     {
         // Compile time properties
         constexpr Color enemy = ~side;
@@ -226,7 +226,7 @@ namespace MoveGeneration {
             if (Bitboards::singly_populated(board.checkers())) {
                 Square checker_pos = Bitboards::lsb(board.checkers());
 
-                Bitboard evasion_target = target & (Board::Paths[board.king_position(side)][checker_pos] | checker_pos);
+                Bitboard evasion_target = target & (Chessboard::Paths[board.king_position(side)][checker_pos] | checker_pos);
 
                 // - For non-king pieces, generate only moves that blocks check or captures checking piece (evasion_target)
                 // - For king, generate moves as usual (just without castle)
@@ -263,8 +263,8 @@ namespace MoveGeneration {
 
     // Main move generation function - library's API
     // - Generate moves for current side to move
-    template <Mode mode>
-    void generate_moves(const Board::Board& board, Moves::List& movelist)
+    template <Mode mode, typename MoveT>
+    void generate_moves(const Board& board, Moves::List<MoveT>& movelist)
     {
         if (board.side_to_move() == WHITE)
             generate_side_moves<mode, WHITE>(board, movelist);
@@ -273,16 +273,22 @@ namespace MoveGeneration {
     }
 
     // Usages declaration
-    template void generate_moves<QUIET>(const Board::Board&, Moves::List&);
-	template void generate_moves<CAPTURE>(const Board::Board&, Moves::List&);
-	template void generate_moves<QUIET_CHECK>(const Board::Board&, Moves::List&);
-	template void generate_moves<CHECK_EVASION>(const Board::Board&, Moves::List&);
-	template void generate_moves<PSEUDO_LEGAL>(const Board::Board&, Moves::List&);
+    template void generate_moves<QUIET, Move>(const Board&, Moves::List<Move>&);
+	template void generate_moves<CAPTURE, Move>(const Board&, Moves::List<Move>&);
+	template void generate_moves<QUIET_CHECK, Move>(const Board&, Moves::List<Move>&);
+	template void generate_moves<CHECK_EVASION, Move>(const Board&, Moves::List<Move>&);
+	template void generate_moves<PSEUDO_LEGAL, Move>(const Board&, Moves::List<Move>&);
+    template void generate_moves<QUIET, EMove>(const Board&, Moves::List<EMove>&);
+	template void generate_moves<CAPTURE, EMove>(const Board&, Moves::List<EMove>&);
+	template void generate_moves<QUIET_CHECK, EMove>(const Board&, Moves::List<EMove>&);
+	template void generate_moves<CHECK_EVASION, EMove>(const Board&, Moves::List<EMove>&);
+	template void generate_moves<PSEUDO_LEGAL, EMove>(const Board&, Moves::List<EMove>&);
 
     // Specialized version - legal moves generation
     // - Legal move generation is basically the same as pseudolegal, with an additional check with board.is_legal_p()
+    // - NOTE: since we basically never use full legal generation in search mechanism, we do not need to implement it's EnhancedMove version
     template <>
-    void generate_moves<LEGAL>(const Board::Board& board, Moves::List& movelist)
+    void generate_moves<LEGAL, Move>(const Board& board, Moves::List<Move>& movelist)
     {
         if (board.in_check())
 			generate_moves<CHECK_EVASION>(board, movelist);
@@ -299,7 +305,7 @@ namespace MoveGeneration {
     // Move generation - individual
     // ----------------------------
 
-    Move create_move(const Board::Board& board, Square from, Square to)
+    Move create_move(const Board& board, Square from, Square to)
 	{
 		Moves::Mask mask = 0;
 

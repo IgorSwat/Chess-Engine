@@ -3,7 +3,7 @@
 #include "types.h"
 
 // Forestall declarations
-namespace Board { class Board; }
+namespace Chessboard { class Board; }
 
 
 /*
@@ -53,7 +53,7 @@ namespace Zobrist {
 
         // Static hash update
         void set(Hash hash) { m_hash = hash; }
-        void generate(const Board::Board& board);   // Generate hash from scratch for given position
+        void generate(const Chessboard::Board& board);   // Generate hash from scratch for given position
 
         // Dynamic hash update
         void update(Piece piece, Square sq) { m_hash ^= ZobristNumbers[color_of(piece) * 384 + type_of(piece) * 64 + sq]; }  

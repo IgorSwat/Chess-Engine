@@ -9,8 +9,6 @@
 #include <stack>
 #include <vector>
 
-using Moves::Move;
-
 
 /*
     ---------- Board ----------
@@ -20,7 +18,7 @@ using Moves::Move;
     - Board class contains additional logic for analyzing the position and potential moves
 */
 
-namespace Board {
+namespace Chessboard {
 
     // ---------------------------
     // Basic constants and defines
@@ -211,3 +209,6 @@ namespace Board {
     };
 
 }
+
+// Share commong usages from Chessboard namespace
+using Chessboard::Board;

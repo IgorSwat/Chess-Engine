@@ -18,7 +18,7 @@ namespace Zobrist {
 	// Zobrist methods
 	// ---------------
 
-    void Zobrist::generate(const Board::Board& board)
+    void Zobrist::generate(const Board& board)
     {
         // To generate hash from scratch, we simply test position for every indyvidual hashing aspect
         m_hash = 0;

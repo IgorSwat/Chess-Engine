@@ -1,7 +1,6 @@
 #pragma once
 
 #include "board.h"
-#include "../utilities/sarray.h"
 
 /*
     ---------- Movegen ----------
@@ -9,18 +8,6 @@
     A library focusing on generation of moves for given position
     - Specyfic generation modes allow to generate groups of moves that meet given property, like check evasions or captures
 */
-
-namespace Moves {
-
-    // --------------------
-    // Move list definition
-    // --------------------
-
-    // The biggest known amount of legal moves is any chess position is 218
-    // - Using the nearest power of 2 as a size makes positive effects for memory layout
-    using List = StableArray<Move, 256>;
-
-}
 
 namespace MoveGeneration {
 
@@ -55,8 +42,8 @@ namespace MoveGeneration {
     // - Covers most of use cases inside the engine
 
     // Generate moves according to given position and add them to movelist
-    template <Mode mode>
-	void generate_moves(const Board::Board& board, Moves::List& movelist);
+    template <Mode mode, typename MoveT = Move>
+	void generate_moves(const Board& board, Moves::List<MoveT>& movelist);
 
 
     // ----------------------------
@@ -68,6 +55,6 @@ namespace MoveGeneration {
     // - Used mostly for secondary purposes, like GUI implementation or some testing
 
     // Create a pseudolegal move by applying appropriate flags in the context of given position
-    Move create_move(const Board::Board& board, Square from, Square to);
+    Move create_move(const Board& board, Square from, Square to);
 
 }

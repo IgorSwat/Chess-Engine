@@ -2,7 +2,7 @@
 #include <array>
 
 
-namespace Board {
+namespace Chessboard {
 
     // -------------
 	// Lookup tables

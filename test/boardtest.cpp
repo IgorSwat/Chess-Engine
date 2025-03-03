@@ -5,8 +5,6 @@
 
 namespace Testing {
 
-    using ::Board::Board;
-
     // ---------------------------
     // Board test - static loading
     // ---------------------------

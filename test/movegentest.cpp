@@ -36,13 +36,13 @@ namespace Testing {
     // This is a recursive function, which goes through every node inside the search tree
     // - The goal is to count number of every possible legal moves that normally would be searched by mini-max algorithm
     // - Comparing with some of the known test positions and values allows to check the correctness of both Board and move generation logic
-    Counters count_moves(Board::Board& board, uint32_t depth)
+    Counters count_moves(Board& board, uint32_t depth)
     {
         // All the counters are initially zeros
         Counters counters;
 
         // Generate all legal moves
-        Moves::List movelist;
+        Moves::List<Move> movelist;
         MoveGeneration::generate_moves<MoveGeneration::LEGAL>(board, movelist);
 
         // Recursion's break condition
@@ -81,7 +81,7 @@ namespace Testing {
     // - Common part of all following tests
     bool test_generation(const std::string& fen, uint32_t depth, const Counters& expected)
     {
-        Board::Board board;
+        Board board;
         board.load_position(fen);
 
         Counters result = count_moves(board, depth);

@@ -5,7 +5,7 @@
 #include <sstream>
 
 
-namespace Board {
+namespace Chessboard {
 
     // --------------------------------
     // Board - position change - static
