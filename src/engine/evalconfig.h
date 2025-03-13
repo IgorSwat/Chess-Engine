@@ -18,7 +18,7 @@ namespace Evaluation {
     namespace GameStage {
 
         // Game stage is an integer from range [0, 256]
-        using Stage = uint32_t;
+        using Stage = uint16_t;
 
         constexpr Stage MIN_GAME_STAGE = 0;     // Represents latest endgames - king and pawn endgames
         constexpr Stage MAX_GAME_STAGE = 256;   // Represents opening stage with all pieces still on the board
@@ -46,6 +46,15 @@ namespace Evaluation {
         constexpr Stage QUEEN_VS_ROOK_ENDGAME = PieceWeights[ROOK] + PieceWeights[QUEEN];
 
     }
+
+
+    // --------------------------------
+    // Configuration - evaluation range
+    // --------------------------------
+
+    // We limit the evaluation range to avoid any accidental overflows (which could happen when using numerical limits)
+    constexpr Eval MAX_EVAL = 10000;
+    constexpr Eval NO_EVAL = MAX_EVAL + 1;
 
 
     // ----------------------------------

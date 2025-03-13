@@ -84,4 +84,11 @@ namespace Testing {
     // - Returns true if all tests have succeeded and false if even one test went wrong
     bool run_tests();
 
+
+    // ----------------------------
+	// Special tests - declarations
+	// ----------------------------
+
+    void search_speed_test(int8_t depth);
+
 }

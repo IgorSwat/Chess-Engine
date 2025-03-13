@@ -48,7 +48,7 @@ namespace Bitboards {
 	// Global bitboard operations - bit count
 	// --------------------------------------
 
-	inline uint32_t popcount(Bitboard bb)
+	inline unsigned popcount(Bitboard bb)
 	{
 		return uint32_t(__popcnt64(bb));
 	}

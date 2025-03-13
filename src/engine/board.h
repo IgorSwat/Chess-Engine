@@ -57,6 +57,11 @@ namespace Chessboard {
         template <typename... PieceTypes>
         Bitboard pieces(Color side, PieceTypes... types) const { return pieces(side) & pieces(types...); }
         Square king_position(Color side) const { return m_kings[side]; }
+        Bitboard attacks(Color side, PieceType ptype) { 
+            if (!m_pstack.top().attacks_ready) update_attacks();
+            return m_pstack.top().attacks[side][ptype];
+        }
+        Bitboard attacks(Color side) { return attacks(side, ALL_PIECES); }
 
         // Position analysis - square-centric operations
         Piece on(Square sq) const { return m_board[sq]; }
@@ -86,16 +91,29 @@ namespace Chessboard {
         // - halfmoves_p indicates plain counter of halfmoves - without reseting after captures and pawn moves
         // - halfmoves_c indicates clock counter of halfmoves - with reset after every capture or pawn move
         // - moves_p  is basically the same as halfmoves_p, but here we count move as a pair of one move from each side
-        uint32_t halfmoves_p() const { return m_halfmoves; }
-        uint32_t halfmoves_c() const { return m_pstack.top().halfmove_clock; }
-        uint32_t moves_p() const { return (m_halfmoves + 2 - m_moving_side) / 2; }
-        uint32_t irreversible_distance() const { return m_pstack.top().irr_distance; }
-        uint32_t repetitions() const;       // Counts how many times current position has repeated
+        uint16_t halfmoves_p() const { return m_halfmoves; }
+        uint16_t halfmoves_c() const { return m_pstack.top().halfmove_clock; }
+        uint16_t moves_p() const { return (m_halfmoves + 2 - m_moving_side) / 2; }
+        uint16_t irreversible_distance() const { return m_pstack.top().irr_distance; }
+
+        // Position analysis - repetitions
+        // - Returns (count, distance) where count is number of times current position repeated
+        //   and distance is a distance in moves (plies) to last occurance of current position (or 0 if there isn't any other)
+        // - It breaks the single responsibility rule, but is a little bit faster than 2 separate functions
+        std::pair<uint16_t, uint16_t> repetitions() const;           // (count, distance)
+
+        // Position analysis - threats
+        // - Threat (piece-wise) is an attack against undefended piece, or piece of higher value (foe example, a knight attacking a rook)
+        // - threats() returns map of threats (pieces) against given side
+        // - NOTE: these methods cannot be const, since calculating attack maps might affect attack tables (lazy updates)
+        Bitboard threats(Color side);
+        unsigned count_threats(Color side) { return Bitboards::popcount(threats(side)); }
 
         // Position analysis - other
         Color side_to_move() const { return m_moving_side; }
-        uint32_t game_stage() const { return m_pstack.top().game_stage; }
+        uint16_t game_stage() const { return m_pstack.top().game_stage; }
         Zobrist::Hash hash() const { return m_zobrist.hash(); }
+        Move last_move() const { return m_pstack.top().last_move; }
 
         // Move analysis - legaity checks
         // - Pseudo legal move is a move that could be legal if we would ignore pins and potential attacks on the king.
@@ -148,6 +166,10 @@ namespace Chessboard {
         void update_checks();                     // Updates all check informations for side to move
         void update_pins(Color side);             // Updates all pin related information (pins, pinners, discoveries) for given side
 
+        // Helper functions - attack maps update
+        // - Updates attack maps for both sides
+        void update_attacks();
+
         // Common data
         // - Single instances inside Board class
         // - All the below variables should be dynamically updated each time a move is made or unmade
@@ -158,7 +180,7 @@ namespace Chessboard {
 
         Color m_moving_side;
 
-        uint32_t m_halfmoves = 0;   // Since undo operation on this is simple decrementation, we can store it as common data
+        uint16_t m_halfmoves = 0;   // Since undo operation on this is simple decrementation, we can store it as common data
 
         // Individual data - structure definition
         // - Aggregates all the data that needs to be stored individually for each ply
@@ -186,14 +208,19 @@ namespace Chessboard {
 	        Bitboard pinned[COLOR_RANGE] = { 0ULL };			// Map of pinned pieces (for both sides)
 	        Bitboard pinners[COLOR_RANGE] = { 0ULL };			// Map of pieces that pin at least one of enemy's pieces ( for both sides)
 
+            // Position data - attack maps
+            // - This is a little bit more expensive to calculate, so we apply lazy updates (tables are updated only when needed)
+            bool attacks_ready = false;
+            Bitboard attacks[COLOR_RANGE][PIECE_TYPE_RANGE] = { 0ULL };             // Map of all attacks
+
             // Position data - special aspects
             CastlingRights castling_rights = NO_CASTLING;
             Square enpassant_square = NULL_SQUARE;
 
             // Position data - miscellaneous
-            uint32_t halfmove_clock = 0;                   // Halfmove clock (resets after every irreversible move)
-            uint32_t irr_distance = 0;                     // Irreversible distance - distance (in plies) from last irreversible move
-            uint32_t game_stage = 0;
+            uint16_t halfmove_clock = 0;                   // Halfmove clock (resets after every irreversible move)
+            uint16_t irr_distance = 0;                     // Irreversible distance - distance (in plies) from last irreversible move
+            uint16_t game_stage = 0;
 
             // Position data - hash
             // - Storing hash allows us to quickly reset Zobrist object without performing all the operations

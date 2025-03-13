@@ -261,28 +261,33 @@ namespace Testing {
         Board board;
         board.load_position(fen);
 
-        ASSERT_EQUALS(1, board.repetitions());
+        ASSERT_EQUALS(1, board.repetitions().first);
+        ASSERT_EQUALS(0, board.repetitions().second);
 
         board.make_move(Move(SQ_F3, SQ_E4, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_C5, SQ_C6, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_E4, SQ_F3, Moves::QUIET_MOVE_FLAG));
 
-        ASSERT_EQUALS(1, board.repetitions());
+        ASSERT_EQUALS(1, board.repetitions().first);
+        ASSERT_EQUALS(0, board.repetitions().second);
 
         board.make_move(Move(SQ_C6, SQ_C5, Moves::QUIET_MOVE_FLAG));
 
-        ASSERT_EQUALS(2, board.repetitions());
+        ASSERT_EQUALS(2, board.repetitions().first);
+        ASSERT_EQUALS(4, board.repetitions().second);
 
         board.make_move(Move(SQ_F3, SQ_E4, Moves::QUIET_MOVE_FLAG));
 
-        ASSERT_EQUALS(2, board.repetitions());
+        ASSERT_EQUALS(2, board.repetitions().first);
+        ASSERT_EQUALS(4, board.repetitions().second);
 
         board.make_move(Move(SQ_C5, SQ_B6, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_E4, SQ_D3, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_B6, SQ_C6, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_D3, SQ_E4, Moves::QUIET_MOVE_FLAG));
 
-        ASSERT_EQUALS(1, board.repetitions());
+        ASSERT_EQUALS(1, board.repetitions().first);
+        ASSERT_EQUALS(0, board.repetitions().second);
 
         board.make_move(Move(SQ_C6, SQ_D6, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_E4, SQ_D3, Moves::QUIET_MOVE_FLAG));
@@ -294,7 +299,102 @@ namespace Testing {
         board.make_move(Move(SQ_E2, SQ_F3, Moves::QUIET_MOVE_FLAG));
         board.make_move(Move(SQ_B6, SQ_C5, Moves::QUIET_MOVE_FLAG));
 
-        ASSERT_EQUALS(1, board.repetitions());
+        ASSERT_EQUALS(1, board.repetitions().first);
+        ASSERT_EQUALS(0, board.repetitions().second);
+
+        return true;
+    }
+
+
+    // -------------------------------------
+    // Board test - threats calculation test
+    // -------------------------------------
+
+    REGISTER_TEST(board_threat_calculation_test)
+    {
+        const std::string fen = "r3kb1r/1pp2ppp/p1np4/1B1Pp1q1/4P1b1/2PQ1Nn1/PP3PPP/RNB1K2R w kq - 5 10";
+
+        Board board;
+        board.load_position(fen);
+
+        ASSERT_EQUALS(0x0000000200000084, board.threats(WHITE));
+        ASSERT_EQUALS(3, board.count_threats(WHITE));
+        ASSERT_EQUALS(0x0000044000400000, board.threats(BLACK));
+        ASSERT_EQUALS(3, board.count_threats(BLACK));
+
+        board.make_move(Move(SQ_B1, SQ_A3, Moves::QUIET_MOVE_FLAG));
+
+        ASSERT_EQUALS(0x0000000200000080, board.threats(WHITE));
+        ASSERT_EQUALS(2, board.count_threats(WHITE));
+
+        board.make_move(Move(SQ_E8, SQ_E7, Moves::QUIET_MOVE_FLAG));
+        board.make_move(Move(SQ_C3, SQ_C4, Moves::QUIET_MOVE_FLAG));
+        board.make_move(Move(SQ_C6, SQ_D4, Moves::QUIET_MOVE_FLAG));
+
+        ASSERT_EQUALS(0x0000000200000080, board.threats(WHITE));
+        ASSERT_EQUALS(2, board.count_threats(WHITE));
+        ASSERT_EQUALS(0x0000004000400000, board.threats(BLACK));
+        ASSERT_EQUALS(2, board.count_threats(BLACK));
+
+        return true;
+    }
+
+
+    // ------------------------------
+    // Board test - zobrist hash test
+    // ------------------------------
+
+    // The idea behind this test is simple: use static zobrist update to check correctness of dynamic updates
+    REGISTER_TEST(board_zobrist_test)
+    {
+        // Starting position
+        Board board;
+
+        // Zobrist reference object
+        Zobrist::Zobrist zobrist;
+
+        // Moves
+        std::vector<Move> moves = {
+            Move(SQ_E2, SQ_E4, Moves::DOUBLE_PAWN_PUSH_FLAG),
+            Move(SQ_C7, SQ_C5, Moves::DOUBLE_PAWN_PUSH_FLAG),
+            Move(SQ_G1, SQ_F3, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_D7, SQ_D6, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_D2, SQ_D4, Moves::DOUBLE_PAWN_PUSH_FLAG),
+            Move(SQ_C5, SQ_D4, Moves::CAPTURE_FLAG),
+            Move(SQ_F3, SQ_D4, Moves::CAPTURE_FLAG),
+            Move(SQ_G8, SQ_F6, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_B1, SQ_C3, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_G7, SQ_G6, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_C1, SQ_E3, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_F8, SQ_G7, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_D1, SQ_D2, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_E8, SQ_G8, Moves::KINGSIDE_CASTLE_FLAG),
+            Move(SQ_E1, SQ_C1, Moves::QUEENSIDE_CASTLE_FLAG),
+            Move(SQ_B8, SQ_C6, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_G2, SQ_G4, Moves::DOUBLE_PAWN_PUSH_FLAG),
+            Move(SQ_A7, SQ_A5, Moves::DOUBLE_PAWN_PUSH_FLAG),
+            Move(SQ_G4, SQ_G5, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_H7, SQ_H5, Moves::DOUBLE_PAWN_PUSH_FLAG),
+            Move(SQ_G5, SQ_H6, Moves::ENPASSANT_FLAG),
+            Move(SQ_C6, SQ_B4, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_H6, SQ_G7, Moves::CAPTURE_FLAG),
+            Move(SQ_B4, SQ_A2, Moves::CAPTURE_FLAG),
+            Move(SQ_C1, SQ_B1, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_A2, SQ_C3, Moves::CAPTURE_FLAG),
+            Move(SQ_D2, SQ_C3, Moves::CAPTURE_FLAG),
+            Move(SQ_C8, SQ_H3, Moves::QUIET_MOVE_FLAG),
+            Move(SQ_G7, SQ_F8, Moves::CAPTURE_FLAG | Moves::QUEEN_PROMOTION_FLAG),
+            Move(SQ_G8, SQ_F8, Moves::CAPTURE_FLAG),
+            Move(SQ_F1, SQ_H3, Moves::CAPTURE_FLAG)
+        };
+
+        for (const Move& move : moves) {
+            board.make_move(move);
+
+            zobrist.generate(board);
+
+            ASSERT_EQUALS(zobrist.hash(), board.hash());
+        }
 
         return true;
     }

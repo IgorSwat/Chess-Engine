@@ -245,9 +245,10 @@ namespace Chessboard {
 
         // Step 2 - update castling rights
         // - Promotion cannot affect castling rights unless it comes with a capture of enemy rook
+        m_pstack.top().castling_rights = m_pstack.top_n(1).castling_rights;
         if (move.is_capture()) {
             m_zobrist.update(m_pstack.top_n(1).castling_rights);
-            m_pstack.top().castling_rights = m_pstack.top_n(1).castling_rights & ~CastleLoss[to];
+            m_pstack.top().castling_rights &= ~CastleLoss[to];
             m_zobrist.update(m_pstack.top().castling_rights);
         }
 
@@ -452,32 +453,70 @@ namespace Chessboard {
     }
 
 
-    // -----------------------------------------
-    // Board - position analysis - move counting
-    // -----------------------------------------
+    // ---------------------------------------
+    // Board - position analysis - repetitions
+    // ---------------------------------------
 
-    uint32_t Board::repetitions() const
+    std::pair<uint16_t, uint16_t> Board::repetitions() const
     {
+        // Repetition of a position requires at least 2 moves from both sides - one to go to a different position, and one to go back
+        // For this reason we know that repetition cannot happen if last irreversible move came less then 2 moves (4 plies) ago
+        if (irreversible_distance() < 4)
+            return std::make_pair<uint16_t, uint16_t>(1, 0);
+
         Zobrist::Hash curr_hash = m_pstack.top().hash;
 
-        uint32_t count = 1;                     // We are already counting the current position as first occurance
+        uint16_t count = 1;                     // We are already counting the current position as first occurance
+        uint16_t distance = 0;
 
-        // Since repetition of current position can happen only at current side to move, we can limit searching to only
+        // Since repetition of current position can happen only at current side to move, we can limit search to only
         // plies with current side to move as a moving side
         // - Determines the maximal range of search inside position stack
-        uint32_t loops = m_pstack.top().irr_distance / 2;     
+        uint16_t loops = m_pstack.top().irr_distance / 2;     
         
-        for (uint32_t i = 1; i <= loops; i++) {
+        for (int i = 1; i <= loops; i++) {
             if (m_pstack.size() < 2 * i + 1)
                 break;
             
             // We assume that positions are the same if their hashes are equal, altrough it's not always true
             // (due to limited range of hash values)
-            if (curr_hash == m_pstack.top_n(2 * i).hash)
+            if (curr_hash == m_pstack.top_n(2 * i).hash) {
                 count++;
+                distance = distance == 0 ? m_pstack.top().halfmove_clock - m_pstack.top_n(2 * i).halfmove_clock : distance;
+            }
         }
 
-        return count;
+        return std::make_pair(count, distance);
+    }
+
+
+    // -----------------------------------
+    // Board - position analysis - threats
+    // -----------------------------------
+
+    Bitboard Board::threats(Color side)
+    {
+        // Piece maps
+        Bitboard threat_map = 0;
+
+        // Attack maps
+        // - Defense map is static, while attack map is dynamically updated after considering threats for each piece type
+        // - Attack map initially contains attacks on undefended squares and we simply add lower type attacks step by step
+        Bitboard defense_map = attacks(side);
+        Bitboard attack_map = attacks(~side) & ~defense_map | attacks(~side, PAWN);
+
+        // Threats against knights & bishops
+        threat_map |= pieces(side, KNIGHT, BISHOP) & attack_map;
+        attack_map |= attacks(~side, KNIGHT) | attacks(~side, BISHOP);      // Update attack maps, since next piece type is rook
+
+        // Threats against rooks
+        threat_map |= pieces(side, ROOK) & attack_map;
+        attack_map |= attacks(~side, ROOK);                                 // Update attack maps, since next piece type is queen
+
+        // Threats against queens
+        threat_map |= pieces(side, QUEEN) & attack_map;
+
+        return threat_map;
     }
 
 
@@ -529,9 +568,10 @@ namespace Chessboard {
         }
 
         // Special case - castle
-        if (move.is_castle() && 
-            (!can_castle(side, move.castle_type()) || !castle_path_clear(side, move.castle_type()) || in_check()))
-            return false;
+        if (move.is_castle()) {
+            if (!can_castle(side, move.castle_type()) || !castle_path_clear(side, move.castle_type()) || in_check())
+                return false;
+        }
         // Special case - pawn moves
         else if (type_of(piece) == PAWN) {
             Bitboard secondRank = side == WHITE ? RANK_2 : RANK_7;
@@ -799,6 +839,46 @@ namespace Chessboard {
         // Discard king square from pin set, since king cannot be pinned
         // - The above algorithm can incorrectly classify king as pinned in case of a check
         m_pstack.top().pinned[side] &= ~m_kings[side];
+    }
+
+
+    // ---------------------------------------------
+    // Board - helper functions - attack maps update
+    // ---------------------------------------------
+
+    void Board::update_attacks()
+    {
+        // Update for both sides
+        for (unsigned side = WHITE; side <= BLACK; side++) {
+            // Pawns, knights and kings can be covered separately using aggregative attack calculations
+            m_pstack.top().attacks[side][PAWN] = side == WHITE ? Pieces::pawn_attacks<WHITE>(pieces(WHITE, PAWN)) :
+                                                                 Pieces::pawn_attacks<BLACK>(pieces(BLACK, PAWN));
+            m_pstack.top().attacks[side][KNIGHT] = Pieces::knight_attacks(pieces(Color(side), KNIGHT));
+            m_pstack.top().attacks[side][KING] = Pieces::piece_attacks_s<KING>(king_position(Color(side)));
+
+            // For sliding piece attacks, we need to cover each piece indyvidualy
+            Bitboard bishops = pieces(Color(side), BISHOP);
+            while (bishops)
+                m_pstack.top().attacks[side][BISHOP] |= Pieces::piece_attacks_s<BISHOP>(Bitboards::pop_lsb(bishops), pieces());
+            
+            Bitboard rooks = pieces(Color(side), ROOK);
+            while (rooks)
+                m_pstack.top().attacks[side][ROOK] |= Pieces::piece_attacks_s<ROOK>(Bitboards::pop_lsb(rooks), pieces());
+
+            Bitboard queens = pieces(Color(side), QUEEN);
+            while (queens)
+                m_pstack.top().attacks[side][QUEEN] |= Pieces::piece_attacks_s<QUEEN>(Bitboards::pop_lsb(queens), pieces());
+            
+            // Finally, calculate all piece attack map
+            m_pstack.top().attacks[side][ALL_PIECES] = m_pstack.top().attacks[side][PAWN] |
+                                                       m_pstack.top().attacks[side][KNIGHT] |
+                                                       m_pstack.top().attacks[side][BISHOP] |
+                                                       m_pstack.top().attacks[side][ROOK] |
+                                                       m_pstack.top().attacks[side][QUEEN] |
+                                                       m_pstack.top().attacks[side][KING];
+        }
+
+        m_pstack.top().attacks_ready = true;
     }
 
 

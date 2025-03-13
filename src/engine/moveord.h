@@ -86,6 +86,10 @@ namespace MoveOrdering {
 
         } strategy;
 
+        // Other getters
+        std::size_t size() const { return m_moves.size(); }
+        MoveGeneration::Mode phase() const { return m_gen; }
+
         // Friends
         friend void sort(Selector& selector, const std::function<int32_t(const Move& move)>& indexer, Moves::Enhancement enhancement_type);
 
@@ -171,6 +175,8 @@ namespace MoveOrdering {
     inline void sort(Selector& selector, const Indexer& indexer,
                      Moves::Enhancement enhancement_type = Moves::Enhancement::CUSTOM_SORTING)
     {
+        selector.set_batch(uint8_t(selector.m_batch));
+
         // Similarly to above function, but with respect to selector's move range
         std::for_each(selector.m_next_move, selector.m_moves.end(), 
                       [&indexer, enhancement_type](EMove& move) -> void { move.enhance(enhancement_type, indexer(move)); });
