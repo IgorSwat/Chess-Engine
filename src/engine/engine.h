@@ -29,11 +29,13 @@ public:
     void set_position(const std::string& fen) { m_crawler.set_position(fen); }
 
     // Main functionalities
-    Search::Score evaluate(Search::Depth depth = 0);
+    // - Main search function (evaluate) returns both score and best move in current position
+    std::pair<Search::Score, Move> evaluate(Search::Depth depth = 0);
     Search::Score iterative_deepening(Search::Depth depth);
 
     // Getters
     const TranspositionTable* ttable() const { return &m_ttable; }
+    const Board* mem_board() const { return &m_mem_board; }
 
 private:
     // Engine mode

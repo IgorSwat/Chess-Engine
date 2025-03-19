@@ -49,7 +49,7 @@ public:
         Search::Age root_age = 0;       // Together with pieces allows to compare two entries for having the same root (= search tree)
         Search::Age age = 0;            // Age of position related to this entry
 
-        bool same_search_tree(Search::Age root_age, Bitboard pieces) const { return this->root_age == root_age && this->pieces == pieces; }
+        bool same_search_tree(Search::Age root_age, Bitboard pieces) const { return this->root_age == root_age; }
         bool same_search_tree(const Entry& other) const { return same_search_tree(other.root_age, other.pieces); }
 
         // Search results

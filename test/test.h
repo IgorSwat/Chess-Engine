@@ -90,5 +90,6 @@ namespace Testing {
 	// ----------------------------
 
     void search_speed_test(int8_t depth);
+    void search_accuracy_test(int8_t depth, std::string input = "test/data/search_test_data_custom.txt");
 
 }

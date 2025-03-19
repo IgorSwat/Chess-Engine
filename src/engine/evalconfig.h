@@ -53,8 +53,9 @@ namespace Evaluation {
     // --------------------------------
 
     // We limit the evaluation range to avoid any accidental overflows (which could happen when using numerical limits)
-    constexpr Eval MAX_EVAL = 10000;
+    constexpr Eval MAX_EVAL = 100000;
     constexpr Eval NO_EVAL = MAX_EVAL + 1;
+    constexpr Eval MATE_LOWER_BOUND = MAX_EVAL - 100;
 
 
     // ----------------------------------

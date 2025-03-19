@@ -3,27 +3,32 @@
 #include <chrono>
 
 
-Search::Score Engine::evaluate(Search::Depth depth)
+std::pair<Search::Score, Move> Engine::evaluate(Search::Depth depth)
 {
     // Step 1 - history malusement
-    if (m_crawler.get_position()->halfmoves_p() < m_mem_board.halfmoves_p())
-        m_history.reset();
-    else
-        m_history.flatten(std::max(1, m_crawler.get_position()->halfmoves_p() - m_mem_board.halfmoves_p()));
+    // if (m_crawler.get_position()->halfmoves_p() < m_mem_board.halfmoves_p())
+    //     m_history.reset();
+    // else
+    //     m_history.flatten(std::max(1, m_crawler.get_position()->halfmoves_p() - m_mem_board.halfmoves_p()));
+    m_history.reset();
 
     // Step 2 - save current search position
     m_mem_board = *m_crawler.get_position();
 
     // Step 3 - main search
     Search::Score result = 0;
+    Move best_move;
 
     // depth == 0 case is equivalent to evaluating the position statically
     if (depth == 0)
         result = Evaluation::relative_eval(m_crawler.search(0), *m_crawler.get_position());
-    else if (m_mode == Engine::Mode::STANDARD)
+    else if (m_mode == Engine::Mode::STANDARD) {
         result = Evaluation::relative_eval(iterative_deepening(depth), *m_crawler.get_position());
+        best_move = m_crawler.m_search_stack[1].best_move;
+    }
     else if (m_mode == Engine::Mode::TRACE) {
         result = Evaluation::relative_eval(iterative_deepening(depth), *m_crawler.get_position());
+        best_move = m_crawler.m_search_stack[1].best_move;
 
         const Board* board = m_crawler.get_position();
         const TranspositionTable::Entry* entry = m_ttable.probe(board->hash(), board->pieces());
@@ -31,7 +36,7 @@ Search::Score Engine::evaluate(Search::Depth depth)
         std::cout << "\n|||||   Search results   |||||\n";
         std::cout << std::dec << "Score: " << Evaluation::relative_eval(entry->score, *board);
         std::cout << ", Type: " << int(m_crawler.m_search_stack[1].node) << 
-                     ", Best move: " << m_crawler.m_search_stack[1].best_move << "\n";
+                     ", Best move: " << best_move << "\n";
 
         if (!entry) {
             std::cout << "Missing TT entry!!!\n";
@@ -40,6 +45,7 @@ Search::Score Engine::evaluate(Search::Depth depth)
     else {
         auto start = std::chrono::steady_clock::now();
         result = Evaluation::relative_eval(iterative_deepening(depth), *m_crawler.get_position());
+        best_move = m_crawler.m_search_stack[1].best_move;
         auto end = std::chrono::steady_clock::now();
 
         auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -51,7 +57,7 @@ Search::Score Engine::evaluate(Search::Depth depth)
         std::cout << "> Queiescence nodes: " << m_crawler.qs_nodes << "\n";
     }
 
-    return result;
+    return std::make_pair(result, best_move);
         
 }
 

@@ -77,15 +77,21 @@ namespace Search {
 
         auto tt_entry = m_ttable->probe(m_virtual_board.hash(), m_virtual_board.pieces());
 
-        if (tt_entry) {
-            Score tt_score = Evaluation::NO_EVAL;
+        Score tt_score = Evaluation::NO_EVAL;
+        Move tt_move = Moves::null;
 
+        if (tt_entry) {
             // DEBUG
             // Test if transposition table move is fine (helps detecting hash collisions)
             if (tt_entry->best_move != Moves::null && !m_virtual_board.is_legal_f(tt_entry->best_move)) {
                 std::cout << "LOLOLOL\n";
                 goto next_step;
             }
+
+            tt_score = tt_entry->score;
+            tt_move = tt_entry->best_move;
+
+            m_sstop->best_move = tt_move;
 
             // Cut-off condition
             // - TERMINAL_NODE always produces a cut-off, since mate or stealmate is unavoidable
@@ -101,31 +107,43 @@ namespace Search {
                 // Additional protection against repetition cycles
                 // - Repetition cycle is a situation, where transposition table in position A points to position B, and in B to A
                 // - This can happen in case of different searches performed from both positions A and B
-                if (m_virtual_board.irreversible_distance() < 4)
-                    return tt_entry->score;
+                if (m_virtual_board.irreversible_distance() < 4 || tt_move == Moves::null)
+                    return tt_score;
 
                 // Go into the next position and count repetitions
                 // NOTE: Since this is not search, we do not need to call eternal make_move() or undo_move() functions
-                m_virtual_board.make_move(tt_entry->best_move);
+                m_virtual_board.make_move(tt_move);
                 uint16_t next_repetitions = m_virtual_board.repetitions().first;
                 m_virtual_board.undo_move();
 
                 // If either one of the positions is not repeated, we can safely return transposition table score
                 if (repetitions < 2 || next_repetitions < 2)
-                    return tt_entry->score;
+                    return tt_score;
                 
                 // In other case, we assume that move pointed out by transposition table leads to a draw
                 tt_score = 0;
             }
             // If cut-off is not possible, then try transposition table move and perform standard search
-            else if (depth > 0 && tt_entry->best_move != Moves::null) {
-                make_move(tt_entry->best_move);
+            else if (depth > 0 && tt_move != Moves::null) {
+                make_move(tt_move);
                 tt_score = -search<PV_NODE>(-beta, -alpha, depth - 1);
                 undo_move();
             }
 
-            // Case 1 - beta cut-off
+            // Case 1 - best score reached
+            if (tt_score > m_sstop->score) {
+                m_sstop->score = tt_score;
+                m_sstop->best_move = tt_move;
+                if (tt_score > alpha) {
+                    alpha = tt_score;
+                    m_sstop->node = PV_NODE;
+                }
+            }
+
+            // Case 2 - beta cut-off
             if (tt_score != Evaluation::NO_EVAL && tt_score >= beta) {
+                m_sstop->node = CUT_NODE;
+
                 m_ttable->set({
                     m_virtual_board.hash(),
                     m_virtual_board.pieces(),
@@ -134,34 +152,24 @@ namespace Search {
                     depth,
                     CUT_NODE,
                     tt_score,  // score
-                    tt_entry->best_move,
+                    tt_move,
                     tt_entry->static_eval
                 });
 
                 // Killer heuristic update
-                if (tt_entry->best_move.is_quiet() || m_virtual_board.see(tt_entry->best_move) < 0)
-                    m_sstop->add_killer(tt_entry->best_move);
+                if (tt_move.is_quiet() || m_virtual_board.see(tt_move) < 0)
+                    m_sstop->add_killer(tt_move);
 
                 // History heuristic update
-                if (tt_entry->best_move.is_quiet())
-                    m_history->update_score(m_virtual_board, tt_entry->best_move, HISTORY_FACTOR * depth * depth);
+                if (tt_move.is_quiet())
+                    m_history->update_score(m_virtual_board, tt_move, HISTORY_FACTOR * depth * depth);
 
                 return tt_score;
             }
 
-            // Case 2 - best score reached
-            if (tt_score > m_sstop->score) {
-                m_sstop->score = tt_score;
-                m_sstop->best_move = tt_entry->best_move;
-                if (tt_score > alpha) {
-                    alpha = tt_score;
-                    m_sstop->node = PV_NODE;
-                }
-            }
-
             // Update move counters
-            if (!tt_entry->best_move.is_quiet())                        m_sstop->capture_counter++;
-            else if (m_virtual_board.is_check(tt_entry->best_move))     m_sstop->check_counter++;
+            if (!tt_move.is_quiet())                        m_sstop->capture_counter++;
+            else if (m_virtual_board.is_check(tt_move))     m_sstop->check_counter++;
             else                                                        m_sstop->default_counter++;
 
             // Get evaluations from transposition table enrty
@@ -208,7 +216,9 @@ namespace Search {
         // Detect mate & stealmate
         if (!move_selector.has_next()) {
             // For mate we use score = infinity (certain win), for stealmate we use score = 0 (draw)
-            Score score = m_virtual_board.in_check() ? -Evaluation::MAX_EVAL : 0;
+            // - We use different mate score for mate in 1, mate in 2, etc.
+            // - Quickest path to mate gets the highest score, which allows engine to converge into mate
+            Score score = m_virtual_board.in_check() ? -Evaluation::MAX_EVAL + m_sstop->ply : 0;
 
             m_ttable->set({
                 m_virtual_board.hash(),
@@ -240,8 +250,8 @@ namespace Search {
 
         // Before entering main loop, exclude transposition table suggestion from move selection
         // - Another occurance of previously analyzed move would have a bad effect for LMR heuristic
-        if (tt_entry && tt_entry->best_move != Moves::null)
-            move_selector.exclude(tt_entry->best_move);
+        if (tt_move != Moves::null)
+            move_selector.exclude(tt_move);
         
         // Enter main loop
         // - We use infinite loop with continue/break controls for more flexibility
@@ -397,8 +407,20 @@ namespace Search {
                 undo_move();
             }
 
-            // Case 1 - beta cut-off
+            // Case 1 - best score reached
+            if (score > m_sstop->score) {
+                m_sstop->score = score;
+                m_sstop->best_move = move;
+                if (score > alpha) {
+                    alpha = score;
+                    m_sstop->node = PV_NODE;
+                }
+            }
+
+            // Case 2 - beta cut-off
             if (score >= beta) {
+                m_sstop->node = CUT_NODE;
+
                 m_ttable->set({
                     m_virtual_board.hash(),
                     m_virtual_board.pieces(),
@@ -422,16 +444,6 @@ namespace Search {
                 return score;
             }
 
-            // Case 2 - best score reached
-            if (score > m_sstop->score) {
-                m_sstop->score = score;
-                m_sstop->best_move = move;
-                if (score > alpha) {
-                    alpha = score;
-                    m_sstop->node = PV_NODE;
-                }
-            }
-
             // Update move counters
             (*counter)++;
         }
@@ -448,7 +460,7 @@ namespace Search {
             m_virtual_board.halfmoves_p(),      // Current age
             depth,
             m_sstop->node,
-            m_sstop->score,
+            m_sstop->score == -Evaluation::MAX_EVAL ? m_sstop->static_eval : m_sstop->score,
             m_sstop->best_move,
             m_sstop->static_eval
         });
@@ -457,7 +469,7 @@ namespace Search {
         if (m_sstop->best_move != Moves::null && m_sstop->best_move.is_quiet())
             m_history->update_score(m_virtual_board, m_sstop->best_move, HISTORY_FACTOR * depth * depth);
         
-        return m_sstop->score;
+        return m_sstop->score == -Evaluation::MAX_EVAL ? m_sstop->static_eval : m_sstop->score;
     }
 
 
@@ -498,7 +510,7 @@ namespace Search {
         // Detect mate & stealmate
         if (!move_selector.has_next()) {
             // For mate we use score = infinity (certain win), for stealmate we use score = 0 (draw)
-            Score score = m_virtual_board.in_check() ? -Evaluation::MAX_EVAL : 0;
+            Score score = m_virtual_board.in_check() ? -Evaluation::MAX_EVAL + m_sstop->ply : 0;
 
             m_ttable->set({
                 m_virtual_board.hash(),

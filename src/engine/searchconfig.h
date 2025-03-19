@@ -35,8 +35,8 @@ constexpr int32_t HISTORY_FACTOR = 5;
 // Search parameters - futility pruning heuristic
 // ----------------------------------------------
 
-constexpr Evaluation::Eval FUTILITY_MARGIN_I = 150;
-constexpr Evaluation::Eval FUTILITY_MARGIN_II = 300;
+constexpr Evaluation::Eval FUTILITY_MARGIN_I = 250;
+constexpr Evaluation::Eval FUTILITY_MARGIN_II = 500;
 
 
 // ---------------------------------
@@ -71,7 +71,7 @@ inline float lmr_function(float x) { return 1.55f / (1.f + std::pow(std::numbers
 // --------------------------------
 
 // Delta pruning works similarly to futility pruning, but in queiscence search
-constexpr Evaluation::Eval DELTA_MARGIN = 150;
+constexpr Evaluation::Eval DELTA_MARGIN = 200;
 
 // Quiescence stop parameter
 constexpr Evaluation::Eval EPSILON_MARGIN = 50;

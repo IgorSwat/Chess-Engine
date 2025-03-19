@@ -6,6 +6,7 @@
 #include <iostream>
 #include <memory>
 
+
 int main()
 {
     // --------------------
@@ -27,22 +28,31 @@ int main()
     // if (!test_results)
     //     std::abort();
 
+    // Speed test
+    // Testing::search_speed_test(7);
+
+    // Quality test
+    // Testing::search_accuracy_test(7);
+
+
     // ---------------
     // Main processing
     // ---------------
 
-    Testing::search_speed_test(7);
+    std::unique_ptr<Engine> engine = std::make_unique<Engine>(Engine::Mode::TRACE);
 
-    // std::unique_ptr<Engine> engine = std::make_unique<Engine>(Engine::Mode::TRACE);
+    std::string fen;
+    while (true) {
+        std::getline(std::cin, fen);
+        if (fen.empty()) break;
 
-    // std::string fen;
-    // while (true) {
-    //     std::getline(std::cin, fen);
-    //     if (fen.empty()) break;
+        int depth;
+        std::cin >> depth;
+        std::cin.get();
 
-    //     engine->set_position(fen);
-    //     engine->evaluate(10);
-    // }
+        engine->set_position(fen);
+        engine->evaluate(Search::Depth(depth));
+    }
 
     return 0;
 }
