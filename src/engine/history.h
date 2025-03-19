@@ -7,7 +7,10 @@
     ---------- History ----------
 
     An implementation of history heuristic mechanism
-    - History as a shared object that aggregates all the move counters and history scores
+    - Core of the idea comes from well known reinforcement learning k-bandit problem
+    - It is named history for tradition, even though it is significantly different than classical history implementation
+    - Scores are aggregated in static tables similarly to transposition table entries
+    - For each move, the score is calculated using formula: Q(M, n + 1) = Q(M, n) + importance * (R(M) - Q(M, n))
 */
 
 namespace Search {
@@ -21,48 +24,33 @@ namespace Search {
     {
     public:
         // History types definition
-        // - We use 64 bit integer to make sure that range of possible scores is big enough and there are no overflows
-        // - Negative history is allowed
-        using Score = int64_t;
-        using Counter = uint32_t;
+        // - We can look at score as a [0, 1] floating point value quantized into [0, S] integer range for efficiency purposes
+        using Score = int16_t;
 
         // Global modifiers
-        // - History malusements are implemented as flatten() method, which reduces all scores and counters by half (possibly multiple times)
-        // - This method is called at the beginning of every new search and focuses on providing a balance between new and old history scores
-        // - Real reduction is 2^factor
-        void flatten(unsigned factor = 1);
-        void reset() { flatten(64); }
+        // - Allow to reset the whole history table and forget about anything it learned
+        void reset() { for (int i = 0; i < PIECE_RANGE; i++) for (int j = 0; j < SQUARE_RANGE; j++) Q[i][j] = 0; }
 
         // Local modifiers
-        // - Dynamic update of history tables
-        void update_score(Piece piece, Square to, Score bonus) { 
-            Score clamped = std::clamp(bonus, -MAX_HISTORY_SCORE, MAX_HISTORY_SCORE);
-            m_scores[piece][to] += clamped - m_scores[piece][to] * std::abs(clamped) / MAX_HISTORY_SCORE;   // History gravity formula
-
-            // Launch auto-flattening when some value reaches it's maximum
-            if (m_scores[piece][to] == MAX_HISTORY_SCORE)
-                flatten(1);
+        // - Dynamic update of history table
+        // - Utilizes Q(M, n + 1) = Q(M, n) + importance * (R(M) - Q(M, n)) formula
+        // - importance = (c * depth) / (ply * start_depth) where c is a hyperparameter defined in searchconfig.h
+        // - Additional division by 100 to normalize c factor (which is an integer instead of [0, 1] float)
+        void update(Piece piece, Square to, int c, int8_t start_depth, int8_t depth, int16_t ply, Score R) { 
+            Q[piece][to] = Q[piece][to] + int64_t(c) * depth * (R - Q[piece][to]) / (100 * (ply + 1) * start_depth);
         }
-        void update_score(const Board& board, const Move& move, Score bonus) { update_score(board.on(move.from()), move.to(), bonus); }
-        void update_counter(Piece piece, Square to) { m_counters[piece][to]++; }
-        void update_counter(const Board& board, const Move& move) { update_counter(board.on(move.from()), move.to()); }
+        void update(const Board& board, const Move& move, int c, int8_t start_depth, int8_t depth, int16_t ply, Score R) {
+            update(board.on(move.from()), move.to(), c, start_depth, depth, ply, R);
+        }
 
         // Getters
-        // - count() returns only raw count for given move
-        // - score() returns only raw history score for given move
-        // - history() returns combined score from relative history formula (history & trials)
-        Score score(Piece piece, Square to) const { return m_scores[piece][to]; }
-        Score score(const Board& board, const Move& move) { return score(board.on(move.from()), move.to()); }
-        Counter count(Piece piece, Square to) const { return m_counters[piece][to]; }
-        Counter count(const Board& board, const Move& move) { return count(board.on(move.from()), move.to()); }
-        Score history(Piece piece, Square to) const { return score(piece, to) * score(piece, to) / (count(piece, to) + 1); }
-        Score history(const Board& board, const Move& move) const { return history(board.on(move.from()), move.to()); }
+        Score score(Piece piece, Square to) const { return Q[piece][to]; }
+        Score score (const Board& board, const Move& move) const { return score(board.on(move.from()), move.to()); }
 
     private:
-        // History tables - move scores & counters
+        // History tables - move scores
         // - Improved indexing - instead of butterfly index, we use piece-square approach
-        alignas(32) Score m_scores[PIECE_RANGE][SQUARE_RANGE] = { 0 };        // Sum of all history bonuses for given move
-        alignas(16) Counter m_counters[PIECE_RANGE][SQUARE_RANGE] = { 0 };    // How many times move was tried in search tree
+        Score Q[PIECE_RANGE][SQUARE_RANGE] = { 0 };        // Move scores
     };
 
 }

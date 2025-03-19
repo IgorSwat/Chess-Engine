@@ -35,7 +35,12 @@ public:
 
     // Getters
     const TranspositionTable* ttable() const { return &m_ttable; }
+    const Search::History* history() const { return &m_history; }
     const Board* mem_board() const { return &m_mem_board; }
+
+    // TEST / DEBUG
+    void show_ordering() const;     // Show how would moves be ordered in last searched position if researched again
+    void grid_search();
 
 private:
     // Engine mode

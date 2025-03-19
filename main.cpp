@@ -29,30 +29,37 @@ int main()
     //     std::abort();
 
     // Speed test
-    // Testing::search_speed_test(7);
+    // Testing::search_speed_test(5);
 
     // Quality test
-    // Testing::search_accuracy_test(7);
+    Testing::search_accuracy_test(7);
 
 
     // ---------------
     // Main processing
     // ---------------
 
-    std::unique_ptr<Engine> engine = std::make_unique<Engine>(Engine::Mode::TRACE);
+    std::unique_ptr<Engine> engine = std::make_unique<Engine>(Engine::Mode::STANDARD);
+    // engine->grid_search();
 
-    std::string fen;
-    while (true) {
-        std::getline(std::cin, fen);
-        if (fen.empty()) break;
+    // engine->set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    // engine->evaluate(5);
 
-        int depth;
-        std::cin >> depth;
-        std::cin.get();
+    // std::cout << std::endl;
+    // engine->show_ordering();
 
-        engine->set_position(fen);
-        engine->evaluate(Search::Depth(depth));
-    }
+    // std::string fen;
+    // while (true) {
+    //     std::getline(std::cin, fen);
+    //     if (fen.empty()) break;
+
+    //     int depth;
+    //     std::cin >> depth;
+    //     std::cin.get();
+
+    //     engine->set_position(fen);
+    //     engine->evaluate(Search::Depth(5));
+    // }
 
     return 0;
 }

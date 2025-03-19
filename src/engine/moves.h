@@ -131,6 +131,7 @@ namespace Moves {
     // - It could be some evaluation performed on a move (like SEE), or just a custom number which serves as a sorting index
     enum class Enhancement : uint8_t {
         PURE_SEE = 1,
+        PURE_SEARCH_SCORE,
         CUSTOM_SORTING,
 
         NONE = 0
@@ -158,6 +159,8 @@ namespace Moves {
         // Specialized getters
         // - Return key value only if enhancement matches correctly to the one provided as argument
         std::optional<int32_t> see() const { return m_enhancement == Enhancement::PURE_SEE ? std::make_optional(m_key) : std::nullopt; }
+        std::optional<int32_t> score() const { return m_enhancement == Enhancement::PURE_SEARCH_SCORE ?
+                                                                       std::make_optional(m_key) : std::nullopt; }
 
     private:
         Enhancement m_enhancement = Enhancement::NONE;      // Enchancement type

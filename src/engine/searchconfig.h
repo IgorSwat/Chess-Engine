@@ -16,26 +16,34 @@ constexpr int8_t MAX_QUIESCENCE_DEPTH = 10;
 constexpr int8_t MAX_TOTAL_SEARCH_DEPTH = MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPTH;
 
 
-// ------------------------------------
-// Search parameters - killer heuristic
-// ------------------------------------
+// ---------------------------------
+// Search parameters - move ordering
+// ---------------------------------
 
-constexpr unsigned NO_KILLERS = 2;
+// History heuristic - score bounds
+constexpr int HISTORY_MIN_SCORE = 0;
+constexpr int HISTORY_MAX_SCORE = 1024;     // This is simultaneously a quantization factor for history formula
 
+// History heuristic - eval normalization
+// - Since history score values are relative to best move eval, there is a need normalize those results.
+//   Otherwise, small shifts in small evaluations like +0.1 to +0.05 would produce drastic score changes
+constexpr int HISTORY_EVAL_NORMALIZATION = 20;  // 20 cp
 
-// -------------------------------------
-// Search parameters - history heuristic
-// -------------------------------------
+// History heuristic - importance factors
+// - Two digit precision - all the numbers are divided by 100 during calculations
+// constexpr int HISTORY_PV_FACTOR = 32;
+// constexpr int HISTORY_ALL_FACTOR = 4;
+// constexpr int HISTORY_CUT_FACTOR = 8;
 
-constexpr int64_t MAX_HISTORY_SCORE = 1e5;
-constexpr int32_t HISTORY_FACTOR = 5;
+// Killer heuristic
+constexpr int NO_KILLERS = 2;
 
 
 // ----------------------------------------------
 // Search parameters - futility pruning heuristic
 // ----------------------------------------------
 
-constexpr Evaluation::Eval FUTILITY_MARGIN_I = 250;
+constexpr Evaluation::Eval FUTILITY_MARGIN_I = 200;
 constexpr Evaluation::Eval FUTILITY_MARGIN_II = 500;
 
 
@@ -48,22 +56,15 @@ constexpr Evaluation::Eval FUTILITY_MARGIN_II = 500;
 // Search parameters - LMR heuristic
 // ---------------------------------
 
-// Those factors decide how quickly does reduction value grow
+// Move index offset
+// - Decides when to start applying LMR changes to depth reduction (typically at move number 2 + k when using log function)
+constexpr int LMR_ACTIVATION_OFFSET = 2;
+
+// Reduction factors
 // - Higher factor = quicker reduction growth
-constexpr float LMR_DEFAULT_FACTOR = 2.4f;
-constexpr float LMR_CAPTURE_FACTOR = 2.0f;
-constexpr float LMR_CHECK_FACTOR = 1.8f;
-constexpr float LMR_CHECK_EVASION_FACTOR = 0.7f;
-constexpr float LMR_QUIET_FACTOR = 3.0f;
-
-// Unifier is used to balance reduction growth for phases with low amount of moves
-constexpr float LMR_UNIFIER = 4.0f;
-
-// Reduction function
-// - A distribution of reduction values
-// - Requires usage of floating point numbers
-inline float lmr_function(float x) { return 1.55f / (1.f + std::pow(std::numbers::e, -4.2f * (x - 0.6f))) - 
-                                            1.55f / (1.f + std::pow(std::numbers::e, 4.2f * 0.6f)); }
+constexpr double LMR_QUIET_FACTOR = 1.2;
+constexpr double LMR_CHECK_FACTOR = 0.6;
+constexpr double LMR_CAPTURE_FACTOR = 0.7;
 
 
 // --------------------------------
