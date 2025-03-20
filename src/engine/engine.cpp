@@ -10,17 +10,10 @@
 
 std::pair<Search::Score, Move> Engine::evaluate(Search::Depth depth)
 {
-    // Step 1 - history malusement
-    // if (m_crawler.get_position()->halfmoves_p() < m_mem_board.halfmoves_p())
-    //     m_history.reset();
-    // else
-    //     m_history.flatten(std::max(1, m_crawler.get_position()->halfmoves_p() - m_mem_board.halfmoves_p()));
-    m_history.reset();
-
-    // Step 2 - save current search position
+    // Step 1 - save current search position
     m_mem_board = *m_crawler.get_position();
 
-    // Step 3 - main search
+    // Step 2 - main search
     Search::Score result = 0;
     Move best_move;
 

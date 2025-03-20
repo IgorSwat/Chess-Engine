@@ -91,10 +91,6 @@ namespace Search {
         int leaf_nodes = 0;
         int qs_nodes = 0;
 
-        int HISTORY_PV_FACTOR = 64;
-        int HISTORY_ALL_FACTOR = 80;
-        int HISTORY_CUT_FACTOR = 2;
-
         friend class Engine;
 
     private:

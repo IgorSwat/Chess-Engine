@@ -29,10 +29,10 @@ int main()
     //     std::abort();
 
     // Speed test
-    // Testing::search_speed_test(5);
+    // Testing::search_speed_test(10);
 
     // Quality test
-    Testing::search_accuracy_test(7);
+    // Testing::search_accuracy_test(10);
 
 
     // ---------------
@@ -40,13 +40,11 @@ int main()
     // ---------------
 
     std::unique_ptr<Engine> engine = std::make_unique<Engine>(Engine::Mode::STANDARD);
-    // engine->grid_search();
 
-    // engine->set_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    // engine->evaluate(5);
+    engine->set_position("r1b2rk1/1p5p/4pp2/p1P4q/1n2B3/4P1P1/5P1P/2QRNRK1 w - - 0 22");
+    engine->evaluate(10);
 
-    // std::cout << std::endl;
-    // engine->show_ordering();
+    engine->show_ordering();
 
     // std::string fen;
     // while (true) {
@@ -58,7 +56,7 @@ int main()
     //     std::cin.get();
 
     //     engine->set_position(fen);
-    //     engine->evaluate(Search::Depth(5));
+    //     engine->evaluate(Search::Depth(depth));
     // }
 
     return 0;

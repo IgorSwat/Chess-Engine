@@ -264,7 +264,7 @@ namespace Search {
 
         // History heuristic variables
         // - List of moves to remember every move tried and apply appropriate score after calculating best move and best score
-        Moves::List<EMove, 64> moves_tried;
+        Moves::List<EMove, HISTORY_NO_MOVES> moves_tried;
 
         // Before entering main loop, exclude transposition table suggestion from move selection
         // - Another occurance of previously analyzed move would have a bad effect for LMR heuristic
@@ -371,8 +371,10 @@ namespace Search {
             }
 
             // Save move with it's score
-            move.enhance(Moves::Enhancement::PURE_SEARCH_SCORE, score);
-            moves_tried.push_back(move);
+            if (moves_tried.size() < HISTORY_NO_MOVES) {
+                move.enhance(Moves::Enhancement::PURE_SEARCH_SCORE, score);
+                moves_tried.push_back(move);
+            }
 
             // Case 1 - best score reached
             if (score > m_sstop->score) {

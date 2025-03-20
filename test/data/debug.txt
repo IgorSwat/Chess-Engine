@@ -1,0 +1,6 @@
+Pozycje z długo trwającymi ocenami:
+- 2bq1rk1/p3rpp1/2p2n1p/3p4/1P3Q2/P1NB3P/2P2PP1/R3R1K1 w - - 1 17 (depth 12)
+    Poprzednio: 2bq1rk1/pr3pp1/2p2n1p/3p4/1P3b2/P1NB1Q1P/2P2PP1/R3R1K1 w - - 0 16 (depth 12)
+- r1b2rk1/1p5p/4pp2/p1P4q/1n2B3/4P1P1/5P1P/2QRNRK1 w - - 0 22
+    Poprzednio: r1b2rk1/pp5p/4pp2/2P4q/1n2p3/4P1P1/5PBP/2QRNRK1 w - - 4 21 (depth 14)
+                r1b2rk1/pp5p/4pp2/2Pq4/1n2p3/4P1P1/2Q2PBP/3RNRK1 w - - 2 20 (depth 14)
