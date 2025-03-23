@@ -416,10 +416,6 @@ namespace Search {
                     int64_t R = std::clamp(best_score_normalized - best_score + move_score, 0, best_score_normalized);
                     R = History::Score(R * R * HISTORY_MAX_SCORE / (best_score_normalized * best_score_normalized));
 
-                    // TEST
-                    assert(R <= HISTORY_MAX_SCORE);
-                    assert(R >= 0);
-
                     m_history->update(m_virtual_board, move_tried, 
                                       HISTORY_CUT_FACTOR, m_search_stack[1].depth, depth, m_sstop->ply, R);
                 }
@@ -454,10 +450,6 @@ namespace Search {
 
                 int64_t R = std::clamp(best_score_normalized - best_score + score, 0, best_score_normalized);
                 R = History::Score(R * R * HISTORY_MAX_SCORE / (best_score_normalized * best_score_normalized));
-
-                // TEST
-                assert(R <= HISTORY_MAX_SCORE);
-                assert(R >= 0);
 
                 m_history->update(m_virtual_board, move_tried, m_sstop->node == PV_NODE ? HISTORY_PV_FACTOR : HISTORY_ALL_FACTOR,
                                   m_search_stack[1].depth, depth, m_sstop->ply, R);

@@ -22,7 +22,7 @@ constexpr int8_t MAX_TOTAL_SEARCH_DEPTH = MAX_SEARCH_DEPTH + MAX_QUIESCENCE_DEPT
 
 // History heuristic - score bounds
 constexpr int HISTORY_MIN_SCORE = 0;
-constexpr int HISTORY_MAX_SCORE = 1024;     // This is simultaneously a quantization factor for history formula
+constexpr int HISTORY_MAX_SCORE = 8192;     // This is simultaneously a quantization factor for history formula
 
 // History heuristic - eval normalization
 // - Since history score values are relative to best move eval, there is a need normalize those results.

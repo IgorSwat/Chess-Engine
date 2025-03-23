@@ -6,6 +6,10 @@
 #include <iostream>
 #include <memory>
 
+#ifdef USE_GUI
+#include "src/gui/controller.h"
+#endif
+
 
 int main()
 {
@@ -32,32 +36,44 @@ int main()
     // Testing::search_speed_test(10);
 
     // Quality test
-    // Testing::search_accuracy_test(10);
+    // Testing::search_accuracy_test(10, "test/data/search_test_data_custom.txt");
 
 
     // ---------------
     // Main processing
     // ---------------
 
+    std::unique_ptr<Board> board = std::make_unique<Board>();
     std::unique_ptr<Engine> engine = std::make_unique<Engine>(Engine::Mode::STANDARD);
 
-    engine->set_position("r1b2rk1/1p5p/4pp2/p1P4q/1n2B3/4P1P1/5P1P/2QRNRK1 w - - 0 22");
-    engine->evaluate(10);
+    // An appropriate compilation argument decides whether to use command line or graphic interface
+    #ifdef USE_GUI
+        GUI::Textures::load_textures();
 
-    engine->show_ordering();
+        std::unique_ptr<GUI::Controller> controller = std::make_unique<GUI::Controller>(board.get(), engine.get());
+        
+        controller->run();
+    #else
+        std::string fen;
+        while (true) {
 
-    // std::string fen;
-    // while (true) {
-    //     std::getline(std::cin, fen);
-    //     if (fen.empty()) break;
+            std::cout << "Enter position FEN and depth:\n";
+            std::cout << ">>> ";
+            std::getline(std::cin, fen);
+            if (fen.empty()) break;
 
-    //     int depth;
-    //     std::cin >> depth;
-    //     std::cin.get();
+            int depth;
+            std::cout << ">>> ";
+            std::cin >> depth;
+            std::cin.get();
 
-    //     engine->set_position(fen);
-    //     engine->evaluate(Search::Depth(depth));
-    // }
+            engine->set_position(fen);
+            auto [score, best_move] = engine->evaluate(Search::Depth(depth));
+            std::cout << "\n---------- Search results (depth " << depth << ") ----------\n";
+            std::cout << "- Best move: " << best_move << "\n" << std::dec;
+            std::cout << "- Evaluation: " << score << "\n\n";
+        }
+    #endif
 
     return 0;
 }

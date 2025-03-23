@@ -30,6 +30,7 @@ namespace Search {
         // Global modifiers
         // - Allow to reset the whole history table and forget about anything it learned
         void reset() { for (int i = 0; i < PIECE_RANGE; i++) for (int j = 0; j < SQUARE_RANGE; j++) Q[i][j] = 0; }
+        void flatten(int c = 1) { for (int i = 0; i < PIECE_RANGE; i++) for (int j = 0; j < SQUARE_RANGE; j++) Q[i][j] >>= c;}
 
         // Local modifiers
         // - Dynamic update of history table
