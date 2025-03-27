@@ -32,7 +32,7 @@ namespace Search {
         // - Alpha must be initialized with -infinity (in this case, -MAX_EVAL) and beta with +infinity for algorithm to work properly
         // - Also, let's prevent user from exceeding max depth
         Score result = search<ROOT_NODE>(-Evaluation::MAX_EVAL, Evaluation::MAX_EVAL,
-                                         std::min(depth, MAX_SEARCH_DEPTH));
+                                         std::min(depth, MAX_SEARCH_DEPTH), false);
         
         return result;
     }
@@ -43,7 +43,7 @@ namespace Search {
     // ---------------------------------------------------
 
     template <Node node>
-    Score Crawler::search(Score alpha, Score beta, Depth depth)
+    Score Crawler::search(Score alpha, Score beta, Depth depth, bool nmp_available)
     {
         // TEST & DEBUG
         // Update node counters
@@ -131,12 +131,12 @@ namespace Search {
             // If cut-off is not possible, then try transposition table move and perform standard search
             else if (depth > 0 && tt_move != Moves::null) {
                 make_move(tt_move);
-                tt_score = -search<PV_NODE>(-beta, -alpha, depth - 1);
+                tt_score = -search<PV_NODE>(-beta, -alpha, depth - 1, true);
                 undo_move();
             }
 
             // Case 1 - best score reached
-            if (tt_score > m_sstop->score) {
+            if (tt_score > m_sstop->score && tt_move != Moves::null) {
                 m_sstop->score = tt_score;
                 m_sstop->best_move = tt_move;
                 if (tt_score > alpha) {
@@ -174,7 +174,8 @@ namespace Search {
                 return tt_score;
             }
 
-            m_sstop->move_idx++;
+            if (tt_move != Moves::null)
+                m_sstop->move_idx++;
 
             // Get evaluations from transposition table enrty
             m_sstop->static_eval = tt_entry->static_eval;
@@ -205,7 +206,60 @@ namespace Search {
         // - If conditions are met and cut-node is likely to happen in currect ply, perform search at reduced depth
         // - If obtained score exceeds beta, perform a cut-off
 
-        // ...
+        // NMP obtainable informations
+        Square target_to_sq = NULL_SQUARE, target_from_sq = NULL_SQUARE;
+
+        // NOTE: Very importantly, in current version of NMP heurstic we allow to perform NMP even if some threats exist
+        //       This hopes to improve move ordering and thus gain search speed
+        if (nmp_available && depth > 1 &&
+            !m_virtual_board.in_check() &&
+            m_virtual_board.game_stage() > Evaluation::GameStage::SINGLE_ROOK_VS_ROOK_ENDGAME &&
+           (m_sstop->eval == Evaluation::NO_EVAL || m_sstop->eval >= beta) &&
+            m_sstop->static_eval >= std::max(beta - 20 * depth + 240, beta + NPM_THRESHOLD))
+        {
+            // Used to calculate NMP reduction formula
+            // - Additionally scaled to match sigmoid function input range
+            double z = (m_sstop->static_eval - NPM_THRESHOLD - beta) * 0.0245;
+
+            // // Reduction - depth / 3 is guaranteed, and another depth / 3 can be obtained if static_eval is high enough
+            Depth reduction = depth / 3 + 
+                              Depth(1.0 * (depth + 1) / 
+                                    (3.0 * (1.0 + std::pow(std::numbers::e, -(z + std::log(NMP_REF_PROB / (1.0 - NMP_REF_PROB)))))));
+            reduction = std::max(reduction, NMP_MIN_REDUCTION);
+
+            // Apply null move and search with reduced depth
+            // - A full aspiration window is not necessary here, since we only need to know whether score can raise over beta
+            make_move(Moves::null);
+            Score score = -search<NON_PV_NODE>(-beta, -beta + 1, depth - reduction, false);
+            undo_move();
+
+            // If NMP succeeded (beta cut-off reached), we can return score
+            if (score >= beta) {
+                m_sstop->node = CUT_NODE;
+
+                m_ttable->set({
+                    m_virtual_board.hash(),
+                    m_virtual_board.pieces(),
+                    m_search_stack[1].age,              // Root age
+                    m_virtual_board.halfmoves_p(),      // Current age
+                    depth,
+                    CUT_NODE,
+                    score,  // score
+                    Moves::null,
+                    m_sstop->static_eval
+                });
+
+                return score;
+            }
+
+            // In other case, we can try to use information obtained in NMP search
+            // - For example, if refutation move against null move is a capture, we can try to focus on escaping from attacked square
+            //   or capturing attacking piece
+            if ((m_sstop + 1)->best_move != Moves::null && (m_sstop + 1)->best_move.is_capture()) {
+                target_from_sq = (m_sstop + 1)->best_move.to();
+                target_to_sq = (m_sstop + 1)->best_move.from();
+            }
+        }
 
         // Step 5 - move generation & mate / stealmate detection
         // -----------------------------------------------------
@@ -274,6 +328,13 @@ namespace Search {
             tt_move.enhance(Moves::Enhancement::PURE_SEARCH_SCORE, tt_score);
             moves_tried.push_back(tt_move);
         }
+
+        // Also, apply move ordering changes from NMP data if available
+        if (target_from_sq != NULL_SQUARE && target_to_sq != NULL_SQUARE) {
+            move_selector.strategy.add_rule(mode, [target_from_sq, target_to_sq](const Move& move) -> bool {
+                return move.from() == target_from_sq || move.to() == target_to_sq;
+            });
+        }
         
         // Enter main loop
         // - We use infinite loop with continue/break controls for more flexibility
@@ -281,7 +342,7 @@ namespace Search {
 
             // Since we use only PSEUDO_LEGAL and CHECK_EVASION, we can limit phase change to STRICT
             // - No additional selection (at least for now)
-            move = move_selector.next(MoveOrdering::Selector::STRICT, false);
+            move = move_selector.next(MoveOrdering::Selector::STRICT, true);
 
             if (move == Moves::null)
                 break;
@@ -359,14 +420,14 @@ namespace Search {
 
             // Make move and search further
             make_move(move);
-            Score score = -search<PV_NODE>(-beta, -alpha, depth - reduction);
+            Score score = -search<PV_NODE>(-beta, -alpha, depth - reduction, true);
             undo_move();
 
             // Verification search
             // - Used in context of LMR heurstic - we perform additional, full depth search if some reduced move exceeds alpha
             if (reduction > 1 && score > alpha) {
                 make_move(move);
-                score = -search<PV_NODE>(-beta, -alpha, depth - 1);
+                score = -search<PV_NODE>(-beta, -alpha, depth - 1, true);
                 undo_move();
             }
 
@@ -637,11 +698,12 @@ namespace Search {
             return;
 
         if (!only_stack) {
-            // NNUE must be updated before virtual board
-            m_nnue.update(m_virtual_board, move);
-        
-            if (move != Moves::null)
+            if (move != Moves::null) {
+                // NNUE must be updated before virtual board
+                m_nnue.update(m_virtual_board, move);
+
                 m_virtual_board.make_move(move);
+            }
             else
                 m_virtual_board.make_null_move();
         }
@@ -667,10 +729,10 @@ namespace Search {
         if (m_sstop->ply == -1)
             return;
 
-        m_nnue.undo_state();
-
-        if (m_virtual_board.last_move() != Moves::null)
+        if (m_virtual_board.last_move() != Moves::null) {
+            m_nnue.undo_state();
             m_virtual_board.undo_move();
+        }
         else
             m_virtual_board.undo_null_move();
         

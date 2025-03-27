@@ -96,7 +96,7 @@ namespace Search {
     private:
         // Search components
         template <Node node>
-        Score search(Score alpha, Score beta, Depth depth);
+        Score search(Score alpha, Score beta, Depth depth, bool nmp_available = false);
         template <Node node>
         Score quiescence(Score alpha, Score beta, Depth depth);
 

@@ -133,7 +133,7 @@ Ne3 10
 r5k1/p2R1pb1/Bp2p1p1/7p/4b3/4N1P1/P4P1P/6K1 b - - 1 26
 Bc6 10
 Bf8 8
-Bf3 8
+Bf6 8
 1
 r5k1/p2R1p2/Bp2pbp1/7p/2N5/5bP1/P4P1P/6K1 b - - 7 29
 Rd8 10

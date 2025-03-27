@@ -54,6 +54,18 @@ constexpr Evaluation::Eval FUTILITY_MARGIN_II = 500;
 // Search parameters - NMP heuristic
 // ---------------------------------
 
+// NMP activation threshold
+// - Describes how much bigger than beta should static eval be to even try NMP at given node
+// - This is basically an equivalent of tempo bonus, which is around 20 to 25 centipawns
+constexpr Evaluation::Eval NPM_THRESHOLD = 22;
+
+// NMP minimal reduction value
+constexpr int8_t NMP_MIN_REDUCTION = 2;
+
+// NMP density reference value
+// - This value is an equivalent to probability of NMP success in random position when static_eval - NMP_THRESHOLD == beta
+constexpr double NMP_REF_PROB = 0.1;
+
 
 // ---------------------------------
 // Search parameters - LMR heuristic

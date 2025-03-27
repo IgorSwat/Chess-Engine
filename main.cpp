@@ -33,10 +33,12 @@ int main()
     //     std::abort();
 
     // Speed test
-    // Testing::search_speed_test(10);
+    // Testing::search_speed_test(12);
 
     // Quality test
-    // Testing::search_accuracy_test(10, "test/data/search_test_data_custom.txt");
+    // Testing::search_accuracy_test(8, "test/data/search_test_data_custom.txt");
+
+    // return 0;
 
 
     // ---------------
