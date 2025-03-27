@@ -1,5 +1,6 @@
 #include "search.h"
 #include "ttable.h"
+#include <cassert>
 
 
 namespace Search {
@@ -31,7 +32,7 @@ namespace Search {
         // - Alpha must be initialized with -infinity (in this case, -MAX_EVAL) and beta with +infinity for algorithm to work properly
         // - Also, let's prevent user from exceeding max depth
         Score result = search<ROOT_NODE>(-Evaluation::MAX_EVAL, Evaluation::MAX_EVAL,
-                                         std::min(depth, MAX_SEARCH_DEPTH));
+                                         std::min(depth, MAX_SEARCH_DEPTH), false);
         
         return result;
     }
@@ -42,13 +43,17 @@ namespace Search {
     // ---------------------------------------------------
 
     template <Node node>
-    Score Crawler::search(Score alpha, Score beta, Depth depth)
+    Score Crawler::search(Score alpha, Score beta, Depth depth, bool nmp_available)
     {
+        // TEST & DEBUG
         // Update node counters
         if (depth <= 0)
             leaf_nodes++;
         else
             non_leaf_nodes++;
+
+        // Save current search depth
+        m_sstop->depth = depth;
 
         // Step 1 - detect draws within game rules
         // ---------------------------------------
@@ -78,13 +83,13 @@ namespace Search {
         auto tt_entry = m_ttable->probe(m_virtual_board.hash(), m_virtual_board.pieces());
 
         Score tt_score = Evaluation::NO_EVAL;
-        Move tt_move = Moves::null;
+        EMove tt_move = Moves::null;
 
         if (tt_entry) {
             // DEBUG
             // Test if transposition table move is fine (helps detecting hash collisions)
             if (tt_entry->best_move != Moves::null && !m_virtual_board.is_legal_f(tt_entry->best_move)) {
-                std::cout << "LOLOLOL\n";
+                std::cout << "Illegal transposition table move!\n";
                 goto next_step;
             }
 
@@ -126,12 +131,12 @@ namespace Search {
             // If cut-off is not possible, then try transposition table move and perform standard search
             else if (depth > 0 && tt_move != Moves::null) {
                 make_move(tt_move);
-                tt_score = -search<PV_NODE>(-beta, -alpha, depth - 1);
+                tt_score = -search<PV_NODE>(-beta, -alpha, depth - 1, true);
                 undo_move();
             }
 
             // Case 1 - best score reached
-            if (tt_score > m_sstop->score) {
+            if (tt_score > m_sstop->score && tt_move != Moves::null) {
                 m_sstop->score = tt_score;
                 m_sstop->best_move = tt_move;
                 if (tt_score > alpha) {
@@ -157,20 +162,20 @@ namespace Search {
                 });
 
                 // Killer heuristic update
-                if (tt_move.is_quiet() || m_virtual_board.see(tt_move) < 0)
+                if (tt_move.is_quiet() || m_virtual_board.see(tt_move) <= 0)
                     m_sstop->add_killer(tt_move);
 
                 // History heuristic update
-                if (tt_move.is_quiet())
-                    m_history->update_score(m_virtual_board, tt_move, HISTORY_FACTOR * depth * depth);
+                // - Since move is best at current node, we update it's score with 1 (MAX_HISTORY_SCORE)
+                // - There are no other moves which would have been tried before tt_move, so we can update only for tt_move
+                m_history->update(m_virtual_board, tt_move, 
+                                  HISTORY_CUT_FACTOR, m_search_stack[1].depth, depth, m_sstop->ply, HISTORY_MAX_SCORE);
 
                 return tt_score;
             }
 
-            // Update move counters
-            if (!tt_move.is_quiet())                        m_sstop->capture_counter++;
-            else if (m_virtual_board.is_check(tt_move))     m_sstop->check_counter++;
-            else                                                        m_sstop->default_counter++;
+            if (tt_move != Moves::null)
+                m_sstop->move_idx++;
 
             // Get evaluations from transposition table enrty
             m_sstop->static_eval = tt_entry->static_eval;
@@ -201,7 +206,60 @@ namespace Search {
         // - If conditions are met and cut-node is likely to happen in currect ply, perform search at reduced depth
         // - If obtained score exceeds beta, perform a cut-off
 
-        // ...
+        // NMP obtainable informations
+        Square target_to_sq = NULL_SQUARE, target_from_sq = NULL_SQUARE;
+
+        // NOTE: Very importantly, in current version of NMP heurstic we allow to perform NMP even if some threats exist
+        //       This hopes to improve move ordering and thus gain search speed
+        if (nmp_available && depth > 1 &&
+            !m_virtual_board.in_check() &&
+            m_virtual_board.game_stage() > Evaluation::GameStage::SINGLE_ROOK_VS_ROOK_ENDGAME &&
+           (m_sstop->eval == Evaluation::NO_EVAL || m_sstop->eval >= beta) &&
+            m_sstop->static_eval >= std::max(beta - 20 * depth + 240, beta + NPM_THRESHOLD))
+        {
+            // Used to calculate NMP reduction formula
+            // - Additionally scaled to match sigmoid function input range
+            double z = (m_sstop->static_eval - NPM_THRESHOLD - beta) * 0.0245;
+
+            // // Reduction - depth / 3 is guaranteed, and another depth / 3 can be obtained if static_eval is high enough
+            Depth reduction = depth / 3 + 
+                              Depth(1.0 * (depth + 1) / 
+                                    (3.0 * (1.0 + std::pow(std::numbers::e, -(z + std::log(NMP_REF_PROB / (1.0 - NMP_REF_PROB)))))));
+            reduction = std::max(reduction, NMP_MIN_REDUCTION);
+
+            // Apply null move and search with reduced depth
+            // - A full aspiration window is not necessary here, since we only need to know whether score can raise over beta
+            make_move(Moves::null);
+            Score score = -search<NON_PV_NODE>(-beta, -beta + 1, depth - reduction, false);
+            undo_move();
+
+            // If NMP succeeded (beta cut-off reached), we can return score
+            if (score >= beta) {
+                m_sstop->node = CUT_NODE;
+
+                m_ttable->set({
+                    m_virtual_board.hash(),
+                    m_virtual_board.pieces(),
+                    m_search_stack[1].age,              // Root age
+                    m_virtual_board.halfmoves_p(),      // Current age
+                    depth,
+                    CUT_NODE,
+                    score,  // score
+                    Moves::null,
+                    m_sstop->static_eval
+                });
+
+                return score;
+            }
+
+            // In other case, we can try to use information obtained in NMP search
+            // - For example, if refutation move against null move is a capture, we can try to focus on escaping from attacked square
+            //   or capturing attacking piece
+            if ((m_sstop + 1)->best_move != Moves::null && (m_sstop + 1)->best_move.is_capture()) {
+                target_from_sq = (m_sstop + 1)->best_move.to();
+                target_to_sq = (m_sstop + 1)->best_move.from();
+            }
+        }
 
         // Step 5 - move generation & mate / stealmate detection
         // -----------------------------------------------------
@@ -209,7 +267,7 @@ namespace Search {
         // - Stealmate occurs when side to move has no legal moves while not being in check
 
         // For better move ordering, we should always start with captures unless side to move is in check
-        MoveGeneration::Mode mode = m_virtual_board.in_check() ? MoveGeneration::CHECK_EVASION : MoveGeneration::CAPTURE;
+        MoveGeneration::Mode mode = m_virtual_board.in_check() ? MoveGeneration::CHECK_EVASION : MoveGeneration::PSEUDO_LEGAL;
 
         MoveOrdering::Selector move_selector(&m_virtual_board, mode);
 
@@ -235,86 +293,61 @@ namespace Search {
             return score;
         }
 
-        // Step 6 - main search loop
+        // Step 6 - move ordering strategies
+        // ---------------------------------
+        // - History heuristic application
+        // - Order: winning captures (SEE > 0) first, then all moves ordered by history scores
+
+        MoveOrdering::sort(move_selector, [this](const Move& move) -> int32_t {
+            if (!move.is_quiet()) {
+                int32_t see = this->m_virtual_board.see(move);
+                if (see > 0)    // Prioritize winning captures and promotions
+                    return HISTORY_MAX_SCORE + see;
+            }
+            
+            return this->m_history->score(this->m_virtual_board, move);
+        });
+
+        // Step 7 - main search loop
         // -------------------------
         // - Iterates over set of legal moves, recursively going down with depth
 
         // Some flow control variables
         EMove move;
-        unsigned next_killer = 0;
+        int next_killer = 0;
 
-        // LMR variables
-        auto* curr_counter = &m_sstop->default_counter;
-        auto no_moves_est = 1 + move_selector.size() * 4 / 5;   // Estimated number of legal moves in current batch (we assume 80% of moves are legal)
-        float lmr_phase_factor = LMR_DEFAULT_FACTOR;
+        // History heuristic variables
+        // - List of moves to remember every move tried and apply appropriate score after calculating best move and best score
+        Moves::List<EMove, HISTORY_NO_MOVES> moves_tried;
 
         // Before entering main loop, exclude transposition table suggestion from move selection
         // - Another occurance of previously analyzed move would have a bad effect for LMR heuristic
-        if (tt_move != Moves::null)
+        if (tt_move != Moves::null) {
             move_selector.exclude(tt_move);
+
+            tt_move.enhance(Moves::Enhancement::PURE_SEARCH_SCORE, tt_score);
+            moves_tried.push_back(tt_move);
+        }
+
+        // Also, apply move ordering changes from NMP data if available
+        if (target_from_sq != NULL_SQUARE && target_to_sq != NULL_SQUARE) {
+            move_selector.strategy.add_rule(mode, [target_from_sq, target_to_sq](const Move& move) -> bool {
+                return move.from() == target_from_sq || move.to() == target_to_sq;
+            });
+        }
         
         // Enter main loop
         // - We use infinite loop with continue/break controls for more flexibility
         while (true) {
 
-            // Step 7 - move ordering strategies
-            // ---------------------------------
-            // - Each generation phase has different strategies
-            // - History heuristic application
+            // Since we use only PSEUDO_LEGAL and CHECK_EVASION, we can limit phase change to STRICT
+            // - No additional selection (at least for now)
+            move = move_selector.next(MoveOrdering::Selector::STRICT, true);
 
-            if (move == Moves::null && move_selector.phase() == MoveGeneration::CAPTURE) {
-                MoveOrdering::sort(move_selector, [this](const Move& move) -> int32_t {
-                    return 1 * this->m_virtual_board.see(move) +
-                           32 * this->m_virtual_board.is_check(move);
-                });
-
-                curr_counter = &m_sstop->capture_counter;
-                no_moves_est = 1 + move_selector.size() * 4 / 5;
-                lmr_phase_factor = LMR_CAPTURE_FACTOR;
-            }
-
-            else if (move == Moves::null && move_selector.phase() == MoveGeneration::QUIET_CHECK) {
-                MoveOrdering::sort(move_selector, [this](const Move& move) -> int32_t {
-                    return 1 * this->m_history->history(this->m_virtual_board, move);
-                });
-
-                curr_counter = &m_sstop->check_counter;
-                no_moves_est = 1 + move_selector.size() * 4 / 5;
-                lmr_phase_factor = LMR_CHECK_FACTOR;
-            }
-
-            else if (move == Moves::null && move_selector.phase() == MoveGeneration::QUIET) {
-                MoveOrdering::sort(move_selector, [this](const Move& move) -> int32_t {
-                    return 1 * this->m_history->history(this->m_virtual_board, move);
-                });
-
-                curr_counter = &m_sstop->default_counter;
-                no_moves_est =  1 + move_selector.size() * 4 / 5;
-                lmr_phase_factor = LMR_QUIET_FACTOR;
-            }
-
-            else if (move == Moves::null && move_selector.phase() == MoveGeneration::CHECK_EVASION) {
-                MoveOrdering::sort(move_selector, [this](const Move& move) -> int32_t {
-                    return 10000 * this->m_virtual_board.see(move) +
-                           1 * this->m_history->history(this->m_virtual_board, move);
-                });
-
-                curr_counter = &m_sstop->default_counter;
-                no_moves_est = 1 + move_selector.size() * 4 / 5;
-                lmr_phase_factor = LMR_CHECK_EVASION_FACTOR;
-            }
-
-            // In order for this flow to work properly, we need to break move selection when generation phase ends
-            // - This allows to go back to the start of the main loop and sort next portion of moves
-            move = move_selector.next(MoveOrdering::Selector::PARTIAL_CASCADE);
-
-            if (move == Moves::null && move_selector.phase() != MoveGeneration::NONE)
-                continue;
-            else if (move == Moves::null)
+            if (move == Moves::null)
                 break;
-
-            // LMR counter selection
-            unsigned* counter = curr_counter;
+            
+            m_sstop->move_idx++;
 
             // Step 8 - killer heuristic
             // -------------------------
@@ -325,7 +358,7 @@ namespace Search {
             Move killer;
 
             // Consider killer moves only after next ordered move is no longer a winning capture
-            if (next_killer < NO_KILLERS && m_virtual_board.see(move)) {
+            if (next_killer < NO_KILLERS && (move.is_quiet() || m_virtual_board.see(move) <= 0)) {
                 killer = m_sstop->killers[next_killer];
 
                 // Check legality of the killer move (full check, since killer might not even be pseudolegal in current position)
@@ -338,14 +371,6 @@ namespace Search {
 
                     // Exclude killer move from selection to avoid repeating the same move later
                     move_selector.exclude(killer);
-
-                    // Change move counters
-                    // - Since killer move might be a move from different generation phase, we must change counter pointer
-                    if (move_selector.phase() == MoveGeneration::CAPTURE || move_selector.phase() == MoveGeneration::QUIET_CHECK) {
-                        counter = !killer.is_quiet() ?               &m_sstop->capture_counter :
-                                  m_virtual_board.is_check(killer) ? &m_sstop->check_counter :
-                                                                     &m_sstop->default_counter;
-                    }
                 }
 
                 next_killer++;
@@ -369,20 +394,20 @@ namespace Search {
             // Step 10 - late move reductions heuristic
             // ----------------------------------------
             // - Reduce low ordered (most likely unpromising) moves in depth
-            // - Each generation phase has it's individual reduction factor
-            // - Killer moves are always searched at full depth
+            // - Each move type (captures, checks, quiet) has it's individual reduction factor
             // - Most important search heuristic, which allows to almost double effective search depth in given time frame
 
             Depth reduction = 1;
 
-            if (m_use_lmr && depth > 2 && move != killer) {
-                float reduction_idx = float(*counter) * lmr_phase_factor / (LMR_UNIFIER / lmr_phase_factor + no_moves_est);
+            if (m_use_lmr && depth > 2) {
+                // Select appropriate reduction factor according to move category (quiet vs capture/promotion vs check)
+                double factor = m_virtual_board.is_check(move) ? LMR_CHECK_FACTOR :
+                                !move.is_quiet()               ? LMR_CAPTURE_FACTOR :
+                                                                 LMR_QUIET_FACTOR;
 
-                reduction = 1 + std::min(1.f, lmr_function(reduction_idx)) * (float(depth) / 2 - 1);
+                reduction += std::min(Depth(factor * std::log2(std::max(m_sstop->move_idx - LMR_ACTIVATION_OFFSET, 1)) * (depth - 2) / 8),
+                                      Depth((depth - 2) / 2));
             }
-
-            // Update history move counters
-            m_history->update_counter(m_virtual_board, move);
 
             // Step 11 - search descent
             // ------------------------
@@ -390,21 +415,26 @@ namespace Search {
 
             // DEBUG
             // Test if transposition table move is fine (helps detecting hash collisions)
-            if (move != Moves::null && !m_virtual_board.is_legal_f(move)) {
-                std::cout << "LOLOLOL\n";
-            }
+            if (move != Moves::null && !m_virtual_board.is_legal_f(move))
+                std::cout << "Illegal move in main search loop!\n";
 
             // Make move and search further
             make_move(move);
-            Score score = -search<PV_NODE>(-beta, -alpha, depth - reduction);
+            Score score = -search<PV_NODE>(-beta, -alpha, depth - reduction, true);
             undo_move();
 
             // Verification search
             // - Used in context of LMR heurstic - we perform additional, full depth search if some reduced move exceeds alpha
             if (reduction > 1 && score > alpha) {
                 make_move(move);
-                score = -search<PV_NODE>(-beta, -alpha, depth - 1);
+                score = -search<PV_NODE>(-beta, -alpha, depth - 1, true);
                 undo_move();
+            }
+
+            // Save move with it's score
+            if (moves_tried.size() < HISTORY_NO_MOVES) {
+                move.enhance(Moves::Enhancement::PURE_SEARCH_SCORE, score);
+                moves_tried.push_back(move);
             }
 
             // Case 1 - best score reached
@@ -434,18 +464,25 @@ namespace Search {
                 });
 
                 // Killer heuristic upate
-                if (move.is_quiet() || m_virtual_board.see(move) < 0)
+                if (move.is_quiet() || m_virtual_board.see(move) <= 0)
                     m_sstop->add_killer(move);
                 
                 // History heuristic update
-                if (move.is_quiet())
-                    m_history->update_score(m_virtual_board, move, HISTORY_FACTOR * depth * depth);
+                // - Update current move (best) and all the previous ones (not the best)
+                for (const EMove& move_tried : moves_tried) {
+                    Score move_score = move_tried.score().value();
+                    Score best_score = m_sstop->score;
+                    Score best_score_normalized = std::abs(best_score) + HISTORY_EVAL_NORMALIZATION;
+
+                    int64_t R = std::clamp(best_score_normalized - best_score + move_score, 0, best_score_normalized);
+                    R = History::Score(R * R * HISTORY_MAX_SCORE / (best_score_normalized * best_score_normalized));
+
+                    m_history->update(m_virtual_board, move_tried, 
+                                      HISTORY_CUT_FACTOR, m_search_stack[1].depth, depth, m_sstop->ply, R);
+                }
 
                 return score;
             }
-
-            // Update move counters
-            (*counter)++;
         }
 
         // Step 12 - final result registration
@@ -466,8 +503,19 @@ namespace Search {
         });
 
         // Update history tables
-        if (m_sstop->best_move != Moves::null && m_sstop->best_move.is_quiet())
-            m_history->update_score(m_virtual_board, m_sstop->best_move, HISTORY_FACTOR * depth * depth);
+        if (m_sstop->score != -Evaluation::MAX_EVAL) {
+            for (const EMove& move_tried : moves_tried) {
+                Score score = move_tried.score().value();
+                Score best_score = m_sstop->score;
+                Score best_score_normalized = std::abs(best_score) + HISTORY_EVAL_NORMALIZATION;
+
+                int64_t R = std::clamp(best_score_normalized - best_score + score, 0, best_score_normalized);
+                R = History::Score(R * R * HISTORY_MAX_SCORE / (best_score_normalized * best_score_normalized));
+
+                m_history->update(m_virtual_board, move_tried, m_sstop->node == PV_NODE ? HISTORY_PV_FACTOR : HISTORY_ALL_FACTOR,
+                                  m_search_stack[1].depth, depth, m_sstop->ply, R);
+            }
+        }
         
         return m_sstop->score == -Evaluation::MAX_EVAL ? m_sstop->static_eval : m_sstop->score;
     }
@@ -650,11 +698,12 @@ namespace Search {
             return;
 
         if (!only_stack) {
-            // NNUE must be updated before virtual board
-            m_nnue.update(m_virtual_board, move);
-        
-            if (move != Moves::null)
+            if (move != Moves::null) {
+                // NNUE must be updated before virtual board
+                m_nnue.update(m_virtual_board, move);
+
                 m_virtual_board.make_move(move);
+            }
             else
                 m_virtual_board.make_null_move();
         }
@@ -671,7 +720,7 @@ namespace Search {
         m_sstop->node = ALL_NODE;
         m_sstop->static_eval = Evaluation::NO_EVAL;
         m_sstop->eval = Evaluation::NO_EVAL;
-        m_sstop->capture_counter = m_sstop->check_counter = m_sstop->default_counter = 0;
+        m_sstop->move_idx = 0;
     }
 
     void Crawler::undo_move()
@@ -680,10 +729,10 @@ namespace Search {
         if (m_sstop->ply == -1)
             return;
 
-        m_nnue.undo_state();
-
-        if (m_virtual_board.last_move() != Moves::null)
+        if (m_virtual_board.last_move() != Moves::null) {
+            m_nnue.undo_state();
             m_virtual_board.undo_move();
+        }
         else
             m_virtual_board.undo_null_move();
         

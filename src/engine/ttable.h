@@ -22,7 +22,7 @@ constexpr inline uint32_t ceil_log2(uint32_t n, uint32_t p = 0)
 // Transposition table size (MB)
 // - Main parameter
 // - This is an upper bound. Because TT size must be a power of 2, the real size satisfies condition: TT_SIZE_MB/2 < size <= TT_SIZE_MB
-constexpr uint32_t TT_SIZE_MB = 128;
+constexpr uint32_t TT_SIZE_MB = 64;
 
 
 // -------------------
@@ -85,8 +85,13 @@ public:
     // - Completely dependable on TT_SIZE_MB
     // - NOTE: Transposition table size must be a power of 2 to enable creating a proper key from Zobrist hash
     static constexpr uint32_t SIZE = 1024 * 1024 * TT_SIZE_MB / (1U << ceil_log2(sizeof(Entry)));
-    static constexpr uint32_t MASK_LENGTH = 20 + ceil_log2(TT_SIZE_MB / (1U << ceil_log2(sizeof(Entry))));
+    static constexpr uint32_t MASK_LENGTH = 20 + ceil_log2(TT_SIZE_MB / (1U << ceil_log2(sizeof(Entry)))) -
+                                                 ceil_log2((1U << ceil_log2(sizeof(Entry))) / TT_SIZE_MB); 
     static constexpr uint64_t MASK = 0xffffffffffffffff >> (64 - MASK_LENGTH);
+
+    void reset() {
+        std::fill(m_entries, m_entries + SIZE, Entry());
+    }
 
 private:
     // Helper function - calculating index from Zobrist hash

@@ -96,7 +96,7 @@ namespace Search {
     private:
         // Search components
         template <Node node>
-        Score search(Score alpha, Score beta, Depth depth);
+        Score search(Score alpha, Score beta, Depth depth, bool nmp_available = false);
         template <Node node>
         Score quiescence(Score alpha, Score beta, Depth depth);
 
@@ -141,6 +141,7 @@ namespace Search {
 
             // Search data
             // - 3 main ingrediants of search result - score (evaluation), best move and type of node
+            Depth depth = 0;
             Score score = -Evaluation::MAX_EVAL; 
             Move best_move = Moves::null;
             Node node = ALL_NODE;       // We can potentialy save 1 additional operation by setting ALL_NODE as default
@@ -154,9 +155,9 @@ namespace Search {
             }
             
             // LMR heuristic data
-            unsigned capture_counter = 0;
-            unsigned check_counter = 0;
-            unsigned default_counter = 0;
+            // - If move is the first one tried at given search node, then move_idx = 1, if 2nd, then move_idx = 2, etc.
+            // - Decides about size of reduction in LMR heuristic
+            int move_idx = 0;
         };
 
         // Search stack and pointer

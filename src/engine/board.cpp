@@ -58,8 +58,7 @@ namespace Chessboard {
 
                 place_piece(make_piece(color, type), square);
 
-                // TODO: uncomment after implementing evaluation
-                // posInfo->gameStageValue += Evaluation::PieceStageInfluence[make_piece(color, type)];
+                m_pstack.top().game_stage += Evaluation::GameStage::PieceWeights[type];
 
                 file++;
             }
@@ -186,7 +185,8 @@ namespace Chessboard {
         // - Normal move can be either quiet or capture
         if (move.is_capture()) {
             m_pstack.top().captured = m_board[to];
-            // TODO: posInfo->gameStageValue = posInfo->prev->gameStageValue - Evaluation::PieceStageInfluence[posInfo->capturedPiece];
+            m_pstack.top().game_stage = m_pstack.top_n(1).game_stage - 
+                                        Evaluation::GameStage::PieceWeights[type_of(m_pstack.top().captured)];
 
             m_zobrist.update(m_board[to], to);
             remove_piece(to);
@@ -228,11 +228,11 @@ namespace Chessboard {
         // - We handle promotions with remove_piece + place_piece instead of move_piece to change piece type
 
         // Update piece value sum (promotion brings new piece to the board)
-        m_pstack.top().game_stage = m_pstack.top_n(1).game_stage + 0;   // TODO: add promotion piece real value
+        m_pstack.top().game_stage = m_pstack.top_n(1).game_stage + Evaluation::GameStage::PieceWeights[move.promotion_type()];
 
         if (move.is_capture()) {
             m_pstack.top().captured = m_board[to];
-            m_pstack.top().game_stage -= 0;                             // TODO: subtract captured piece real value
+            m_pstack.top().game_stage -= Evaluation::GameStage::PieceWeights[type_of(m_pstack.top().captured)];
 
             m_zobrist.update(m_board[to], to);
             remove_piece(to);

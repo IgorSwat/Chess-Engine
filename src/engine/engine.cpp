@@ -1,21 +1,19 @@
 #include "engine.h"
 #include "searchconfig.h"
 #include <chrono>
+#include <memory>
 
+
+// -----------------------------
+// Engine - main functionalities
+// -----------------------------
 
 std::pair<Search::Score, Move> Engine::evaluate(Search::Depth depth)
 {
-    // Step 1 - history malusement
-    // if (m_crawler.get_position()->halfmoves_p() < m_mem_board.halfmoves_p())
-    //     m_history.reset();
-    // else
-    //     m_history.flatten(std::max(1, m_crawler.get_position()->halfmoves_p() - m_mem_board.halfmoves_p()));
-    m_history.reset();
-
-    // Step 2 - save current search position
+    // Step 1 - save current search position
     m_mem_board = *m_crawler.get_position();
 
-    // Step 3 - main search
+    // Step 2 - main search
     Search::Score result = 0;
     Move best_move;
 
@@ -69,4 +67,33 @@ Search::Score Engine::iterative_deepening(Search::Depth depth)
         result = m_crawler.search(d);
 
     return result;
+}
+
+
+// ---------------------
+// Engine - TEST / DEBUG
+// ---------------------
+
+void Engine::show_ordering() const
+{
+    MoveOrdering::Selector move_selector(&m_mem_board, m_mem_board.in_check() ? MoveGeneration::CHECK_EVASION :
+                                                                                MoveGeneration::PSEUDO_LEGAL);
+
+    // Copy ordering from crawler's search
+    MoveOrdering::sort(move_selector, [this](const Move& move) -> int32_t {
+        if (!move.is_quiet()) {
+            int32_t see = this->m_mem_board.see(move);
+            if (see > 0)    // Prioritize winning captures and promotions
+                return HISTORY_MAX_SCORE + see;
+        }
+        
+        return this->m_history.score(this->m_mem_board, move);
+    });
+    
+    // Show all moves in right order
+    Move move = move_selector.next(MoveOrdering::Selector::STRICT, false);
+    while (move != Moves::null) {
+        std::cout << move << std::dec << ", history score: " << m_history.score(m_mem_board, move) << "\n";
+        move = move_selector.next(MoveOrdering::Selector::STRICT, false);
+    }
 }
