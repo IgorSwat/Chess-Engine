@@ -4,18 +4,13 @@
 
 namespace Testing {
 
-    // ----------------
-	// Global test list
-	// ----------------
-
-    std::vector<Test> tests;
-
     // -------------
 	// Test runnning
 	// -------------
 
     bool run_tests()
     {
+        auto& tests = get_tests();
         std::cout << COLOR_BLUE "Running " << tests.size() << " test(s)...\n" COLOR_RESET << std::string(40, '-') << "\n";
 
         bool result = true;

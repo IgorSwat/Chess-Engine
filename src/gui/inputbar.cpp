@@ -16,7 +16,7 @@ namespace GUI {
     const float BACKGROUND_OUTLINE_THICKNESS = 2.f;
 
     // Text
-    const std::string FONT_FILEPATH = "resource/arial.ttf";
+    const std::string FONT_FILEPATH = "resource/octosquares.ttf";
     const float DEFAULT_TEXT_RATIO = 0.8f;
     const sf::Color TEXT_COLOR = sf::Color::Black;
 

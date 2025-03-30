@@ -49,14 +49,14 @@ namespace Testing {
         if (depth == 1) {
             // Count each moves of each type
             counters.all_moves = uint32_t(movelist.size());
-            counters.captures = std::count_if(movelist.begin(), movelist.end(), 
-                                                    [](const Move& move) {return move.is_capture(); });
-			counters.enpassants = std::count_if(movelist.begin(), movelist.end(), 
-                                                    [](const Move& move) {return move.is_enpassant(); });
-			counters.castles = std::count_if(movelist.begin(), movelist.end(), 
-                                                    [](const Move& move) {return move.is_castle(); });
-			counters.promotions = std::count_if(movelist.begin(), movelist.end(), 
-                                                    [](const Move& move) {return move.is_promotion(); });
+            counters.captures = uint32_t(std::count_if(movelist.begin(), movelist.end(), 
+                                                    [](const Move& move) {return move.is_capture(); }));
+			counters.enpassants = uint32_t(std::count_if(movelist.begin(), movelist.end(), 
+                                                    [](const Move& move) {return move.is_enpassant(); }));
+			counters.castles = uint32_t(std::count_if(movelist.begin(), movelist.end(), 
+                                                    [](const Move& move) {return move.is_castle(); }));
+			counters.promotions = uint32_t(std::count_if(movelist.begin(), movelist.end(), 
+                                                    [](const Move& move) {return move.is_promotion(); }));
         }
         else {
             // Check all the branches

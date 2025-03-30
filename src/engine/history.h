@@ -38,7 +38,7 @@ namespace Search {
         // - importance = (c * depth) / (ply * start_depth) where c is a hyperparameter defined in searchconfig.h
         // - Additional division by 100 to normalize c factor (which is an integer instead of [0, 1] float)
         void update(Piece piece, Square to, int c, int8_t start_depth, int8_t depth, int16_t ply, Score R) { 
-            Q[piece][to] = Q[piece][to] + int64_t(c) * depth * (R - Q[piece][to]) / (100 * (ply + 1) * start_depth);
+            Q[piece][to] = Score(Q[piece][to] + int64_t(c) * depth * (R - Q[piece][to]) / (100 * (ply + 1) * start_depth));
         }
         void update(const Board& board, const Move& move, int c, int8_t start_depth, int8_t depth, int16_t ply, Score R) {
             update(board.on(move.from()), move.to(), c, start_depth, depth, ply, R);

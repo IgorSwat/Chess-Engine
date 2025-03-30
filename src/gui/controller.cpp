@@ -35,7 +35,7 @@ namespace GUI {
 	const float ENGINE_NAVBAR_HEIGHT = NAVBAR_BUTTON_SIZE;
 	const float ENGINE_NAVBAR_WIDTH = NAVBAR_BUTTON_SIZE;
 
-	const float ENGINE_NAVBAR_LEFT_MARGIN = 160.f;
+	const float ENGINE_NAVBAR_LEFT_MARGIN = 140.f;
 
 	// Second (engine's depth) input bar
 	const float DEPTH_INPUT_WIDTH = 40.f;
@@ -45,7 +45,7 @@ namespace GUI {
 	const unsigned DEPTH_INPUT_FONT_SIZE = 14;
 
 	// Evaluation display
-	const unsigned EVAL_FONT_SIZE = 18;
+	const unsigned EVAL_FONT_SIZE = 20;
 	const float EVAL_TEXT_LEFT_MARGIN = 40;
 
 	// Global window parameters
@@ -73,7 +73,7 @@ namespace GUI {
 		  depth_input(sf::Vector2f(ENGINE_NAVBAR_LEFT_MARGIN + ENGINE_NAVBAR_WIDTH + DEPTH_INPUT_LEFT_MARGIN, 
 								   BOARD_SIZE + POS_NAVBAR_TOTAL_HEIGHT + POS_INPUT_TOTAL_HEIGHT),
 		  			  sf::Vector2f(DEPTH_INPUT_WIDTH, DEPTH_INPUT_HEIGHT), DEPTH_INPUT_FONT_SIZE),
-		  eval_text("", font, EVAL_FONT_SIZE)
+		  eval_text("Best move:", font, EVAL_FONT_SIZE)
 	{
 		window.setFramerateLimit(60);
 
@@ -84,7 +84,7 @@ namespace GUI {
 
 		engine_nav.addButton(RoundedButton(ButtonType::PLAY, NAVBAR_BUTTON_SIZE, NAVBAR_BUTTON_ROUND));
 
-		font.loadFromFile("resource/arial.TTF");
+		font.loadFromFile("resource/octosquares.ttf");
 		eval_text.setStyle(sf::Text::Bold);
     	eval_text.setPosition(ENGINE_NAVBAR_LEFT_MARGIN + ENGINE_NAVBAR_WIDTH + DEPTH_INPUT_LEFT_MARGIN + DEPTH_INPUT_WIDTH + EVAL_TEXT_LEFT_MARGIN, 
 							  BOARD_SIZE + POS_NAVBAR_TOTAL_HEIGHT + POS_INPUT_TOTAL_HEIGHT + (DEPTH_INPUT_HEIGHT - EVAL_FONT_SIZE) / 3);
@@ -98,9 +98,9 @@ namespace GUI {
 	}
 
 
-	// -----------------------------------
+	// ------------------------------
 	// Controller methods - main loop
-	// -----------------------------------
+	// ------------------------------
 
 	void Controller::run()
 	{
@@ -129,7 +129,7 @@ namespace GUI {
 					else if (legal) {
 						board->make_move(move);
 						boardImage.loadPosition(board);
-						eval_text.setString("");
+						eval_text.setString("Best move:");
 					}
 					else
 						boardImage.loadPosition(board);
@@ -142,19 +142,19 @@ namespace GUI {
 						if (board->last_move() != Moves::null) {
 							board->undo_move();
 							boardImage.loadPosition(board);
-							eval_text.setString("");
+							eval_text.setString("Best move:");
 						}
 						break;
 					case ButtonType::RESET:
 						board->load_position();
 						boardImage.loadPosition(board);
-						eval_text.setString("");
+						eval_text.setString("Best move:");
 						break;
 					case ButtonType::LOAD:
 						if (!pos_input.getInput().empty()) {
 							board->load_position(pos_input.getInput());
 							boardImage.loadPosition(board);
-							eval_text.setString("");
+							eval_text.setString("Best move:");
 						}
 						break;
 					case ButtonType::X:
@@ -169,7 +169,7 @@ namespace GUI {
 
 				// Update engine navbar
 				if (engine_nav.update(event, mousePos) == ButtonType::PLAY) {
-					eval_text.setString("");
+					eval_text.setString("Best move:");
 
 					// Read depth from input
 					std::string depth_str = depth_input.getInput();

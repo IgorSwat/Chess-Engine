@@ -18,7 +18,7 @@ namespace Testing {
 
         // Perform test on a few positions
         // - Each test is very simple in this case - set position on the board, use set() method, and check result from forward()
-        const std::vector<std::pair<std::string, int>> positions = {
+        std::vector<std::pair<std::string, int>> positions = {
             {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 14},
             {"8/1p4p1/2p1k2p/4b3/P3Kp1P/1P6/2PB2P1/8 b - - 1 33", -66},
             {"3rnrk1/1pp1bppp/2qp4/4P3/5B2/1QN5/PPP2PPP/R2R2K1 w - - 5 16", 188},

@@ -2,12 +2,15 @@
 #include "src/engine/pieces.h"
 #include "src/engine/zobrist.h"
 #include "src/engine/ttable.h"
-#include "test/test.h"
 #include <iostream>
 #include <memory>
 
 #ifdef USE_GUI
 #include "src/gui/controller.h"
+#endif
+
+#ifdef DEV
+#include "test/test.h"
 #endif
 
 
@@ -27,18 +30,12 @@ int main()
     // Testing stage
     // -------------
 
-    // bool test_results = Testing::run_tests();
+    #ifdef DEV
+    bool test_results = Testing::run_tests();
 
-    // if (!test_results)
-    //     std::abort();
-
-    // Speed test
-    // Testing::search_speed_test(12);
-
-    // Quality test
-    // Testing::search_accuracy_test(8, "test/data/search_test_data_custom.txt");
-
-    // return 0;
+    if (!test_results)
+        std::abort();
+    #endif
 
 
     // ---------------
@@ -73,7 +70,7 @@ int main()
             auto [score, best_move] = engine->evaluate(Search::Depth(depth));
             std::cout << "\n---------- Search results (depth " << depth << ") ----------\n";
             std::cout << "- Best move: " << best_move << "\n" << std::dec;
-            std::cout << "- Evaluation: " << score << "\n\n";
+            std::cout << "- Evaluation: " << (score >= 0 ? "+" : "") << (float(score) / 100.f) << "\n\n";
         }
     #endif
 

@@ -33,8 +33,12 @@ namespace Testing {
 	// ----------------
 
     // Global list that aggregates all tests created with REGISTER_TEST macro
-    extern std::vector<Test> tests;
+    inline std::vector<Test>& get_tests() 
+    {
+        static std::vector<Test> tests;
 
+        return tests;
+    }
 
     // -------------
 	// Test creation
@@ -44,7 +48,7 @@ namespace Testing {
     #define REGISTER_TEST(name) \
         bool name(); \
         struct name##_t { \
-            name##_t() { tests.emplace_back(#name, name); } \
+            name##_t() { get_tests().emplace_back(#name, name); } \
         }; \
         static name##_t name##_instance; \
         bool name()

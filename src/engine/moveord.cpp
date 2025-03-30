@@ -39,7 +39,7 @@ namespace MoveOrdering {
                 uint32_t bucketID = use_strategy ? strategy.classify(m_gen, move) : 0;
                 
                 if (bucketID == m_bucket) {
-                    m_last_move_id = std::distance(m_section_begin, m_next_move);
+                    m_last_move_id = uint32_t(std::distance(m_section_begin, m_next_move));
                     return *m_next_move++;
                 }
                 else

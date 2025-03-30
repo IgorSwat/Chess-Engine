@@ -9,7 +9,7 @@ namespace Testing {
     REGISTER_TEST(sliding_piece_attack_test)
     {
         // (square, piece-placement-bitboard, expected-result), tested for Queen
-		const auto test_cases = {
+		auto test_cases = {
 			std::make_tuple(SQ_E4, 0x011000008a101010, 0x01925438e8384482ULL),
 			std::make_tuple(SQ_A1, 0x0040200000040080, 0x01010101010503feULL),
 			std::make_tuple(SQ_C8, 0x0a04010000000000, 0x0a0e112040800000ULL),

@@ -31,9 +31,9 @@ constexpr int HISTORY_EVAL_NORMALIZATION = 20;  // 20 cp
 
 // History heuristic - importance factors
 // - Two digit precision - all the numbers are divided by 100 during calculations
-constexpr int HISTORY_PV_FACTOR = 32;
-constexpr int HISTORY_ALL_FACTOR = 4;
-constexpr int HISTORY_CUT_FACTOR = 16;
+constexpr int HISTORY_PV_FACTOR = 96;
+constexpr int HISTORY_ALL_FACTOR = 12;
+constexpr int HISTORY_CUT_FACTOR = 48;
 
 // History heuristic - number of analyzed moves (moves_tried list size)
 constexpr int HISTORY_NO_MOVES = 64;
