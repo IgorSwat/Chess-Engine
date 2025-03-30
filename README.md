@@ -46,8 +46,8 @@ Additionally, you can enable **development mode** with the `DEV` flag, which inc
 If you haven't cloned the repository yet, you can do so using:
 
 ```bash
-git clone https://github.com/IgorSwat/Chess-Engine.git
-cd Chess-Engine
+git clone https://github.com/IgorSwat/Lazarus.git
+cd Lazarus
 ```
 
 #### 2. Create the build directory
