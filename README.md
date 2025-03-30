@@ -83,7 +83,7 @@ It is recommended to use Release mode for optimal engine speed.
 #### 5. Run the engine
 Run the engine **from the build directory**:
 ```bash
-cd ..  # Step back to the build directory
+cd ..  # Step back to the project root directory
 ./Lazarus
 ```
 
