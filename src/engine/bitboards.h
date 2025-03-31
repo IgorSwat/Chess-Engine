@@ -21,17 +21,23 @@ namespace Bitboards {
 
     inline Square lsb(Bitboard mask)
 	{
+	#ifdef _MSC_VER
 		unsigned long bitID;
 		_BitScanForward64(&bitID, mask);
-
+	#else
+		unsigned long bitID = __builtin_ctzll(mask);
+	#endif
 		return Square(bitID);
 	}
 
 	inline Square msb(Bitboard mask)
 	{
+	#ifdef _MSC_VER
 		unsigned long bitID;
 		_BitScanReverse64(&bitID, mask);
-
+	#else
+		unsigned long bitID = 63 - __builtin_clzll(mask);
+	#endif
 		return Square(bitID);
 	}
 
@@ -50,7 +56,11 @@ namespace Bitboards {
 
 	inline unsigned popcount(Bitboard bb)
 	{
+	#ifdef _MSC_VER
 		return uint32_t(__popcnt64(bb));
+	#else
+		return __builtin_popcountll(bb);
+	#endif
 	}
 
 	inline bool singly_populated(Bitboard bb)
