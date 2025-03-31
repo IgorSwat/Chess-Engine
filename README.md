@@ -88,6 +88,21 @@ cd ..  # Step back to the project root directory
 ```
 
 ## CLI mode
+CLI is a default mode for the project. It does not require any external dependencies.
+
+CLI allows you to specify position (with appropriate [FEN notation](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)), as well as search depth. 
+Then, engine performs search at given depth and returns the best move and corresponding evaluation of the position (see example below).
+
+![CLI example usage](md/cli.png)
 
 
 ## GUI mode
+GUI mode is an alternative to CLI. Since it was an optional part of the project and it's main purpose was to allow quicker testing, it's not necessarily of the highest quality.
+It requires SFMl 2.5.1 library and can be activated with USE_GUI flag set during compilation (see **Build and run** section).
+
+GUI allows you to manipulate the position quickly - make and unmake moves, load position from FEN notation, reset to starting position and run the engine with given depth (see example below).
+
+<img src="md/gui.png" width="600">
+
+## UCI
+Not ready yet
